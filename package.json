@@ -1,0 +1,31 @@
+{
+  "name": "veda-client",
+  "version": "1.0.0",
+  "description": "veda platform client framework",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "c8 node ./src/test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/semantic-machines/veda-client.git"
+  },
+  "author": "Roman Karpov",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/semantic-machines/veda-client/issues"
+  },
+  "homepage": "https://github.com/semantic-machines/veda-client#readme",
+  "devDependencies": {
+    "baretest": "^2.0.0",
+    "eslint": "^8.35.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "eslint-plugin-security-node": "^1.1.1",
+    "c8": "^7.13.0"
+  }
+}
