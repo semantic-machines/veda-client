@@ -34,7 +34,6 @@ export default ({test, assert}) => {
       };
       m.one('modified', handler);
       m['rdfs:label'] = ['label1', 'label2'];
-      console.log(m);
       assert(m['rdfs:label'][0] == 'label1');
       assert(m['rdfs:label'][1] == 'label2');
 
