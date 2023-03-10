@@ -28,13 +28,15 @@ export default ({test, assert}) => {
       assert(!m.isSync());
 
       // Check that event is emitted event on property change
-      const handler = (event, [value]) => {
+      const handler = (event, [value1, value2]) => {
         assert(event === 'rdfs:label');
-        assert(value == 'label');
+        assert(value1 == 'label1' && value2 == 'label2');
       };
       m.one('modified', handler);
-      m['rdfs:label'] = 'label';
-      assert(m['rdfs:label'][0] == 'label');
+      m['rdfs:label'] = ['label1', 'label2'];
+      console.log(m);
+      assert(m['rdfs:label'][0] == 'label1');
+      assert(m['rdfs:label'][1] == 'label2');
 
       // Check default flags
       assert(!m.isLoaded());

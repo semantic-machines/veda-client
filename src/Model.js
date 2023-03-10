@@ -43,7 +43,7 @@ function emitDecorator (fn) {
       await this.emit('after' + fn.name, ...args);
       return res;
     } catch (error) {
-      console.log(`${fn.name.toUpperCase()}`, error);
+      console.error(`${fn.name.toUpperCase()}`, error);
       throw error;
     }
   };
