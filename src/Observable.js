@@ -1,13 +1,11 @@
-export default class Observable {
-  constructor () {
-    this.callbacks = {};
-  }
+const Observable = (Class) => class extends Class {
+  #callbacks = {};
 
   on (events, fn) {
     if (typeof fn === 'function') {
       events.replace(/[^\s]+/g, (name, pos) => {
-        this.callbacks[name] = this.callbacks[name] || [];
-        this.callbacks[name].push(fn);
+        this.#callbacks[name] = this.#callbacks[name] || [];
+        this.#callbacks[name].push(fn);
         fn.typed = pos > 0;
       });
     }
@@ -15,18 +13,18 @@ export default class Observable {
   }
 
   off (events, fn) {
-    if (events === '*') this.callbacks = {};
+    if (events === '*') this.#callbacks = {};
     else if (fn) {
       events.replace(/[^\s]+/g, (name) => {
-        if (this.callbacks[name]) {
-          this.callbacks[name] = this.callbacks[name].filter((cb) => {
+        if (this.#callbacks[name]) {
+          this.#callbacks[name] = this.#callbacks[name].filter((cb) => {
             return cb !== fn;
           });
         }
       });
     } else {
       events.replace(/[^\s]+/g, (name) => {
-        this.callbacks[name] = [];
+        this.#callbacks[name] = [];
       });
     }
     return this;
@@ -41,7 +39,7 @@ export default class Observable {
   };
 
   trigger (name, ...args) {
-    const fns = this.callbacks[name] || [];
+    const fns = this.#callbacks[name] || [];
     let c = 0;
     return fns.reduce((p, fn, i) => p.then(() => {
       if (fn.one) {
@@ -53,4 +51,6 @@ export default class Observable {
   emit (...args) {
     return this.trigger(...args);
   };
-}
+};
+
+export default Observable;

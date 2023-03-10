@@ -2,7 +2,9 @@ import Observable from './Observable.js';
 
 export default ({test, assert}) => {
   test('Observable', async () => {
-    const o = new Observable();
+    class ObservableTest extends Observable(Object) {}
+
+    const o = new ObservableTest();
 
     let payload;
 

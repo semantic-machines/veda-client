@@ -1,12 +1,12 @@
-import Resource from './Resource.js';
+import Value from './Value.js';
+import List from './List.js';
 import Observable from './Observable.js';
 import {genUri} from './Util.js';
 
 const modelHandler = {
   'get': function (obj, key, receiver) {
-    const resourceValue = obj.resource[key];
-    if (typeof resourceValue !== 'undefined') {
-      return Array.isArray(resourceValue) ? resourceValue.map(Resource.parse) : resourceValue;
+    if (key === 'toJSON') {
+      return () => JSON.parse(JSON.stringify(obj, (key, value) => key === '' ? (value['@'] = value.id, delete value.id, value) : value));
     }
     const value = obj[key];
     if (value instanceof Function) {
@@ -14,15 +14,26 @@ const modelHandler = {
         return value.apply(this === receiver ? obj : this, args);
       };
     }
+    if (value instanceof List) {
+      return value.map(Value.parse);
+    }
     return Reflect.get(obj, key, receiver);
   },
   'set': function (obj, key, value, receiver) {
-    let values = Array.isArray(value) ? value.map((item) => new Resource(item)) : Array(new Resource(value));
-    obj.resource[key] = values;
+    const current = obj[key];
+    if (current instanceof List) {
+      if (Array.isArray(value)) {
+        current.splice(0, current.length, ...value.map(Value.serialize));
+      } else {
+        current.splice(0, current.length, Value.serialize(value));
+      }
+    } else if (typeof current === 'undefined') {
+      obj[key] = Array.isArray(value) ? List.from(value.map((item) => new Value(item))) : new List(new Value(value));
+    }
     obj.isSync(false);
-    values = receiver[key];
-    obj.emit(key, values);
-    obj.emit('modified', key, values);
+    const updated = receiver[key];
+    obj.emit(key, updated);
+    obj.emit('modified', key, updated);
     return true;
   },
 };
@@ -41,13 +52,21 @@ function emitDecorator (fn) {
   };
 }
 
-export default class Model extends Observable {
+export default class Model extends Observable(Object) {
   constructor (resource) {
     super();
-    if (typeof resource === 'undefined') {
-      this.resource = {id: genUri()};
-    } else {
-      this.resource = resource;
+    if (typeof resource === 'string') {
+      this.id = resource;
+      this.isNew(false);
+    } else if (typeof resource === 'undefined') {
+      this.id = genUri();
+    } else if (typeof resource === 'object') {
+      Object.getOwnPropertyNames(resource).forEach((prop) => {
+        if (prop === '@' || prop === 'id') {
+          return this.id = resource.id ?? resource['@'];
+        }
+        this[prop] = List.from(resource[prop].map((value) => new Value(value)));
+      });
     }
     return new Proxy(this, modelHandler);
   }

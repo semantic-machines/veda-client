@@ -17,6 +17,7 @@
   "rules": {
     // Style
     "space-before-function-paren": ["error", "always"],
+    "new-cap": ["off"],
     "max-len": ["off"],
     "camelcase": ["off"],
     "no-unused-vars": ["warn"],
