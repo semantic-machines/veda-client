@@ -5,9 +5,6 @@ import {genUri} from './Util.js';
 
 const modelHandler = {
   'get': function (obj, key, receiver) {
-    if (key === 'toJSON') {
-      return () => JSON.parse(JSON.stringify(obj, (key, value) => key === '' ? (value['@'] = value.id, delete value.id, value) : value));
-    }
     const value = obj[key];
     if (value instanceof Function) {
       return function (...args) {
@@ -69,6 +66,12 @@ export default class Model extends Observable(Object) {
       });
     }
     return new Proxy(this, modelHandler);
+  }
+
+  toJSON () {
+    const json = {...this, '@': this.id};
+    delete json.id;
+    return json;
   }
 
   #isNewFlag = true;
