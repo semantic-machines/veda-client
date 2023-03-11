@@ -7,7 +7,7 @@ export default ({test, assert}) => {
 
     let value = new Value({data: 'test', type: 'String', lang: 'EN'});
     assert(value.data === 'test' && value.type === 'String' && value.lang === 'EN');
-    assert('test' == parse(value));
+    assert('test^^EN' == parse(value));
 
     value = new Value({data: 1, type: 'Integer'});
     assert(value.data === 1 && value.type === 'Integer');
@@ -42,12 +42,12 @@ export default ({test, assert}) => {
     const string = new String('test');
     string.language = 'ru';
     value = new Value(string);
-    assert(value.data == 'test' && value.type === 'String' && value.lang === 'RU');
-    assert('test' == parse(value));
+    assert(value.data === 'test' && value.type === 'String' && value.lang === 'RU');
+    assert('test^^RU' === parse(value));
 
-    value = new Value('test^ru');
+    value = new Value('test^^ru');
     assert(value.data == 'test' && value.type === 'String' && value.lang === 'RU');
-    assert('test' == parse(value));
+    assert('test^^RU' === parse(value));
 
     value = new Value('d:test');
     assert(value.data == 'd:test' && value.type === 'Uri');

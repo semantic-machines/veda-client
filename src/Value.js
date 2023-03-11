@@ -17,11 +17,7 @@ export default class Value {
 
   static parse (value) {
     if (value.type === 'String' && value.data) {
-      const string = new String(value.data);
-      if (value.lang && value.lang !== 'NONE') {
-        string.language = value.lang;
-      }
-      return string;
+      return `${value.data}${value.lang && value.lang !== 'NONE' ? `^^${value.lang}` : ''}`;
     } else if (value.type === 'Uri') {
       return new Model(value.data);
     } else if (value.type === 'Datetime') {
@@ -37,7 +33,7 @@ export default class Value {
 
   static reg_uri = /^[a-z][a-z-0-9]*:([a-zA-Z0-9-_])*$/;
   static reg_date = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
-  static reg_ml_string = /^(.*)\^([a-z]{2})$/ims;
+  static reg_ml_string = /^(.*)\^\^([a-z]{2})$/ims;
   static reg_round_decimal = /^-?\d+([\.\,])0$/;
 
   static serialize (value) {
@@ -50,17 +46,19 @@ export default class Value {
     } else if (value instanceof Model) {
       return new Value(value.id, 'Uri');
     } else if (typeof value === 'string' || value instanceof String) {
-      if ( this.reg_uri.test(value) ) {
+      if ( Value.reg_uri.test(value) ) {
         return new Value(value.valueOf(), 'Uri');
-      } else if ( this.reg_date.test(value) ) {
+      } else if ( Value.reg_date.test(value) ) {
         return new Value(value.valueOf().split('.')[0]+'Z', 'Datetime');
-      } else if ( this.reg_ml_string.test(value) ) {
-        return new Value(value.replace(this.reg_ml_string, '$1'), 'String', value.replace(this.reg_ml_string, '$2').toUpperCase());
-      } else if ( this.reg_round_decimal.test(value) ) {
+      } else if ( Value.reg_ml_string.test(value) ) {
+        return new Value(value.replace(Value.reg_ml_string, '$1'), 'String', value.replace(Value.reg_ml_string, '$2').toUpperCase());
+      } else if ( Value.reg_round_decimal.test(value) ) {
         return new Value(parseFloat(value), 'Decimal');
       } else if (value.length) {
         return new Value(value.valueOf(), 'String', value.language);
       }
+    } else if (typeof value === 'object') {
+      return new Value(value);
     }
   }
 

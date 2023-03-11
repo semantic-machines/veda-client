@@ -1,37 +1,30 @@
 import Value from './Value.js';
-import List from './List.js';
+import ObserverArray from './ObserverArray.js';
 import Observable from './Observable.js';
 import {genUri} from './Util.js';
 
-const modelHandler = {
+const handler = {
   'get': function (obj, key, receiver) {
-    const value = obj[key];
-    if (value instanceof Function) {
-      return function (...args) {
-        return value.apply(this === receiver ? obj : this, args);
-      };
-    }
-    if (value instanceof List) {
-      return value.map(Value.parse);
-    }
-    return Reflect.get(obj, key, receiver);
+    const value = Reflect.get(obj, key, receiver);
+    return typeof value === 'function' ? value.bind(obj) : value;
   },
   'set': function (obj, key, value, receiver) {
-    const current = obj[key];
-    if (current instanceof List) {
-      if (Array.isArray(value)) {
-        current.splice(0, current.length, ...value.map(Value.serialize));
-      } else {
-        current.splice(0, current.length, Value.serialize(value));
-      }
-    } else if (typeof current === 'undefined') {
-      obj[key] = Array.isArray(value) ? List.from(value.map((item) => new Value(item))) : new List(new Value(value));
-    }
     obj.isSync(false);
-    const updated = receiver[key];
-    obj.emit(key, updated);
-    obj.emit('modified', key, updated);
-    return true;
+    obj.emit(key, value);
+    obj.emit('modified', key, value);
+    if (Array.isArray(value)) {
+      obj[key] = new ObserverArray(obj, key, ...value);
+      return true;
+    }
+    return Reflect.set(obj, key, value, receiver);
+  },
+  'deleteProperty': function (obj, key) {
+    if (key in obj) {
+      delete obj[key];
+      obj.emit(key);
+      obj.emit('modified', key);
+      return true;
+    }
   },
 };
 
@@ -50,8 +43,11 @@ function emitDecorator (fn) {
 }
 
 export default class Model extends Observable(Object) {
+  #resource;
+
   constructor (resource) {
     super();
+    this.#resource = resource;
     if (typeof resource === 'string') {
       this.id = resource;
       this.isNew(false);
@@ -62,15 +58,32 @@ export default class Model extends Observable(Object) {
         if (prop === '@' || prop === 'id') {
           return this.id = resource.id ?? resource['@'];
         }
-        this[prop] = List.from(resource[prop].map((value) => new Value(value)));
+        const value = resource[prop];
+        this[prop] = Array.isArray(value) ? new ObserverArray(this, prop, ...value.map(Value.parse)) : Value.parse(value);
       });
     }
-    return new Proxy(this, modelHandler);
+    return new Proxy(this, handler);
   }
 
   toJSON () {
-    const json = {...this, '@': this.id};
-    delete json.id;
+    const keys = Object.getOwnPropertyNames(this);
+    const json = keys.reduce((acc, key) => {
+      if (key === 'id') {
+        acc['@'] = this.id;
+        return acc;
+      }
+      const value = this[key];
+      if (value instanceof Function) {
+        return acc;
+      } else if (Array.isArray(value)) {
+        acc[key] = value.filter(Boolean).map(Value.serialize);
+        if (!acc[key].length) delete acc[key];
+      } else {
+        acc[key] = [Value.serialize(value)].filter(Boolean);
+        if (!acc[key].length) delete acc[key];
+      }
+      return acc;
+    }, {});
     return json;
   }
 
