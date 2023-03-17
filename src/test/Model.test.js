@@ -1,11 +1,11 @@
-import Model from './Model.js';
+import ObservableModel from '../ObservableModel.js';
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default ({test, assert}) => {
-  test('Model', async () => {
+  test('Model #01', async () => {
     for (let i = 0; i < 1; i++) {
-      const m = new Model();
+      const m = new ObservableModel();
 
       // Check id of empty model
       assert(/^d:[a-z0-9]+$/.test(m.id));
@@ -23,12 +23,6 @@ export default ({test, assert}) => {
       m['rdf:value'] = {data: 1, type: 'Integer'};
       assert(m['rdf:value'].data === 1);
 
-      // Check isSync flag alter on property change
-      m.isSync(true);
-      assert(m.isSync());
-      m['rdfs:comment'] = 'comment^^en';
-      assert(!m.isSync());
-
       // Check that event is emitted event on property change
       const handler = (event, [value1, value2]) => {
         assert(event === 'rdfs:label');
@@ -36,6 +30,7 @@ export default ({test, assert}) => {
       };
       m.one('modified', handler);
       m['rdfs:label'] = ['label1', 'label2'];
+      await timeout();
       assert(m['rdfs:label'][0] === 'label1');
       assert(m['rdfs:label'][1] === 'label2');
 
@@ -93,7 +88,7 @@ export default ({test, assert}) => {
       assert(counter === 3);
 
       // Check constructor
-      const m2 = new Model({
+      const m2 = new ObservableModel({
         '@': 'd:test',
         'rdf:type': [{data: 'rdfs:Resource', type: 'Uri'}],
         'rdf:value': [{data: 'test', type: 'String'}],
@@ -103,10 +98,69 @@ export default ({test, assert}) => {
       assert(m2['rdf:value'].data === 1);
       assert(m2['rdfs:comment'][0] === 'comment 1^^ru');
       assert(m2['rdfs:comment'][1] === 'comment 2^^en');
+      assert(m2['rdf:type'][0] instanceof ObservableModel);
 
       // Check toJSON
       const ethalon = '{"@":"d:test","rdf:type":[{"data":"rdfs:Resource","type":"Uri"}],"rdf:value":[{"data":"test","type":"String"}],"rdfs:comment":[{"data":"comment 1","type":"String","lang":"RU"},{"data":"comment 2","type":"String","lang":"EN"}],"rdf:value":[{"data":1,"type":"Integer"}]}';
       assert(JSON.stringify(m2) === JSON.stringify(JSON.parse(ethalon)));
     }
+  });
+
+
+  test('Model #2', async () => {
+    const m = new ObservableModel();
+
+    m['rdfs:label'] = ['test^ru'];
+    assert(m.get('rdfs:label')[0] === 'test^ru');
+
+    m.set('rdfs:label', 'test^en');
+    assert(m.get('rdfs:label') === 'test^en');
+
+    assert(m.hasValue('rdfs:label', 'test^en'));
+    assert(m.hasValue('rdfs:label'));
+    assert(m.hasValue(undefined, 'test^en'));
+
+    m.clearValue('rdfs:label');
+    assert(!m.hasValue('rdfs:label'));
+
+    m.addValue('rdfs:label', 1);
+    assert(m.hasValue('rdfs:label', 1));
+
+    m.addValue('rdfs:label', 2);
+    assert(m.hasValue('rdfs:label', 1) && m.hasValue('rdfs:label', 2));
+
+    m.addValue('rdfs:label', 3);
+    assert(m.hasValue('rdfs:label', 1) && m.hasValue('rdfs:label', 2) && m.hasValue('rdfs:label', 3));
+
+    m.removeValue('rdfs:label', 1);
+    assert(m.hasValue('rdfs:label', 2) && m.hasValue('rdfs:label', 3) && m['rdfs:label'].length === 2);
+
+    m.removeValue(undefined, 2);
+    assert(m.hasValue('rdfs:label', 3) && m['rdfs:label'].length === 1);
+
+    m.removeValue('rdfs:label', 3);
+    assert(!m.hasValue('rdfs:label'));
+    assert(!m['rdfs:label']);
+
+    m['rdfs:label'] = 4;
+    m.removeValue('rdfs:label', 4);
+    assert(!m['rdfs:label']);
+
+    const m1 = new ObservableModel();
+
+    let counter = 0;
+    const handler1 = (...args) => {
+      counter++;
+    };
+    m1.on('rdf:type', handler1);
+    m1['rdf:type'] = ['owl:Thing'];
+    m1['rdf:type'][1] = 'v-s:Thing';
+    delete m1['rdf:type'];
+    await timeout();
+    assert(counter === 3);
+
+    m1.addValue('rdf:type', 'v-s:Thing');
+    await timeout();
+    assert(counter === 4);
   });
 };

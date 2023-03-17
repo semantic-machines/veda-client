@@ -1,4 +1,4 @@
-import Model from './Model.js';
+import ObservableModel from './ObservableModel.js';
 
 export default class Value {
   constructor (data, type = null, lang = null) {
@@ -19,7 +19,7 @@ export default class Value {
     if (value.type === 'String' && value.data) {
       return `${value.data}${value.lang && value.lang !== 'NONE' ? `^^${value.lang}` : ''}`;
     } else if (value.type === 'Uri') {
-      return new Model(value.data);
+      return new ObservableModel(value.data);
     } else if (value.type === 'Datetime') {
       return new Date(Date.parse(value.data));
     } else if (value.type === 'Decimal') {
@@ -43,7 +43,7 @@ export default class Value {
       return new Value(value, 'Boolean');
     } else if (value instanceof Date) {
       return new Value(value.toISOString().split('.')[0]+'Z', 'Datetime');
-    } else if (value instanceof Model) {
+    } else if (value instanceof ObservableModel) {
       return new Value(value.id, 'Uri');
     } else if (typeof value === 'string' || value instanceof String) {
       if ( Value.reg_uri.test(value) ) {

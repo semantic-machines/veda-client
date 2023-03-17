@@ -1,52 +1,10 @@
 import Value from './Value.js';
-import ObserverArray from './ObserverArray.js';
-import Observable from './Observable.js';
 import {genUri} from './Util.js';
 
-const handler = {
-  'get': function (obj, key, receiver) {
-    const value = Reflect.get(obj, key, receiver);
-    return typeof value === 'function' ? value.bind(obj) : value;
-  },
-  'set': function (obj, key, value, receiver) {
-    obj.isSync(false);
-    obj.emit(key, value);
-    obj.emit('modified', key, value);
-    if (Array.isArray(value)) {
-      obj[key] = new ObserverArray(obj, key, ...value);
-      return true;
-    }
-    return Reflect.set(obj, key, value, receiver);
-  },
-  'deleteProperty': function (obj, key) {
-    if (key in obj) {
-      delete obj[key];
-      obj.emit(key);
-      obj.emit('modified', key);
-      return true;
-    }
-  },
-};
-
-function emitDecorator (fn) {
-  return async function (...args) {
-    try {
-      await this.emit('before' + fn.name, ...args);
-      const res = await fn.call(this, ...args);
-      await this.emit('after' + fn.name, ...args);
-      return res;
-    } catch (error) {
-      console.error(`${fn.name.toUpperCase()}`, error);
-      throw error;
-    }
-  };
-}
-
-export default class Model extends Observable(Object) {
+export default class Model {
   #resource;
 
   constructor (resource) {
-    super();
     this.#resource = resource;
     if (typeof resource === 'string') {
       this.id = resource;
@@ -59,10 +17,9 @@ export default class Model extends Observable(Object) {
           return this.id = resource.id ?? resource['@'];
         }
         const value = resource[prop];
-        this[prop] = Array.isArray(value) ? new ObserverArray(this, prop, ...value.map(Value.parse)) : Value.parse(value);
+        this[prop] = Array.isArray(value) ? value.map(Value.parse) : Value.parse(value);
       });
     }
-    return new Proxy(this, handler);
   }
 
   toJSON () {
@@ -87,27 +44,85 @@ export default class Model extends Observable(Object) {
     return json;
   }
 
-  #isNewFlag = true;
+  #isNew = true;
   isNew (value) {
-    return typeof value === 'undefined' ? this.#isNewFlag : this.#isNewFlag = value;
+    return typeof value === 'undefined' ? this.#isNew : this.#isNew = !!value;
   }
 
-  #isLoadedFlag = false;
+  #isLoaded = false;
   isLoaded (value) {
-    return typeof value === 'undefined' ? this.#isLoadedFlag : this.#isLoadedFlag = value;
+    return typeof value === 'undefined' ? this.#isLoaded : this.#isLoaded = !!value;
   }
 
-  #isSyncFlag = false;
+  #isSync = false;
   isSync (value) {
-    return typeof value === 'undefined' ? this.#isSyncFlag : this.#isSyncFlag = value;
+    return typeof value === 'undefined' ? this.#isSync : this.#isSync = !!value;
   }
 
-  load = emitDecorator(function load () {
-  });
-  reset = emitDecorator(function reset () {
-  });
-  save = emitDecorator(function save () {
-  });
-  remove = emitDecorator(function remove () {
-  });
+  get (prop) {
+    return this[prop];
+  }
+
+  set (prop, value) {
+    this[prop] = value;
+  }
+
+  clearValue (prop) {
+    delete this[prop];
+  }
+
+  addValue (prop, value) {
+    if (!this.hasValue(prop)) {
+      this[prop] = value;
+    } else {
+      const existingValue = this[prop];
+      if (Array.isArray(existingValue)) {
+        existingValue.push(value);
+      } else {
+        this[prop] = [existingValue, value];
+      }
+    }
+  }
+
+  hasValue (prop, value) {
+    if (!prop && typeof value !== 'undefined') {
+      return Object.getOwnPropertyNames(this).reduce((prev, prop) => prev || this.hasValue(prop, value), false);
+    }
+    let found = !!(typeof this[prop] !== 'undefined');
+    if (typeof value !== 'undefined' && value !== null) {
+      const serialized = Value.serialize(value);
+      let propValue = this[prop];
+      if (propValue instanceof Function) return false;
+      propValue = Array.isArray(propValue) ? propValue : [propValue];
+      found = found && propValue.some((item) => serialized.isEqual(Value.serialize(item)));
+    }
+    return found;
+  }
+
+  removeValue (prop, value) {
+    if (!prop && typeof value !== 'undefined') {
+      return Object.getOwnPropertyNames(this).forEach((prop) => this.removeValue(prop, value));
+    }
+    if (this.hasValue(prop, value)) {
+      if (Array.isArray(this[prop])) {
+        const serializedValue = Value.serialize(value);
+        this[prop] = this[prop].filter((item) => !serializedValue.isEqual(Value.serialize(item)));
+        if (!this[prop].length) delete this[prop];
+      } else {
+        delete this[prop];
+      }
+    }
+  }
+
+  load () {
+  }
+
+  reset () {
+  }
+
+  save () {
+  }
+
+  remove () {
+  }
 }

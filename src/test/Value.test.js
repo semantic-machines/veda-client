@@ -1,5 +1,5 @@
-import Value from './Value.js';
-import Model from './Model.js';
+import Value from '../Value.js';
+import ObservableModel from '../ObservableModel.js';
 
 export default ({test, assert}) => {
   test('Value', async () => {
@@ -34,7 +34,7 @@ export default ({test, assert}) => {
     assert(value.data === true && value.type === 'Boolean');
     assert(true === parse(value));
 
-    const model = new Model();
+    const model = new ObservableModel();
     value = new Value(model);
     assert(value.data === model.id && value.type === 'Uri');
     assert(model.id === parse(value).id);

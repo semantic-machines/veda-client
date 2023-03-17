@@ -1,40 +1,40 @@
 const mutatingMethods = ['pop', 'push', 'shift', 'unshift', 'reverse', 'sort', 'splice'];
 
 const handler = {
-  'get': function (obj, key, receiver) {
-    const value = Reflect.get(obj, key, receiver);
-    if (mutatingMethods.includes(key)) {
+  'get': function (target, prop, receiver) {
+    const value = Reflect.get(target, prop, receiver);
+    if (mutatingMethods.includes(prop)) {
       return function (...args) {
-        const result = value.apply(obj, args);
-        obj.observable.emit('modified', obj.prop, obj);
-        obj.observable.emit(obj.prop, obj);
+        const result = value.apply(target, args);
+        target.notify();
         return result;
       };
     }
-    return typeof value === 'function' ? value.bind(obj) : value;
+    return typeof value === 'function' ? value.bind(target) : value;
   },
-  'set': function (obj, key, value, receiver) {
-    if (Number.isInteger(Number(key))) {
-      obj.observable.emit('modified', obj.prop, obj);
-      obj.observable.emit(obj.prop, obj);
+  'set': function (target, prop, value, receiver) {
+    if (Number.isInteger(Number(prop))) {
+      target.notify();
     }
-    return Reflect.set(obj, key, value, receiver);
+    return Reflect.set(target, prop, value, receiver);
   },
 };
 
-class NormalizedArray extends Array {
-  constructor (...args) {
-    return Array.of(...args);
-  }
-}
+export default class ObserverArray extends Array {
+  #observable;
+  #prop;
 
-export default class ObserverArray extends NormalizedArray {
-  observable;
-  prop;
+  notify () {
+    this.#observable.emit(this.#prop, this);
+    this.#observable.emit('modified', this.#prop, this);
+  }
+
   constructor (observable, prop, ...args) {
     super(...args);
-    this.observable = observable;
-    this.prop = prop;
+    // Array(number) work-around
+    if (args.length === 1 && Number.isInteger(args[0])) this[0] = args[0];
+    this.#observable = observable;
+    this.#prop = prop;
     return new Proxy(this, handler);
   }
 }

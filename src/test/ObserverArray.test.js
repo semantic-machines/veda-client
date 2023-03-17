@@ -1,11 +1,11 @@
-import ObserverArray from './ObserverArray.js';
-import Observable from './Observable.js';
+import ObserverArray from '../ObserverArray.js';
+import Observable from '../Observable.js';
+const ObservableObject = Observable(Object);
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default ({test, assert}) => {
   test('ObserverArray', async () => {
-    class ObservableObject extends Observable(Object) {}
     const observable = new ObservableObject();
     const observerArray = new ObserverArray(observable, 'id');
 
