@@ -31,7 +31,7 @@ export default class ObserverArray extends Array {
 
   constructor (observable, prop, ...args) {
     super(...args);
-    // Array(number) work-around
+    // Array(number) workaround
     if (args.length === 1 && Number.isInteger(args[0])) this[0] = args[0];
     this.#observable = observable;
     this.#prop = prop;

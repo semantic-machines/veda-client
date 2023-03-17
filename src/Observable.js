@@ -2,24 +2,24 @@ import {diff} from 'deep-object-diff';
 import ObserverArray from './ObserverArray.js';
 
 const handler = {
-  'get': function (obj, key, receiver) {
-    const value = Reflect.get(obj, key, receiver);
-    return typeof value === 'function' ? value.bind(obj) : value;
+  'get': function (target, prop, receiver) {
+    const value = Reflect.get(target, prop, receiver);
+    return typeof value === 'function' ? value.bind(target) : value;
   },
-  'set': function (obj, key, value, receiver) {
-    obj.emit(key, value);
-    obj.emit('modified', key, value);
+  'set': function (target, prop, value, receiver) {
+    target.emit(prop, value);
+    target.emit('modified', prop, value);
     if (Array.isArray(value)) {
-      obj[key] = new ObserverArray(obj, key, ...value);
+      target[prop] = new ObserverArray(target, prop, ...value);
       return true;
     }
-    return Reflect.set(obj, key, value, receiver);
+    return Reflect.set(target, prop, value, receiver);
   },
-  'deleteProperty': function (obj, key) {
-    if (key in obj) {
-      delete obj[key];
-      obj.emit(key);
-      obj.emit('modified', key);
+  'deleteProperty': function (target, prop) {
+    if (prop in target) {
+      delete target[prop];
+      target.emit(prop);
+      target.emit('modified', prop);
       return true;
     }
   },
