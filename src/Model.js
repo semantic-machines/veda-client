@@ -2,10 +2,7 @@ import Value from './Value.js';
 import {genUri} from './Util.js';
 
 export default class Model {
-  #resource;
-
   constructor (resource) {
-    this.#resource = resource;
     if (typeof resource === 'string') {
       this.id = resource;
       this.isNew(false);
