@@ -2,7 +2,7 @@ import ObserverArray from '../ObserverArray.js';
 import Observable from '../Observable.js';
 const ObservableObject = Observable(Object);
 
-const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+import {timeout} from '../Util.js';
 
 export default ({test, assert}) => {
   test('ObserverArray', async () => {

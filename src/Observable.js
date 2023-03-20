@@ -1,4 +1,5 @@
 import {diff} from 'deep-object-diff';
+import {decorator} from './Util.js';
 import ObserverArray from './ObserverArray.js';
 
 const handler = {
@@ -86,33 +87,53 @@ export default (Class) => {
     }
   };
 
-  let proto = Class.prototype;
-  if (Class.prototype !== Object.prototype) {
-    do {
-      const props = Object.getOwnPropertyNames(proto);
-      for (const prop of props) {
-        if (prop === 'constructor') continue;
-        const method = proto[prop];
-        if (
-          typeof method === 'function' &&
-          prop !== 'toJSON' &&
-          !Observable.prototype.hasOwnProperty(prop)
-        ) {
-          Observable.prototype[prop] = function (...args) {
-            const before = this.toJSON();
-            const result = method.apply(this, args);
-            const after = this.toJSON();
-            const delta = diff(after, before);
-            Object.keys(delta).forEach((prop) => {
-              this.emit(prop, this[prop]);
-              this.emit('modified', prop, this[prop]);
-            });
-            return result;
-          };
-        }
-      }
-    } while ((proto = Object.getPrototypeOf(proto)) !== Object.prototype);
+  function mutatingDecorator (fn) {
+    let before;
+    function pre () {
+      before = this.toJSON();
+    };
+    function post () {
+      const after = this.toJSON();
+      const delta = diff(after, before);
+      Object.keys(delta).forEach((prop) => {
+        this.emit(prop, this[prop]);
+        this.emit('modified', prop, this[prop]);
+      });
+    };
+    return decorator(fn, pre, post, console.error);
+  };
+
+  function backendDecorator (fn) {
+    async function pre () {
+      const before = this.toJSON();
+      await this.emit('before' + fn.name, before);
+    };
+    async function post () {
+      const after = this.toJSON();
+      await this.emit('after' + fn.name, after);
+    };
+    return decorator(fn, pre, post, console.error);
+  };
+
+  function setDecorators (_class) {
+    if (_class === Object) return;
+
+    if (_class.mutatingMethods) {
+      _class.mutatingMethods.forEach((name) => {
+        Observable.prototype[name] = mutatingDecorator(_class.prototype[name]);
+      });
+    }
+
+    if (_class.backendMethods) {
+      _class.backendMethods.forEach((name) => {
+        Observable.prototype[name] = backendDecorator(_class.prototype[name]);
+      });
+    }
+
+    // setDecorators(_class.prototype);
   }
+
+  setDecorators(Class);
 
   return Observable;
 };

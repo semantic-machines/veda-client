@@ -1,6 +1,6 @@
 import ObservableModel from '../ObservableModel.js';
-
-const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+import Backend from '../Backend.js';
+import {timeout} from '../Util.js';
 
 export default ({test, assert}) => {
   test('Model #01', async () => {
@@ -9,6 +9,10 @@ export default ({test, assert}) => {
 
       // Check id of empty model
       assert(/^d:[a-z0-9]+$/.test(m.id));
+
+      // Check setter / getter
+      m['rdf:type'] = new ObservableModel('rdfs:Resource');
+      assert(m['rdf:type'].id === 'rdfs:Resource');
 
       // Check setter / getter
       m['v-s:updateCounter'] = [1];
@@ -47,22 +51,29 @@ export default ({test, assert}) => {
       m.isNew(false);
       assert(!m.isNew());
 
+      try {
+        const backend = new Backend();
+        await backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
+        assert(backend.user === 'cfg:VedaSystem');
+      } catch (error) {
+        console.error('Authentication failed', error);
+        throw error;
+      }
+
       // Check events
+      m.one('beforesave', assert);
+      m.one('aftersave', assert);
+      await m.save();
+
+      await timeout(300);
+
       m.one('beforeload', assert);
       m.one('afterload', assert);
-      await m.load(true);
+      await m.load();
 
       m.one('beforereset', assert);
       m.one('afterreset', assert);
-      await m.reset(true);
-
-      m.one('beforesave', assert);
-      m.one('aftersave', assert);
-      await m.save(true);
-
-      m.one('beforeremove', assert);
-      m.one('afterremove', assert);
-      await m.remove(true);
+      await m.reset();
 
       // Check error propagation
       try {
@@ -73,6 +84,11 @@ export default ({test, assert}) => {
       } catch (error) {
         assert(error.message === 'test');
       }
+
+      // Cleanup
+      m.one('beforeremove', assert);
+      m.one('afterremove', assert);
+      await m.remove();
 
       let counter = 0;
       const handler1 = (...args) => {
@@ -114,6 +130,7 @@ export default ({test, assert}) => {
     assert(m.get('rdfs:label')[0] === 'test^ru');
 
     m.set('rdfs:label', 'test^en');
+    await timeout();
     assert(m.get('rdfs:label') === 'test^en');
 
     assert(m.hasValue('rdfs:label', 'test^en'));
@@ -121,29 +138,37 @@ export default ({test, assert}) => {
     assert(m.hasValue(undefined, 'test^en'));
 
     m.clearValue('rdfs:label');
+    await timeout();
     assert(!m.hasValue('rdfs:label'));
 
     m.addValue('rdfs:label', 1);
+    await timeout();
     assert(m.hasValue('rdfs:label', 1));
 
     m.addValue('rdfs:label', 2);
+    await timeout();
     assert(m.hasValue('rdfs:label', 1) && m.hasValue('rdfs:label', 2));
 
     m.addValue('rdfs:label', 3);
+    await timeout();
     assert(m.hasValue('rdfs:label', 1) && m.hasValue('rdfs:label', 2) && m.hasValue('rdfs:label', 3));
 
     m.removeValue('rdfs:label', 1);
+    await timeout();
     assert(m.hasValue('rdfs:label', 2) && m.hasValue('rdfs:label', 3) && m['rdfs:label'].length === 2);
 
     m.removeValue(undefined, 2);
+    await timeout();
     assert(m.hasValue('rdfs:label', 3) && m['rdfs:label'].length === 1);
 
     m.removeValue('rdfs:label', 3);
+    await timeout();
     assert(!m.hasValue('rdfs:label'));
     assert(!m['rdfs:label']);
 
     m['rdfs:label'] = 4;
     m.removeValue('rdfs:label', 4);
+    await timeout();
     assert(!m['rdfs:label']);
 
     const m1 = new ObservableModel();

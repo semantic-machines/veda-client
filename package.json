@@ -6,8 +6,9 @@
   "type": "module",
   "scripts": {
     "test": "time -p node ./src/test",
-    "debug": "node --inspect-brk ./src/test.js",
-    "c8": "c8 npm t"
+    "debug": "node --inspect-brk ./src/test",
+    "c8": "c8 npm t",
+    "build": "esbuild index.js --minify --bundle --platform=node --outfile=./dist/ObservableModel.js"
   },
   "repository": {
     "type": "git",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "baretest": "^2.0.0",
     "c8": "^7.13.0",
+    "esbuild": "^0.17.12",
     "eslint": "^8.35.0",
     "eslint-config-google": "^0.14.0",
     "eslint-config-standard": "^17.0.0",

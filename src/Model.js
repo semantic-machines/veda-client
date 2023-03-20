@@ -1,13 +1,24 @@
+import Backend from './Backend.js';
 import Value from './Value.js';
 import {genUri} from './Util.js';
 
+const backend = new Backend();
+
 export default class Model {
+  static mutatingMethods = ['set', 'clearValue', 'addValue', 'removeValue'];
+  static backendMethods = ['load', 'reset', 'save', 'remove'];
+
   constructor (resource) {
     if (typeof resource === 'string') {
       this.id = resource;
-      this.isNew(false);
+      this.#isNew = false;
+      this.#isSync = false;
+      this.#isLoaded = false;
     } else if (typeof resource === 'undefined') {
       this.id = genUri();
+      this.#isNew = true;
+      this.#isSync = false;
+      this.#isLoaded = false;
     } else if (typeof resource === 'object') {
       Object.getOwnPropertyNames(resource).forEach((prop) => {
         if (prop === '@' || prop === 'id') {
@@ -16,6 +27,9 @@ export default class Model {
         const value = resource[prop];
         this[prop] = Array.isArray(value) ? value.map(Value.parse) : Value.parse(value);
       });
+      this.#isNew = false;
+      this.#isSync = true;
+      this.#isLoaded = true;
     }
   }
 
@@ -60,6 +74,21 @@ export default class Model {
     return this[prop];
   }
 
+  hasValue (prop, value) {
+    if (!prop && typeof value !== 'undefined') {
+      return Object.getOwnPropertyNames(this).reduce((prev, prop) => prev || this.hasValue(prop, value), false);
+    }
+    let found = !!(typeof this[prop] !== 'undefined');
+    if (typeof value !== 'undefined' && value !== null) {
+      const serialized = Value.serialize(value);
+      let propValue = this[prop];
+      if (propValue instanceof Function) return false;
+      propValue = Array.isArray(propValue) ? propValue : [propValue];
+      found = found && propValue.some((item) => serialized.isEqual(Value.serialize(item)));
+    }
+    return found;
+  }
+
   set (prop, value) {
     this[prop] = value;
   }
@@ -81,21 +110,6 @@ export default class Model {
     }
   }
 
-  hasValue (prop, value) {
-    if (!prop && typeof value !== 'undefined') {
-      return Object.getOwnPropertyNames(this).reduce((prev, prop) => prev || this.hasValue(prop, value), false);
-    }
-    let found = !!(typeof this[prop] !== 'undefined');
-    if (typeof value !== 'undefined' && value !== null) {
-      const serialized = Value.serialize(value);
-      let propValue = this[prop];
-      if (propValue instanceof Function) return false;
-      propValue = Array.isArray(propValue) ? propValue : [propValue];
-      found = found && propValue.some((item) => serialized.isEqual(Value.serialize(item)));
-    }
-    return found;
-  }
-
   removeValue (prop, value) {
     if (!prop && typeof value !== 'undefined') {
       return Object.getOwnPropertyNames(this).forEach((prop) => this.removeValue(prop, value));
@@ -111,15 +125,35 @@ export default class Model {
     }
   }
 
-  load () {
+  load (cache = true) {
+    const data = backend.get_individual(this.id, cache);
+    Object.getOwnPropertyNames(data).forEach((prop) => {
+      if (prop === '@' || prop === 'id') {
+        return this.id = resource.id ?? resource['@'];
+      }
+      const value = resource[prop];
+      this[prop] = Array.isArray(value) ? value.map(Value.parse) : Value.parse(value);
+    });
+    this.isNew(false);
+    this.isSync(true);
+    this.isLoaded(true);
   }
 
   reset () {
+    return this.load(false);
   }
 
   save () {
+    backend.put_individual(this.toJSON());
+    this.isNew(false);
+    this.isSync(true);
+    this.isLoaded(true);
   }
 
   remove () {
+    backend.remove_individual(this.id);
+    this.isNew(true);
+    this.isSync(false);
+    this.isLoaded(false);
   }
 }
