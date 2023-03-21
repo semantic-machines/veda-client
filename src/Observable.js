@@ -87,7 +87,7 @@ export default (Class) => {
     }
   };
 
-  function mutatingDecorator (fn) {
+  function setterDecorator (fn) {
     let before;
     function pre () {
       before = this.toJSON();
@@ -103,7 +103,7 @@ export default (Class) => {
     return decorator(fn, pre, post, console.error);
   };
 
-  function backendDecorator (fn) {
+  function actionDecorator (fn) {
     async function pre () {
       const before = this.toJSON();
       await this.emit('before' + fn.name, before);
@@ -116,21 +116,21 @@ export default (Class) => {
   };
 
   function setDecorators (_class) {
-    if (_class === Object) return;
+    if (!_class) return;
 
-    if (_class.mutatingMethods) {
-      _class.mutatingMethods.forEach((name) => {
-        Observable.prototype[name] = mutatingDecorator(_class.prototype[name]);
+    if (_class.setters) {
+      _class.setters.forEach((name) => {
+        Observable.prototype[name] = Observable.prototype.hasOwnProperty(name) ? Observable.prototype[name] : setterDecorator(_class.prototype[name]);
       });
     }
 
-    if (_class.backendMethods) {
-      _class.backendMethods.forEach((name) => {
-        Observable.prototype[name] = backendDecorator(_class.prototype[name]);
+    if (_class.actions) {
+      _class.actions.forEach((name) => {
+        Observable.prototype[name] = Observable.prototype.hasOwnProperty(name) ? Observable.prototype[name] : actionDecorator(_class.prototype[name]);
       });
     }
 
-    // setDecorators(_class.prototype);
+    setDecorators(_class.prototype);
   }
 
   setDecorators(Class);

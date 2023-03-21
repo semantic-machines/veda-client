@@ -1,12 +1,15 @@
 import Backend from './Backend.js';
+import Observable from './Observable.js';
+// import WeakCache from './WeakCache.js';
 import Value from './Value.js';
 import {genUri} from './Util.js';
 
 const backend = new Backend();
 
 export default class Model {
-  static mutatingMethods = ['set', 'clearValue', 'addValue', 'removeValue'];
-  static backendMethods = ['load', 'reset', 'save', 'remove'];
+  static setters = ['set', 'clearValue', 'addValue', 'removeValue'];
+  static actions = ['load', 'reset', 'save', 'remove'];
+  // static cache = new WeakCache();
 
   constructor (resource) {
     if (typeof resource === 'string') {
@@ -22,7 +25,7 @@ export default class Model {
     } else if (typeof resource === 'object') {
       Object.getOwnPropertyNames(resource).forEach((prop) => {
         if (prop === '@' || prop === 'id') {
-          return this.id = resource.id ?? resource['@'];
+          return this.id = resource.id ?? resource['@'] ?? genUri();
         }
         const value = resource[prop];
         this[prop] = Array.isArray(value) ? value.map(Value.parse) : Value.parse(value);
@@ -31,6 +34,15 @@ export default class Model {
       this.#isSync = true;
       this.#isLoaded = true;
     }
+
+    // const cached = Model.cache.get(this.id);
+    // if (cached) {
+    //   console.log('cached!', cached);
+    //   return cached;
+    // } else {
+    //   Model.cache.set(resource, this);
+    // }
+    // return Model.cache.get(this.id) ?? (Model.cache.set(this.id, this), this);
   }
 
   toJSON () {
