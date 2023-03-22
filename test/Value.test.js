@@ -1,5 +1,5 @@
-import Value from '../Value.js';
-import ObservableModel from '../ObservableModel.js';
+import Value from '../src/Value.js';
+import ObservableModel from '../src/ObservableModel.js';
 
 export default ({test, assert}) => {
   test('Value', async () => {

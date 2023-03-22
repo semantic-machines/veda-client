@@ -26,66 +26,65 @@ const handler = {
   },
 };
 
+function makeObservable (target) {
+  let callbacks = {};
+
+  target.on = function (events, fn) {
+    if (typeof fn === 'function') {
+      events.replace(/[^\s]+/g, (name, pos) => {
+        callbacks[name] = callbacks[name] || [];
+        callbacks[name].push(fn);
+        fn.typed = pos > 0;
+      });
+    }
+    return target;
+  };
+
+  target.off = function (events, fn) {
+    if (events === '*') callbacks = {};
+    else if (fn) {
+      events.replace(/[^\s]+/g, (name) => {
+        if (callbacks[name]) {
+          callbacks[name] = callbacks[name].filter((cb) => {
+            return cb !== fn;
+          });
+        }
+      });
+    } else {
+      events.replace(/[^\s]+/g, (name) => {
+        callbacks[name] = [];
+      });
+    }
+    return target;
+  };
+
+  target.one = target.once = function (name, fn) {
+    if (fn) fn.one = true;
+    return target.on(name, fn);
+  };
+
+  target.trigger = target.emit = function (name, ...args) {
+    const fns = callbacks[name] || [];
+    let c = 0;
+    return fns.reduce((p, fn, i) => p.then(() => {
+      if (fn.one) {
+        fns.splice(i - c, 1); c++;
+      }
+      return fn.apply(this, fn.typed ? [name].concat(args) : args);
+    }), Promise.resolve()).then(() => this);
+  };
+}
+
 export default (Class) => {
   class Observable extends Class {
     constructor (...args) {
       super(...args);
+      if (!(this.on && this.off && this.trigger)) {
+        makeObservable(this);
+      }
       return new Proxy(this, handler);
     }
-
-    #callbacks = {};
-
-    on (events, fn) {
-      if (typeof fn === 'function') {
-        events.replace(/[^\s]+/g, (name, pos) => {
-          this.#callbacks[name] = this.#callbacks[name] || [];
-          this.#callbacks[name].push(fn);
-          fn.typed = pos > 0;
-        });
-      }
-      return this;
-    }
-
-    off (events, fn) {
-      if (events === '*') this.#callbacks = {};
-      else if (fn) {
-        events.replace(/[^\s]+/g, (name) => {
-          if (this.#callbacks[name]) {
-            this.#callbacks[name] = this.#callbacks[name].filter((cb) => {
-              return cb !== fn;
-            });
-          }
-        });
-      } else {
-        events.replace(/[^\s]+/g, (name) => {
-          this.#callbacks[name] = [];
-        });
-      }
-      return this;
-    }
-
-    one (name, fn) {
-      if (fn) fn.one = true;
-      return this.on(name, fn);
-    }
-    once (...args) {
-      return this.one(...args);
-    }
-
-    trigger (name, ...args) {
-      const fns = this.#callbacks[name] || [];
-      let c = 0;
-      return fns.reduce((p, fn, i) => p.then(() => {
-        if (fn.one) {
-          fns.splice(i - c, 1); c++;
-        }
-        return fn.apply(this, fn.typed ? [name].concat(args) : args);
-      }), Promise.resolve()).then(() => this);
-    }
-    emit (...args) {
-      return this.trigger(...args);
-    }
-  };
+  }
 
   function setterDecorator (fn) {
     let before;
@@ -101,7 +100,7 @@ export default (Class) => {
       });
     };
     return decorator(fn, pre, post, console.error);
-  };
+  }
 
   function actionDecorator (fn) {
     async function pre () {
@@ -113,7 +112,7 @@ export default (Class) => {
       await this.emit('after' + fn.name, after);
     };
     return decorator(fn, pre, post, console.error);
-  };
+  }
 
   function setDecorators (_class) {
     if (!_class) return;

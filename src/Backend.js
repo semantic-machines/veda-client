@@ -1,22 +1,20 @@
-// Backend
-
 import defaults from './defaults.js';
 import BackendError from './BackendError.js';
 import {timeout} from './Util.js';
 
-let instance;
-
 export default class Backend {
+  static #instance;
+
   #ticket;
   user;
   expires;
   base;
 
   constructor (base = defaults.base) {
-    if (instance) return instance;
+    if (Backend.#instance) return Backend.#instance;
 
     this.base = base;
-    instance = this;
+    Backend.#instance = this;
   }
 
   #handleTicket (result) {

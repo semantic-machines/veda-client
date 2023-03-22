@@ -1,8 +1,8 @@
-import ObserverArray from '../ObserverArray.js';
-import Observable from '../Observable.js';
+import ObserverArray from '../src/ObserverArray.js';
+import Observable from '../src/Observable.js';
 const ObservableObject = Observable(Object);
 
-import {timeout} from '../Util.js';
+import {timeout} from '../src/Util.js';
 
 export default ({test, assert}) => {
   test('ObserverArray', async () => {

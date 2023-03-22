@@ -1,4 +1,4 @@
-import Observable from '../Observable.js';
+import Observable from '../src/Observable.js';
 
 const ObservableObject = Observable(Object);
 

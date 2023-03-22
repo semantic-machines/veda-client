@@ -5,19 +5,6 @@ export default class WeakCache {
     this.storage = new Map();
   }
 
-  has (key) {
-    if (this.storage.has(key)) {
-      const cachedRef = this.storage.get(key);
-      const cached = cachedRef.deref();
-      if (cached) {
-        return true;
-      } else {
-        this.storage.delete(key);
-        return false;
-      }
-    }
-  }
-
   get (key) {
     if (this.storage.has(key)) {
       const cachedRef = this.storage.get(key);
@@ -36,13 +23,5 @@ export default class WeakCache {
 
   delete (key) {
     this.storage.delete(key);
-  }
-
-  clear () {
-    this.storage.clear();
-  }
-
-  keys () {
-    return this.storage.keys();
   }
 }

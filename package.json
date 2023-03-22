@@ -5,10 +5,10 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "time -p node ./src/test",
+    "test": "time -p node --expose-gc test",
     "debug": "node --inspect-brk ./src/test",
     "c8": "c8 npm t",
-    "build": "esbuild index.js --minify --bundle --platform=node --outfile=./dist/ObservableModel.js"
+    "build": "esbuild `find src \\( -name '*.js' \\)` --minify --platform=node --outdir=dist"
   },
   "repository": {
     "type": "git",
@@ -30,7 +30,8 @@
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^6.1.1",
-    "eslint-plugin-security-node": "^1.1.1"
+    "eslint-plugin-security-node": "^1.1.1",
+    "isomorphic-ws": "^5.0.0"
   },
   "dependencies": {
     "deep-object-diff": "^1.1.9"

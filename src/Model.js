@@ -1,15 +1,15 @@
 import Backend from './Backend.js';
-import Observable from './Observable.js';
-// import WeakCache from './WeakCache.js';
+import WeakCache from './WeakCache.js';
+import Subscription from './Subscription.js';
 import Value from './Value.js';
 import {genUri} from './Util.js';
-
-const backend = new Backend();
 
 export default class Model {
   static setters = ['set', 'clearValue', 'addValue', 'removeValue'];
   static actions = ['load', 'reset', 'save', 'remove'];
-  // static cache = new WeakCache();
+  static cache = new WeakCache();
+  static subscription = new Subscription();
+  static backend = new Backend();
 
   constructor (resource) {
     if (typeof resource === 'string') {
@@ -34,15 +34,8 @@ export default class Model {
       this.#isSync = true;
       this.#isLoaded = true;
     }
-
-    // const cached = Model.cache.get(this.id);
-    // if (cached) {
-    //   console.log('cached!', cached);
-    //   return cached;
-    // } else {
-    //   Model.cache.set(resource, this);
-    // }
-    // return Model.cache.get(this.id) ?? (Model.cache.set(this.id, this), this);
+    this.subscribe();
+    return Model.cache.get(this.id) ?? (Model.cache.set(this.id, this), this);
   }
 
   toJSON () {
@@ -65,6 +58,19 @@ export default class Model {
       return acc;
     }, {});
     return json;
+  }
+
+  subscribe () {
+    Model.subscription.subscribe(this, [this.id, this.hasValue('v-s:updateCounter') ? this['v-s:updateCounter'][0] : 0, this.updater]);
+  }
+
+  updater (id, updateCounter) {
+    const model = new Model(id);
+    model.reset().catch(() => {});
+  }
+
+  unsubscribe () {
+    Model.subscription.unsubscribe(this.id);
   }
 
   #isNew = true;
@@ -137,13 +143,11 @@ export default class Model {
     }
   }
 
-  load (cache = true) {
-    const data = backend.get_individual(this.id, cache);
+  async load (cache = true) {
+    const data = await Model.backend.get_individual(this.id, cache);
     Object.getOwnPropertyNames(data).forEach((prop) => {
-      if (prop === '@' || prop === 'id') {
-        return this.id = resource.id ?? resource['@'];
-      }
-      const value = resource[prop];
+      if (prop === '@' || prop === 'id') return;
+      const value = data[prop];
       this[prop] = Array.isArray(value) ? value.map(Value.parse) : Value.parse(value);
     });
     this.isNew(false);
@@ -151,21 +155,22 @@ export default class Model {
     this.isLoaded(true);
   }
 
-  reset () {
-    return this.load(false);
+  async reset () {
+    return await this.load(false);
   }
 
-  save () {
-    backend.put_individual(this.toJSON());
+  async save () {
+    await Model.backend.put_individual(this.toJSON());
     this.isNew(false);
     this.isSync(true);
     this.isLoaded(true);
   }
 
-  remove () {
-    backend.remove_individual(this.id);
+  async remove () {
+    await Model.backend.remove_individual(this.id);
     this.isNew(true);
     this.isSync(false);
     this.isLoaded(false);
+    this.unsubscribe();
   }
 }

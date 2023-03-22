@@ -1,5 +1,3 @@
-// Backend error class
-
 export default class BackendError extends Error {
   constructor (code) {
     const message = typeof code !== 'undefined' ? `${BackendError.#errorCodes[code]}` : undefined;

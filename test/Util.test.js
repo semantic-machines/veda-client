@@ -1,4 +1,4 @@
-import {genUri, decorator} from '../Util.js';
+import {genUri, decorator} from '../src/Util.js';
 
 export default ({test, assert}) => {
   test('genUri', async () => {
