@@ -1,5 +1,3 @@
-// Weak cache
-
 export default class WeakCache {
   constructor () {
     this.storage = new Map();
