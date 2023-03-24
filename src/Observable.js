@@ -129,7 +129,7 @@ export default (Class) => {
       });
     }
 
-    setDecorators(_class.prototype);
+    setDecorators(Object.getPrototypeOf(_class));
   }
 
   setDecorators(Class);

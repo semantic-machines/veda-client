@@ -1,9 +1,9 @@
-const mutatingMethods = ['pop', 'push', 'shift', 'unshift', 'reverse', 'sort', 'splice'];
+const setters = ['pop', 'push', 'shift', 'unshift', 'reverse', 'sort', 'splice'];
 
 const handler = {
   'get': function (target, prop, receiver) {
     const value = Reflect.get(target, prop, receiver);
-    if (mutatingMethods.includes(prop)) {
+    if (setters.includes(prop)) {
       return function (...args) {
         const result = value.apply(target, args);
         target.notify();
