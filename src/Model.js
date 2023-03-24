@@ -49,7 +49,7 @@ export default class Model {
       if (value instanceof Function) {
         return acc;
       } else if (Array.isArray(value)) {
-        acc[key] = value.filter(Boolean).map(Value.serialize);
+        acc[key] = value.map(Value.serialize).filter(Boolean);
         if (!acc[key].length) delete acc[key];
       } else {
         acc[key] = [Value.serialize(value)].filter(Boolean);

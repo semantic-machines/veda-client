@@ -102,6 +102,9 @@ export default ({test, assert}) => {
       m['rdf:type'].push('owl:Class');
       await timeout();
       assert(counter === 3);
+      m['rdf:type'][4] = 'owl:Thing';
+      await timeout();
+      assert(counter === 4);
 
       // Check constructor
       const m2 = new ObservableModel({

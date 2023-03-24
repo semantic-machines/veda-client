@@ -1,6 +1,6 @@
 import {diff} from 'deep-object-diff';
 import {decorator} from './Util.js';
-import ObserverArray from './ObserverArray.js';
+import ObservableArray from './ObservableArray.js';
 
 const handler = {
   'get': function (target, prop, receiver) {
@@ -11,7 +11,12 @@ const handler = {
     target.emit(prop, value);
     target.emit('modified', prop, value);
     if (Array.isArray(value)) {
-      target[prop] = new ObserverArray(target, prop, ...value);
+      const arr = new ObservableArray(...value);
+      target[prop] = arr;
+      arr.on('modified', () => {
+        target.emit(prop, arr);
+        target.emit('modified', prop, arr);
+      });
       return true;
     }
     return Reflect.set(target, prop, value, receiver);
@@ -75,8 +80,8 @@ function makeObservable (target) {
   };
 }
 
-export default (Class) => {
-  class Observable extends Class {
+export default function Observable (Class) {
+  class ObservableClass extends Class {
     constructor (...args) {
       super(...args);
       if (!(this.on && this.off && this.trigger)) {
@@ -119,13 +124,13 @@ export default (Class) => {
 
     if (_class.setters) {
       _class.setters.forEach((name) => {
-        Observable.prototype[name] = Observable.prototype.hasOwnProperty(name) ? Observable.prototype[name] : setterDecorator(_class.prototype[name]);
+        ObservableClass.prototype[name] = ObservableClass.prototype.hasOwnProperty(name) ? ObservableClass.prototype[name] : setterDecorator(_class.prototype[name]);
       });
     }
 
     if (_class.actions) {
       _class.actions.forEach((name) => {
-        Observable.prototype[name] = Observable.prototype.hasOwnProperty(name) ? Observable.prototype[name] : actionDecorator(_class.prototype[name]);
+        ObservableClass.prototype[name] = ObservableClass.prototype.hasOwnProperty(name) ? ObservableClass.prototype[name] : actionDecorator(_class.prototype[name]);
       });
     }
 
@@ -134,5 +139,5 @@ export default (Class) => {
 
   setDecorators(Class);
 
-  return Observable;
-};
+  return ObservableClass;
+}
