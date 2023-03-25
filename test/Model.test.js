@@ -1,9 +1,43 @@
-import ObservableModel from '../src/ObservableModel.js';
+import Model from '../src/Model.js';
 import Backend from '../src/Backend.js';
 import {timeout} from '../src/Util.js';
 
 export default ({test, assert}) => {
   test('Model #01', async () => {
+    try {
+      const backend = new Backend();
+      await backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
+      assert(backend.user === 'cfg:VedaSystem');
+    } catch (error) {
+      console.error('Authentication failed', error);
+      throw error;
+    }
+
+    let counter = 0;
+    const m = new Model('rdfs:Class');
+    m.on('rdf:type', () => counter++);
+    await m.reset();
+    assert(counter);
+  });
+
+  test('Model #02', async () => {
+    const m1 = new Model('d:test0');
+    const m2 = new Model('d:test0');
+
+    assert(m1 === m2);
+  });
+
+  test('Model #03', async () => {
+    const m3 = new Model({
+      'id': 'd:test1',
+      'rdf:type': {data: 'owl:Thing', type: 'Uri'},
+    });
+    const m4 = new Model('owl:Thing');
+
+    assert(m3['rdf:type'] === m4);
+  });
+
+  test('Model #04', async () => {
     for (let i = 0; i < 1; i++) {
       try {
         const backend = new Backend();
@@ -14,13 +48,13 @@ export default ({test, assert}) => {
         throw error;
       }
 
-      const m = new ObservableModel();
+      const m = new Model();
 
       // Check id of empty model
       assert(/^d:[a-z0-9]+$/.test(m.id));
 
       // Check setter / getter
-      m['rdf:type'] = new ObservableModel('rdfs:Resource');
+      m['rdf:type'] = new Model('rdfs:Resource');
       assert(m['rdf:type'].id === 'rdfs:Resource');
 
       // Check setter / getter
@@ -47,14 +81,12 @@ export default ({test, assert}) => {
       assert(m['rdfs:label'][0] === 'label1');
       assert(m['rdfs:label'][1] === 'label2');
 
-      // Check default flags
+      // Check flags
+      assert(!m.isSync());
+
       assert(!m.isLoaded());
       m.isLoaded(true);
       assert(m.isLoaded());
-
-      assert(!m.isSync());
-      m.isSync(true);
-      assert(m.isSync());
 
       assert(m.isNew());
       m.isNew(false);
@@ -107,7 +139,7 @@ export default ({test, assert}) => {
       assert(counter === 4);
 
       // Check constructor
-      const m2 = new ObservableModel({
+      const m2 = new Model({
         '@': 'd:test',
         'rdf:type': [{data: 'rdfs:Resource', type: 'Uri'}],
         'rdf:value': [{data: 'test', type: 'String'}],
@@ -117,7 +149,7 @@ export default ({test, assert}) => {
       assert(m2['rdf:value'].data === 1);
       assert(m2['rdfs:comment'][0] === 'comment 1^^ru');
       assert(m2['rdfs:comment'][1] === 'comment 2^^en');
-      assert(m2['rdf:type'][0] instanceof ObservableModel);
+      assert(m2['rdf:type'][0] instanceof Model);
 
       // Check toJSON
       const ethalon = '{"@":"d:test","rdf:type":[{"data":"rdfs:Resource","type":"Uri"}],"rdf:value":[{"data":"test","type":"String"}],"rdfs:comment":[{"data":"comment 1","type":"String","lang":"RU"},{"data":"comment 2","type":"String","lang":"EN"}],"rdf:value":[{"data":1,"type":"Integer"}]}';
@@ -126,8 +158,8 @@ export default ({test, assert}) => {
   });
 
 
-  test('Model #2', async () => {
-    const m = new ObservableModel();
+  test('Model #05', async () => {
+    const m = new Model();
 
     m['rdfs:label'] = ['test^ru'];
     assert(m.get('rdfs:label')[0] === 'test^ru');
@@ -174,7 +206,7 @@ export default ({test, assert}) => {
     await timeout();
     assert(!m['rdfs:label']);
 
-    const m1 = new ObservableModel();
+    const m1 = new Model();
 
     let counter = 0;
     const handler1 = (...args) => {

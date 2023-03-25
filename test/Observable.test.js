@@ -1,6 +1,7 @@
 import Observable from '../src/Observable.js';
+import Emitter from '../src/Emitter.js';
 
-const ObservableObject = Observable(Object);
+const ObservableObject = Observable(Emitter(Object));
 
 export default ({test, assert}) => {
   test('Observable', async () => {

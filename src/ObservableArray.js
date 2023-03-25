@@ -1,6 +1,7 @@
+import Emitter from './Emitter.js';
 import Observable from './Observable.js';
 
-class _Array extends Array {
+class _Array extends Emitter(Array) {
   static setters = ['pop', 'push', 'shift', 'unshift', 'reverse', 'sort', 'splice'];
 
   constructor (...args) {

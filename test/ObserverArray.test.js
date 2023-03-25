@@ -1,6 +1,7 @@
 import ObserverArray from '../src/ObserverArray.js';
 import Observable from '../src/Observable.js';
-const ObservableObject = Observable(Object);
+import Emitter from '../src/Emitter.js';
+const ObservableObject = Observable(Emitter(Object));
 
 import {timeout} from '../src/Util.js';
 

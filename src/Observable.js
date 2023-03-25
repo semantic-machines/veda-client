@@ -1,6 +1,7 @@
 import {diff} from 'deep-object-diff';
 import {decorator} from './Util.js';
 import ObservableArray from './ObservableArray.js';
+import WeakCache from './WeakCache.js';
 
 const handler = {
   'get': function (target, prop, receiver) {
@@ -8,8 +9,6 @@ const handler = {
     return typeof value === 'function' ? value.bind(target) : value;
   },
   'set': function (target, prop, value, receiver) {
-    target.emit(prop, value);
-    target.emit('modified', prop, value);
     if (Array.isArray(value)) {
       const arr = new ObservableArray(...value);
       target[prop] = arr;
@@ -17,9 +16,12 @@ const handler = {
         target.emit(prop, arr);
         target.emit('modified', prop, arr);
       });
-      return true;
+    } else {
+      Reflect.set(target, prop, value, receiver);
     }
-    return Reflect.set(target, prop, value, receiver);
+    target.emit(prop, value);
+    target.emit('modified', prop, value);
+    return true;
   },
   'deleteProperty': function (target, prop) {
     if (prop in target) {
@@ -31,61 +33,18 @@ const handler = {
   },
 };
 
-function makeObservable (target) {
-  let callbacks = {};
-
-  target.on = function (events, fn) {
-    if (typeof fn === 'function') {
-      events.replace(/[^\s]+/g, (name, pos) => {
-        callbacks[name] = callbacks[name] || [];
-        callbacks[name].push(fn);
-        fn.typed = pos > 0;
-      });
-    }
-    return target;
-  };
-
-  target.off = function (events, fn) {
-    if (events === '*') callbacks = {};
-    else if (fn) {
-      events.replace(/[^\s]+/g, (name) => {
-        if (callbacks[name]) {
-          callbacks[name] = callbacks[name].filter((cb) => {
-            return cb !== fn;
-          });
-        }
-      });
-    } else {
-      events.replace(/[^\s]+/g, (name) => {
-        callbacks[name] = [];
-      });
-    }
-    return target;
-  };
-
-  target.one = target.once = function (name, fn) {
-    if (fn) fn.one = true;
-    return target.on(name, fn);
-  };
-
-  target.trigger = target.emit = function (name, ...args) {
-    const fns = callbacks[name] || [];
-    let c = 0;
-    return fns.reduce((p, fn, i) => p.then(() => {
-      if (fn.one) {
-        fns.splice(i - c, 1); c++;
-      }
-      return fn.apply(this, fn.typed ? [name].concat(args) : args);
-    }), Promise.resolve()).then(() => this);
-  };
-}
-
 export default function Observable (Class) {
-  class ObservableClass extends Class {
+  class Observable extends Class {
+    static cache = new WeakCache();
+
     constructor (...args) {
       super(...args);
-      if (!(this.on && this.off && this.trigger)) {
-        makeObservable(this);
+      if (this.id) {
+        const cached = Observable.cache.get(this.id);
+        if (cached) return cached;
+        const proxy = new Proxy(this, handler);
+        Observable.cache.set(this.id, proxy);
+        return proxy;
       }
       return new Proxy(this, handler);
     }
@@ -124,13 +83,13 @@ export default function Observable (Class) {
 
     if (_class.setters) {
       _class.setters.forEach((name) => {
-        ObservableClass.prototype[name] = ObservableClass.prototype.hasOwnProperty(name) ? ObservableClass.prototype[name] : setterDecorator(_class.prototype[name]);
+        Observable.prototype[name] = Observable.prototype.hasOwnProperty(name) ? Observable.prototype[name] : setterDecorator(_class.prototype[name]);
       });
     }
 
     if (_class.actions) {
       _class.actions.forEach((name) => {
-        ObservableClass.prototype[name] = ObservableClass.prototype.hasOwnProperty(name) ? ObservableClass.prototype[name] : actionDecorator(_class.prototype[name]);
+        Observable.prototype[name] = Observable.prototype.hasOwnProperty(name) ? Observable.prototype[name] : actionDecorator(_class.prototype[name]);
       });
     }
 
@@ -139,5 +98,5 @@ export default function Observable (Class) {
 
   setDecorators(Class);
 
-  return ObservableClass;
+  return Observable;
 }
