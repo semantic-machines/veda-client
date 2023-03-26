@@ -16,7 +16,8 @@ export default ({test, assert}) => {
     let counter = 0;
     const m = new Model('rdfs:Class');
     m.on('rdf:type', () => counter++);
-    await m.reset();
+    m.subscribe()
+    await timeout(1000);
     assert(counter);
   });
 

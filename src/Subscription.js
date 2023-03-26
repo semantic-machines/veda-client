@@ -23,23 +23,23 @@ export default class Subscription {
   async #connect (event) {
     if (event) await timeout(30_000);
     const socket = new WebSocket(this.#address);
-    socket.onopen = this.#sendMessage.bind(this);
+    socket.onopen = this.#send.bind(this);
     socket.onclose = this.#connect.bind(this);
     socket.onerror = this.#connect.bind(this);
-    socket.onmessage = this.#handleMessage.bind(this);
+    socket.onmessage = this.#receive.bind(this);
     this.#socket = socket;
   }
 
-  async #sendMessage () {
-    if (this.#buffer.length) {
+  async #send () {
+    if (this.#buffer.length && this.#socket.readyState === 1) {
       this.#socket.send(this.#buffer.join(','));
       this.#buffer.length = 0;
     }
     await timeout(1000);
-    this.#sendMessage();
+    this.#send();
   }
 
-  #handleMessage ({data: msg}) {
+  #receive ({data: msg}) {
     if (msg === '') return;
     const ids = (msg.indexOf('=') === 0 ? msg.substr(1) : msg).split(',');
     for (const pairStr of ids) {
