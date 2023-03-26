@@ -2,8 +2,6 @@ import Emitter from './Emitter.js';
 import Observable from './Observable.js';
 
 class _Array extends Emitter(Array) {
-  static setters = ['pop', 'push', 'shift', 'unshift', 'reverse', 'sort', 'splice'];
-
   constructor (...args) {
     super(...args);
     if (args.length === 1 && Number.isInteger(args[0])) this[0] = args[0]; // Array(number) workaround
@@ -14,4 +12,6 @@ class _Array extends Emitter(Array) {
   }
 }
 
-export default Observable(_Array);
+export default Observable(_Array, {
+  setters: ['pop', 'push', 'shift', 'unshift', 'reverse', 'sort', 'splice']
+});

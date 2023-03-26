@@ -33,7 +33,7 @@ const handler = {
   },
 };
 
-export default function Observable (Class) {
+export default function Observable (Class, {setters = [], actions = []} = {setters: [], actions: []}) {
   class Observable extends Class {
     static cache = new WeakCache();
 
@@ -78,25 +78,17 @@ export default function Observable (Class) {
     return decorator(fn, pre, post, console.error);
   }
 
-  function setDecorators (_class) {
-    if (!_class) return;
-
-    if (_class.setters) {
-      _class.setters.forEach((name) => {
-        Observable.prototype[name] = Observable.prototype.hasOwnProperty(name) ? Observable.prototype[name] : setterDecorator(_class.prototype[name]);
-      });
+  setters.forEach((name) => {
+    if (typeof Class.prototype[name] === 'function') {
+      Observable.prototype[name] = setterDecorator(Class.prototype[name]);
     }
+  });
 
-    if (_class.actions) {
-      _class.actions.forEach((name) => {
-        Observable.prototype[name] = Observable.prototype.hasOwnProperty(name) ? Observable.prototype[name] : actionDecorator(_class.prototype[name]);
-      });
+  actions.forEach((name) => {
+    if (typeof Class.prototype[name] === 'function') {
+      Observable.prototype[name] = actionDecorator(Observable.prototype.hasOwnProperty(name) ? Observable.prototype[name] : Class.prototype[name]);
     }
-
-    setDecorators(Object.getPrototypeOf(_class));
-  }
-
-  setDecorators(Class);
+  });
 
   return Observable;
 }

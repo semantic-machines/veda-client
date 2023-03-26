@@ -6,8 +6,6 @@ import Emitter from './Emitter.js';
 import {genUri} from './Util.js';
 
 export default class BaseModel extends Emitter() {
-  static setters = ['set', 'clearValue', 'addValue', 'removeValue', 'load'];
-  static actions = ['load', 'reset', 'save', 'remove'];
   static cache = new WeakCache();
   static subscription = new Subscription();
   static backend = new Backend();
