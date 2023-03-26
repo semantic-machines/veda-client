@@ -1,4 +1,5 @@
 import defaults from './defaults.js';
+
 import {timeout} from './Util.js';
 
 export default class Subscription {

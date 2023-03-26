@@ -1,5 +1,7 @@
 import defaults from './defaults.js';
+
 import BackendError from './BackendError.js';
+
 import {timeout} from './Util.js';
 
 export default class Backend {

@@ -1,4 +1,5 @@
 import Emitter from './Emitter.js';
+
 import Observable from './Observable.js';
 
 class _Array extends Emitter(Array) {
@@ -13,5 +14,5 @@ class _Array extends Emitter(Array) {
 }
 
 export default Observable(_Array, {
-  setters: ['pop', 'push', 'shift', 'unshift', 'reverse', 'sort', 'splice']
+  setters: ['pop', 'push', 'shift', 'unshift', 'reverse', 'sort', 'splice'],
 });

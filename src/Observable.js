@@ -1,6 +1,9 @@
 import {diff} from 'deep-object-diff';
+
 import {decorator} from './Util.js';
+
 import ObservableArray from './ObservableArray.js';
+
 import WeakCache from './WeakCache.js';
 
 const handler = {

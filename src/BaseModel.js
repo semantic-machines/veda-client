@@ -1,14 +1,21 @@
 import Backend from './Backend.js';
+
 import WeakCache from './WeakCache.js';
+
 import Subscription from './Subscription.js';
+
 import Value from './Value.js';
+
 import Emitter from './Emitter.js';
+
 import {genUri} from './Util.js';
 
 export default class BaseModel extends Emitter() {
-  static cache = new WeakCache();
-  static subscription = new Subscription();
-  static backend = new Backend();
+  static {
+    BaseModel.cache = new WeakCache();
+    BaseModel.subscription = new Subscription();
+    BaseModel.backend = new Backend();
+  }
 
   constructor (resource) {
     super();

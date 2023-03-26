@@ -16,7 +16,7 @@ export default ({test, assert}) => {
     let counter = 0;
     const m = new Model('rdfs:Class');
     m.on('rdf:type', () => counter++);
-    m.subscribe()
+    m.subscribe();
     await timeout(1000);
     assert(counter);
   });
@@ -135,7 +135,7 @@ export default ({test, assert}) => {
       m['rdf:type'].push('owl:Class');
       await timeout();
       assert(counter === 3);
-      m['rdf:type'][4] = 'owl:Thing';
+      m['rdf:type'][3] = 'owl:Thing';
       await timeout();
       assert(counter === 4);
 
