@@ -1,25 +1,23 @@
 export default class WeakCache {
-  constructor () {
-    this.storage = new Map();
-  }
+  #map = new Map();
 
   get (key) {
-    if (this.storage.has(key)) {
-      const cachedRef = this.storage.get(key);
+    if (this.#map.has(key)) {
+      const cachedRef = this.#map.get(key);
       const cached = cachedRef.deref();
       if (cached) {
         return cached;
       } else {
-        this.storage.delete(key);
+        this.#map.delete(key);
       }
     }
   }
 
   set (key, value) {
-    this.storage.set(key, new WeakRef(value));
+    this.#map.set(key, new WeakRef(value));
   }
 
   delete (key) {
-    this.storage.delete(key);
+    this.#map.delete(key);
   }
 }
