@@ -24,20 +24,25 @@ export default class Subscription {
   async #connect (event) {
     if (event) await timeout(30_000);
     const socket = new WebSocket(this.#address);
-    socket.onopen = this.#send.bind(this);
+    socket.onopen = () => this.#send();
     socket.onclose = this.#connect.bind(this);
     socket.onerror = this.#connect.bind(this);
     socket.onmessage = this.#receive.bind(this);
     this.#socket = socket;
   }
 
-  async #send () {
-    if (this.#buffer.length && this.#socket.readyState === 1) {
-      this.#socket.send(this.#buffer.join(','));
-      this.#buffer.length = 0;
-    }
+  async #send (msg) {
+    if (msg) this.#buffer.push(msg);
     await timeout(1000);
-    this.#send();
+    if (this.#socket.readyState === 1) {
+      const msg = this.#buffer.join(',');
+      if (msg) {
+        this.#socket.send(msg);
+        this.#buffer.length = 0;
+      }
+    } else {
+      this.#send();
+    }
   }
 
   #receive ({data: msg}) {
@@ -61,11 +66,12 @@ export default class Subscription {
     if (this.#subscriptions.has(id)) return;
     this.#subscriptions.set(id, subscription);
     this.#registry.register(ref, id);
-    this.#buffer.push(`+${id}=${updateCounter || 0}`);
+    this.#send(`+${id}=${updateCounter || 0}`);
   }
 
   unsubscribe (id) {
+    if (!this.#subscriptions.has(id)) return;
     this.#subscriptions.delete(id);
-    this.#buffer.push(`-${id}`);
+    this.#send(`-${id}`);
   }
 }
