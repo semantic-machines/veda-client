@@ -33,7 +33,7 @@ export default class Subscription {
 
   async #send (msg) {
     if (msg) this.#buffer.push(msg);
-    await timeout(1000);
+    await timeout(500);
     if (this.#socket.readyState === 1) {
       const msg = this.#buffer.join(',');
       if (msg) {
