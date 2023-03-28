@@ -93,5 +93,7 @@ export default function Observable (Class, {setters = [], actions = []} = {sette
     }
   });
 
+  Object.defineProperty(Observable, 'name', {value: `Observable(${Class.name})`});
+
   return Observable;
 }
