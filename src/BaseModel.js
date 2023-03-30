@@ -1,14 +1,18 @@
+import Emitter from './Emitter.js';
+
 import Backend from './Backend.js';
 
 import WeakCache from './WeakCache.js';
 
 import Subscription from './Subscription.js';
 
+import ObservableArray from './ObservableArray.js';
+
 import Value from './Value.js';
 
-import Emitter from './Emitter.js';
-
 import {genUri} from './Util.js';
+
+import Model from './Model.js';
 
 export default class BaseModel extends Emitter() {
   static {
@@ -17,32 +21,43 @@ export default class BaseModel extends Emitter() {
     BaseModel.backend = new Backend();
   }
 
-  constructor (resource) {
+  constructor (data) {
     super();
-    if (typeof resource === 'string') {
-      this.id = resource;
-      this.#isNew = false;
-      this.#isSync = false;
-      this.#isLoaded = false;
-    } else if (typeof resource === 'undefined') {
+    if (typeof data === 'string') {
+      this.id = data;
+
+      this.isNew(false);
+      this.isSync(false);
+    } else if (typeof data === 'undefined') {
       this.id = genUri();
-      this.#isNew = true;
-      this.#isSync = false;
-      this.#isLoaded = false;
-    } else if (typeof resource === 'object') {
-      Object.getOwnPropertyNames(resource).forEach((prop) => {
-        if (prop === '@' || prop === 'id') {
-          return this.id = resource.id ?? resource['@'] ?? genUri();
-        }
-        const value = resource[prop];
-        this[prop] = Array.isArray(value) ? value.map(Value.parse) : Value.parse(value);
-      });
-      this.#isNew = false;
-      this.#isSync = true;
-      this.#isLoaded = true;
+
+      this.isNew(true);
+      this.isSync(false);
+    } else if (typeof data === 'object') {
+      this.apply(data);
+
+      this.isNew(false);
+      this.isSync(true);
     }
     this.on('modified', () => this.isSync(false));
     return BaseModel.cache.get(this.id) ?? (BaseModel.cache.set(this.id, this), this);
+  }
+
+  apply (data) {
+    Object.getOwnPropertyNames(data).forEach((prop) => {
+      if (prop === '@') return this.id = data['@'] ?? genUri();
+      let value = data[prop];
+      if (Array.isArray(value)) {
+        value = ObservableArray.from(value.map(Value.parse));
+        value.on('modified', () => {
+          this.emit(prop, value);
+          this.emit('modified', prop, value);
+        });
+      } else {
+        value = Value.parse(value);
+      }
+      this[prop] = value;
+    });
   }
 
   toJSON () {
@@ -72,7 +87,7 @@ export default class BaseModel extends Emitter() {
   }
 
   updater (id, updateCounter) {
-    const model = new BaseModel(id);
+    const model = new Model(id);
     model.reset().catch(() => {});
   }
 
@@ -80,23 +95,14 @@ export default class BaseModel extends Emitter() {
     BaseModel.subscription.unsubscribe(this.id);
   }
 
-  #isNew = true;
+  #isNew;
   isNew (value) {
     return typeof value === 'undefined' ? this.#isNew : this.#isNew = !!value;
   }
 
-  #isLoaded = false;
-  isLoaded (value) {
-    return typeof value === 'undefined' ? this.#isLoaded : this.#isLoaded = !!value;
-  }
-
-  #isSync = false;
+  #isSync;
   isSync (value) {
     return typeof value === 'undefined' ? this.#isSync : this.#isSync = !!value;
-  }
-
-  get (prop) {
-    return this[prop];
   }
 
   hasValue (prop, value) {
@@ -112,14 +118,6 @@ export default class BaseModel extends Emitter() {
       found = found && propValue.some((item) => serialized.isEqual(Value.serialize(item)));
     }
     return found;
-  }
-
-  set (prop, value) {
-    this[prop] = value;
-  }
-
-  clearValue (prop) {
-    delete this[prop];
   }
 
   addValue (prop, value) {
@@ -151,15 +149,12 @@ export default class BaseModel extends Emitter() {
   }
 
   async load (cache = true) {
+    if (this.isSync()) return;
     const data = await BaseModel.backend.get_individual(this.id, cache);
-    Object.getOwnPropertyNames(data).forEach((prop) => {
-      if (prop === '@' || prop === 'id') return;
-      const value = data[prop];
-      this[prop] = Array.isArray(value) ? value.map(Value.parse) : Value.parse(value);
-    });
+    this.apply(data);
+
     this.isNew(false);
     this.isSync(true);
-    this.isLoaded(true);
   }
 
   async reset () {
@@ -169,15 +164,15 @@ export default class BaseModel extends Emitter() {
   async save () {
     if (this.isSync()) return;
     await BaseModel.backend.put_individual(this.toJSON());
+
     this.isNew(false);
     this.isSync(true);
-    this.isLoaded(true);
   }
 
   async remove () {
     await BaseModel.backend.remove_individual(this.id);
+
     this.isNew(true);
     this.isSync(false);
-    this.isLoaded(false);
   }
 }

@@ -3,8 +3,6 @@ import Observable from '../src/Observable.js';
 import Emitter from '../src/Emitter.js';
 const ObservableObject = Observable(Emitter(Object));
 
-import {timeout} from '../src/Util.js';
-
 export default ({test, assert}) => {
   test('ObserverArray', async () => {
     const observable = new ObservableObject();
@@ -26,7 +24,6 @@ export default ({test, assert}) => {
     assert(Array.isArray(observerArray));
     assert(observerArray.length === 3);
 
-    await timeout(); // observable callbacks are async
     assert(modifiedEmitted === 3);
     assert(idEmitted === 3);
   });

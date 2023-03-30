@@ -14,8 +14,8 @@ function guid () {
   });
 }
 
-function decorator (fn, pre, post, err) {
-  return async function (...args) {
+function asyncDecorator (fn, pre, post, err) {
+  async function decorated (...args) {
     try {
       pre && typeof pre === 'function' && await pre.call(this, ...args);
       const result = await fn.call(this, ...args);
@@ -25,11 +25,33 @@ function decorator (fn, pre, post, err) {
       err && typeof err === 'function' && await err(error);
       throw error;
     }
-  };
+  }
+  Object.defineProperty(decorated, 'name', {value: fn.name});
+  return decorated;
+}
+
+function syncDecorator (fn, pre, post, err) {
+  function decorated (...args) {
+    try {
+      pre && typeof pre === 'function' && pre.call(this, ...args);
+      const result = fn.call(this, ...args);
+      post && typeof post === 'function' && post.call(this, ...args);
+      return result;
+    } catch (error) {
+      err && typeof err === 'function' && err(error);
+      throw error;
+    }
+  }
+  Object.defineProperty(decorated, 'name', {value: fn.name});
+  return decorated;
+}
+
+function decorator (fn, ...args) {
+  return fn.constructor.name === 'AsyncFunction' ? asyncDecorator(fn, ...args) : syncDecorator(fn, ...args);
 }
 
 function timeout (ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export {genUri, decorator, timeout};
+export {genUri, decorator, syncDecorator, asyncDecorator, timeout};

@@ -13,11 +13,11 @@ const handler = {
   },
   'set': function (target, prop, value, receiver) {
     if (Array.isArray(value)) {
-      const arr = new ObservableArray(...value);
-      target[prop] = arr;
-      arr.on('modified', () => {
-        target.emit(prop, arr);
-        target.emit('modified', prop, arr);
+      value = ObservableArray.from(value);
+      target[prop] = value;
+      value.on('modified', () => {
+        target.emit(prop, value);
+        target.emit('modified', prop, value);
       });
     } else {
       Reflect.set(target, prop, value, receiver);

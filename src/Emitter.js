@@ -1,5 +1,5 @@
 export default function (Class = Object) {
-  return class Emitter extends Class {
+  class Emitter extends Class {
     #callbacks = {};
 
     on (events, fn) {
@@ -43,16 +43,20 @@ export default function (Class = Object) {
     emit (name, ...args) {
       const fns = this.#callbacks[name] || [];
       let c = 0;
-      return fns.reduce((p, fn, i) => p.then(() => {
+      return fns.forEach((fn, i) => {
         if (fn.one) {
           fns.splice(i - c, 1); c++;
         }
-        return fn.apply(this, fn.typed ? [name].concat(args) : args);
-      }), Promise.resolve()).then(() => this);
+        fn.apply(this, fn.typed ? [name].concat(args) : args);
+      });
     }
 
     trigger (...args) {
       return this.emit(...args);
     }
   };
+
+  Object.defineProperty(Emitter, 'name', {value: `Emitter(${Class.name})`});
+
+  return Emitter;
 }

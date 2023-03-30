@@ -4,6 +4,16 @@ import {timeout} from '../src/Util.js';
 
 export default ({test, assert}) => {
   test('Model #01', async () => {
+    let counter = 0;
+    const m = new Model();
+    m.on('modified', () => counter++);
+    m['rdf:type'] = [new Model('rdfs:Resource')];
+    m['rdf:type'].push(new Model('rdfs:Class'));
+    console.log(counter);
+    assert(counter === 2);
+  });
+
+  test('Model #02', async () => {
     try {
       const backend = new Backend();
       await backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
@@ -13,28 +23,23 @@ export default ({test, assert}) => {
       throw error;
     }
 
-    let counter = 0;
-    const m = new Model('rdfs:Class');
-    m.on('rdf:type', () => counter++);
-    m.subscribe();
-    await timeout(1000);
-    assert(counter);
-  });
-
-  test('Model #02', async () => {
-    const m1 = new Model('d:test0');
-    const m2 = new Model('d:test0');
-
+    const m1 = new Model('rdfs:Resource');
+    const m2 = new Model('rdfs:Resource');
     assert(m1 === m2);
+
+    let counter = 0;
+    m1.on('beforeload afterload', () => counter++);
+    await m1.load();
+    assert(counter === 2);
+    assert(m1.isSync());
   });
 
   test('Model #03', async () => {
     const m3 = new Model({
-      'id': 'd:test1',
+      '@': 'd:test1',
       'rdf:type': {data: 'owl:Thing', type: 'Uri'},
     });
     const m4 = new Model('owl:Thing');
-
     assert(m3['rdf:type'] === m4);
   });
 
@@ -78,20 +83,11 @@ export default ({test, assert}) => {
       };
       m.one('modified', handler);
       m['rdfs:label'] = ['label1', 'label2'];
-      await timeout();
       assert(m['rdfs:label'][0] === 'label1');
       assert(m['rdfs:label'][1] === 'label2');
 
-      // Check flags
+      // Check isSync flag
       assert(!m.isSync());
-
-      assert(!m.isLoaded());
-      m.isLoaded(true);
-      assert(m.isLoaded());
-
-      assert(m.isNew());
-      m.isNew(false);
-      assert(!m.isNew());
 
       // Check events
       m.one('beforesave', assert);
@@ -133,10 +129,8 @@ export default ({test, assert}) => {
       m['rdf:type'] = 'rdfs:Resource';
       m['rdf:type'] = [m['rdf:type'], 'rdfs:Class'];
       m['rdf:type'].push('owl:Class');
-      await timeout();
       assert(counter === 3);
       m['rdf:type'][3] = 'owl:Thing';
-      await timeout();
       assert(counter === 4);
 
       // Check constructor
@@ -145,6 +139,7 @@ export default ({test, assert}) => {
         'rdf:type': [{data: 'rdfs:Resource', type: 'Uri'}],
         'rdf:value': [{data: 'test', type: 'String'}],
       });
+      m2['rdf:value'].push('111');
       m2['rdfs:comment'] = ['comment 1^^ru', 'comment 2^^en'];
       m2['rdf:value'] = {data: 1, type: 'Integer'};
       assert(m2['rdf:value'].data === 1);
@@ -163,48 +158,39 @@ export default ({test, assert}) => {
     const m = new Model();
 
     m['rdfs:label'] = ['test^ru'];
-    assert(m.get('rdfs:label')[0] === 'test^ru');
+    assert(m['rdfs:label'][0] === 'test^ru');
 
-    m.set('rdfs:label', 'test^en');
-    await timeout();
-    assert(m.get('rdfs:label') === 'test^en');
+    m['rdfs:label'] = 'test^en';
+    assert(m['rdfs:label'] === 'test^en');
 
     assert(m.hasValue('rdfs:label', 'test^en'));
     assert(m.hasValue('rdfs:label'));
     assert(m.hasValue(undefined, 'test^en'));
 
-    m.clearValue('rdfs:label');
-    await timeout();
+    delete m['rdfs:label'];
     assert(!m.hasValue('rdfs:label'));
 
     m.addValue('rdfs:label', 1);
-    await timeout();
     assert(m.hasValue('rdfs:label', 1));
 
     m.addValue('rdfs:label', 2);
-    await timeout();
     assert(m.hasValue('rdfs:label', 1) && m.hasValue('rdfs:label', 2));
 
     m.addValue('rdfs:label', 3);
-    await timeout();
     assert(m.hasValue('rdfs:label', 1) && m.hasValue('rdfs:label', 2) && m.hasValue('rdfs:label', 3));
 
     m.removeValue('rdfs:label', 1);
-    await timeout();
     assert(m.hasValue('rdfs:label', 2) && m.hasValue('rdfs:label', 3) && m['rdfs:label'].length === 2);
 
     m.removeValue(undefined, 2);
-    await timeout();
     assert(m.hasValue('rdfs:label', 3) && m['rdfs:label'].length === 1);
 
     m.removeValue('rdfs:label', 3);
-    await timeout();
     assert(!m.hasValue('rdfs:label'));
     assert(!m['rdfs:label']);
 
     m['rdfs:label'] = 4;
     m.removeValue('rdfs:label', 4);
-    await timeout();
     assert(!m['rdfs:label']);
 
     const m1 = new Model();
@@ -217,11 +203,9 @@ export default ({test, assert}) => {
     m1['rdf:type'] = ['owl:Thing'];
     m1['rdf:type'][1] = 'v-s:Thing';
     delete m1['rdf:type'];
-    await timeout();
     assert(counter === 3);
 
     m1.addValue('rdf:type', 'v-s:Thing');
-    await timeout();
     assert(counter === 4);
   });
 };
