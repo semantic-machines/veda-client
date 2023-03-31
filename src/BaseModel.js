@@ -6,7 +6,7 @@ import WeakCache from './WeakCache.js';
 
 import Subscription from './Subscription.js';
 
-import ObservableArray from './ObservableArray.js';
+import NotifyArray from './NotifyArray.js';
 
 import Value from './Value.js';
 
@@ -48,11 +48,7 @@ export default class BaseModel extends Emitter() {
       if (prop === '@') return this.id = data['@'] ?? genUri();
       let value = data[prop];
       if (Array.isArray(value)) {
-        value = ObservableArray.from(value.map(Value.parse));
-        value.on('modified', () => {
-          this.emit(prop, value);
-          this.emit('modified', prop, value);
-        });
+        value = new NotifyArray(this, prop, ...value.map(Value.parse));
       } else {
         value = Value.parse(value);
       }

@@ -2,7 +2,7 @@ import {diff} from 'deep-object-diff';
 
 import {decorator} from './Util.js';
 
-import ObservableArray from './ObservableArray.js';
+import NotifyArray from './NotifyArray.js';
 
 import WeakCache from './WeakCache.js';
 
@@ -13,12 +13,7 @@ const handler = {
   },
   'set': function (target, prop, value, receiver) {
     if (Array.isArray(value)) {
-      value = ObservableArray.from(value);
-      target[prop] = value;
-      value.on('modified', () => {
-        target.emit(prop, value);
-        target.emit('modified', prop, value);
-      });
+      target[prop] = new NotifyArray(target, prop, ...value);
     } else {
       Reflect.set(target, prop, value, receiver);
     }
