@@ -20,7 +20,7 @@ const handler = {
   },
 };
 
-export default class ObserverArray extends Array {
+export default class NotifyArray extends Array {
   #observable;
   #prop;
 
