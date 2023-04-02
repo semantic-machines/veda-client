@@ -120,11 +120,11 @@ export default class BaseModel extends Emitter() {
     if (!this.hasValue(prop)) {
       this[prop] = value;
     } else {
-      const existingValue = this[prop];
-      if (Array.isArray(existingValue)) {
-        existingValue.push(value);
+      const currentValue = this[prop];
+      if (Array.isArray(currentValue)) {
+        currentValue.push(value);
       } else {
-        this[prop] = [existingValue, value];
+        this[prop] = [currentValue, value];
       }
     }
   }
@@ -142,6 +142,14 @@ export default class BaseModel extends Emitter() {
         delete this[prop];
       }
     }
+  }
+
+  async getPropertyChain (...props) {
+    await this.load();
+    const prop = props.shift();
+    if (!this.hasValue(prop)) return;
+    if (!props.length) return this[prop];
+    return this.getPropertyChain.apply(Array.isArray(this[prop]) ? this[prop][0] : this[prop], props);
   }
 
   async load (cache = true) {

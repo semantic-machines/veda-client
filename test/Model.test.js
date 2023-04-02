@@ -9,7 +9,6 @@ export default ({test, assert}) => {
     m.on('modified', () => counter++);
     m['rdf:type'] = [new Model('rdfs:Resource')];
     m['rdf:type'].push(new Model('rdfs:Class'));
-    console.log(counter);
     assert(counter === 2);
   });
 
@@ -32,6 +31,9 @@ export default ({test, assert}) => {
     await m1.load();
     assert(counter === 2);
     assert(m1.isSync());
+
+    const type = await m1.getPropertyChain('rdf:type', 'rdf:type', 'id');
+    assert(type === 'rdfs:Class');
   });
 
   test('Model #03', async () => {

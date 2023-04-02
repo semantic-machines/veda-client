@@ -1,10 +1,13 @@
-import ObserverArray from '../src/ObserverArray.js';
+import NotifyArray from '../src/NotifyArray.js';
+
 import Observable from '../src/Observable.js';
+
 import Emitter from '../src/Emitter.js';
+
 const ObservableObject = Observable(Emitter(Object));
 
 export default ({test, assert}) => {
-  test('ObserverArray', async () => {
+  test('NotifyArray', async () => {
     const observable = new ObservableObject();
 
     let modifiedEmitted = 0;
@@ -14,15 +17,15 @@ export default ({test, assert}) => {
     observable.on('modified', modifiedHandler);
     observable.on('id', idHandler);
 
-    const observerArray = new ObserverArray(observable, 'id', 0);
+    const notifyArray = new NotifyArray(observable, 'id', 0);
 
-    observerArray[0] = 1;
-    observerArray.push(2);
-    observerArray.unshift(0);
-    observerArray.any = 'any';
+    notifyArray[0] = 1;
+    notifyArray.push(2);
+    notifyArray.unshift(0);
+    notifyArray.any = 'any';
 
-    assert(Array.isArray(observerArray));
-    assert(observerArray.length === 3);
+    assert(Array.isArray(notifyArray));
+    assert(notifyArray.length === 3);
 
     assert(modifiedEmitted === 3);
     assert(idEmitted === 3);

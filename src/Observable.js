@@ -1,6 +1,4 @@
-import {diff} from 'deep-object-diff';
-
-import {decorator} from './Util.js';
+import {diff, decorator} from './Util.js';
 
 import NotifyArray from './NotifyArray.js';
 
@@ -56,7 +54,7 @@ export default function Observable (Class, {setters = [], actions = []} = {sette
     function post () {
       const after = this.toJSON();
       const delta = diff(after, before);
-      Object.keys(delta).forEach((prop) => {
+      delta.forEach((prop) => {
         this.emit(prop, this[prop]);
         this.emit('modified', prop, this[prop]);
       });

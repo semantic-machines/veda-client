@@ -32,8 +32,5 @@
     "eslint-plugin-promise": "^6.1.1",
     "eslint-plugin-security-node": "^1.1.1",
     "isomorphic-ws": "^5.0.0"
-  },
-  "dependencies": {
-    "deep-object-diff": "^1.1.9"
   }
 }

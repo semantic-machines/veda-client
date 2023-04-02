@@ -1,4 +1,4 @@
-function genUri () {
+export function genUri () {
   return 'd:' + guid();
 }
 
@@ -14,7 +14,7 @@ function guid () {
   });
 }
 
-function asyncDecorator (fn, pre, post, err) {
+export function asyncDecorator (fn, pre, post, err) {
   async function decorated (...args) {
     try {
       pre && typeof pre === 'function' && await pre.call(this, ...args);
@@ -30,7 +30,7 @@ function asyncDecorator (fn, pre, post, err) {
   return decorated;
 }
 
-function syncDecorator (fn, pre, post, err) {
+export function syncDecorator (fn, pre, post, err) {
   function decorated (...args) {
     try {
       pre && typeof pre === 'function' && pre.call(this, ...args);
@@ -46,12 +46,38 @@ function syncDecorator (fn, pre, post, err) {
   return decorated;
 }
 
-function decorator (fn, ...args) {
+export function decorator (fn, ...args) {
   return fn.constructor.name === 'AsyncFunction' ? asyncDecorator(fn, ...args) : syncDecorator(fn, ...args);
 }
 
-function timeout (ms) {
+export function timeout (ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export {genUri, decorator, syncDecorator, asyncDecorator, timeout};
+export function diff (first, second) {
+  if (first === second) return [];
+  const delta = [];
+  for (const prop of Object.getOwnPropertyNames(first)) {
+    if (!second.hasOwnProperty(prop)) {
+      delta.push(prop);
+    } else if (!areEqual(first[prop], second[prop])) {
+      delta.push(prop);
+    }
+  }
+  for (const prop of Object.getOwnPropertyNames(second)) {
+    if (!first.hasOwnProperty(prop)) {
+      delta.push(prop);
+    }
+  }
+  return delta;
+};
+
+export function areEqual (first, second) {
+  const props = Object.getOwnPropertyNames;
+  const firstType = typeof first;
+  const secondType = typeof second;
+  return first && second && firstType === 'object' && firstType === secondType ? (
+    props(first).length === props(second).length &&
+    props(first).every((prop) => areEqual(first[prop], second[prop]))
+  ) : (first === second);
+}
