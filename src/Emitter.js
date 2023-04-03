@@ -43,12 +43,13 @@ export default function (Class = Object) {
     emit (name, ...args) {
       const fns = this.#callbacks[name] || [];
       let c = 0;
-      return fns.forEach((fn, i) => {
+      fns.forEach((fn, i) => {
         if (fn.one) {
           fns.splice(i - c, 1); c++;
         }
         fn.apply(this, fn.typed ? [name].concat(args) : args);
       });
+      return this;
     }
 
     trigger (...args) {
