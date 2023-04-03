@@ -8,6 +8,10 @@ export function html (strings, ...values) {
   return result.replace(/\s+/g, ' ').replace(/\s</g, '<').trimEnd();
 }
 
+export function dashCase (str) {
+  return str.replace(/[A-Z]/g, (c, o) => (p > 0 ? '-' + c : c).toLowerCase());
+}
+
 export default class Presenter {
   model;
   constructor (model) {
@@ -37,7 +41,7 @@ export async function present (model, container, presenter, ...extra) {
   const fragment = template.content;
 
   await presenter.pre(container, fragment, ...extra);
-  const rendered = await renderView(model, container, fragment);
+  const rendered = await render(model, container, fragment);
   await presenter.post(container, rendered, ...extra);
 
   return rendered;
@@ -74,27 +78,27 @@ async function getPresenterClass (param) {
   return PresenterClass;
 }
 
-async function renderView (model, container, fragment) {
+async function render (model, container, fragment) {
   const propNodes = [];
   const relNodes = [];
 
   const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT);
 
-  let current = walker.nextNode();
-  current.setAttribute('resource', model.id);
-  current.setAttribute('typeof', model['rdf:type']?.map?.((item) => item.id).join(' ') ?? model['rdf:type']?.id);
+  let node = walker.nextNode();
+  node.setAttribute('resource', model.id);
+  node.setAttribute('typeof', model['rdf:type']?.map?.((item) => item.id).join(' ') ?? model['rdf:type']?.id);
 
-  while (current) {
-    if (current.hasAttribute('property')) propNodes.push(current);
-    if (current.hasAttribute('rel')) {
+  while (node) {
+    if (node.hasAttribute('property')) propNodes.push(node);
+    if (node.hasAttribute('rel')) {
       let inline;
-      if (current.hasChildNodes()) {
-        inline = current.innerHTML;
-        current.innerHTML = '';
+      if (node.hasChildNodes()) {
+        inline = node.innerHTML;
+        node.innerHTML = '';
       }
-      relNodes.push([current, inline]);
+      relNodes.push([node, inline]);
     }
-    current = walker.nextNode();
+    node = walker.nextNode();
   }
 
   const propPromises = propNodes.map(async (node) => {

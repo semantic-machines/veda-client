@@ -55,16 +55,15 @@ export function timeout (ms) {
 }
 
 export function diff (first, second) {
+  const props = Object.getOwnPropertyNames;
   if (first === second) return [];
   const delta = [];
-  for (const prop of Object.getOwnPropertyNames(first)) {
-    if (!second.hasOwnProperty(prop)) {
-      delta.push(prop);
-    } else if (!areEqual(first[prop], second[prop])) {
+  for (const prop of props(first)) {
+    if (!second.hasOwnProperty(prop) || !eq(first[prop], second[prop])) {
       delta.push(prop);
     }
   }
-  for (const prop of Object.getOwnPropertyNames(second)) {
+  for (const prop of props(second)) {
     if (!first.hasOwnProperty(prop)) {
       delta.push(prop);
     }
@@ -72,12 +71,12 @@ export function diff (first, second) {
   return delta;
 };
 
-export function areEqual (first, second) {
+export function eq (first, second) {
   const props = Object.getOwnPropertyNames;
   const firstType = typeof first;
   const secondType = typeof second;
   return first && second && firstType === 'object' && firstType === secondType ? (
     props(first).length === props(second).length &&
-    props(first).every((prop) => areEqual(first[prop], second[prop]))
+    props(first).every((prop) => eq(first[prop], second[prop]))
   ) : (first === second);
 }
