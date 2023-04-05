@@ -1,4 +1,4 @@
 export default {
-  'base': 'http://localhost:8080',
-  'ccus': 'ws://localhost:8088',
+  'base': 'http://localhost',
+  'ccus': 'ws://localhost/ccus',
 };

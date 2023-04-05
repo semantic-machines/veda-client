@@ -12,8 +12,6 @@ import Value from './Value.js';
 
 import {genUri} from './Util.js';
 
-import Model from './Model.js';
-
 export default class BaseModel extends Emitter() {
   static {
     BaseModel.cache = new WeakCache();
@@ -90,7 +88,7 @@ export default class BaseModel extends Emitter() {
   }
 
   updater (id, updateCounter) {
-    const model = new Model(id);
+    const model = new BaseModel(id);
     model.reset().catch(() => {});
   }
 
