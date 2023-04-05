@@ -1,0 +1,74 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix v-s: <http://semantic-machines.com/veda/veda-schema/> .
+@prefix d: <http://semantic-machines.com/veda/veda-data/>.
+
+<http://semantic-machines.com/veda/test>
+  rdf:type owl:Ontology ;
+  rdfs:label "Тестовая онтология"@ru ;
+  rdfs:label "Test ontology"@en ;
+  v-s:loadPriority 0 ;
+.
+
+v-s:Application
+  rdf:type owl:Class ;
+  rdfs:label "Приложение"@ru ;
+  rdfs:label "Application"@en ;
+  v-s:defaultComponent "TestApp";
+.
+
+v-s:defaultComponent
+  rdf:type owl:DatatypeProperty ;
+  rdfs:label "Компонент по умолчанию"@ru ;
+  rdfs:label "Default component"@en ;
+  rdfs:range xsd:string ;
+  rdfs:domain rdfs:Resource ;
+.
+
+v-s:hasSettings
+  rdf:type owl:ObjectProperty ;
+  rdfs:label "Настройки"@ru ;
+  rdfs:label "Settings"@en ;
+  rdfs:domain v-s:Application ;
+  rdfs:range v-s:Settings ;
+.
+
+v-s:hasApplication
+  rdf:type owl:ObjectProperty ;
+  owl:inverseOf v-s:hasSettings;
+  rdfs:label "Приложение"@ru ;
+  rdfs:label "Application"@en ;
+  rdfs:domain v-s:Settings ;
+  rdfs:range v-s:Application ;
+.
+
+v-s:Settings
+  rdf:type owl:Class ;
+  rdfs:label "Настройки"@ru ;
+  rdfs:label "Settings"@en ;
+  v-s:defaultComponent "TestSettings";
+.
+
+d:TestApplication
+  rdf:type v-s:Application ;
+  rdfs:label "Тестовое приложение"@ru ;
+  rdfs:label "Test application"@en ;
+  v-s:hasSettings d:TestSettings1 ;
+  v-s:hasSettings d:TestSettings2 ;
+.
+
+d:TestSettings1
+  rdf:type v-s:Settings ;
+  rdfs:label "Тестовые настройки 1"@ru ;
+  rdfs:label "Test settings 1"@en ;
+  v-s:hasApplication d:TestApplication ;
+.
+
+d:TestSettings2
+  rdf:type v-s:Settings ;
+  rdfs:label "Тестовые настройки 2"@ru ;
+  rdfs:label "Test settings 2"@en ;
+  v-s:hasApplication d:TestApplication ;
+.

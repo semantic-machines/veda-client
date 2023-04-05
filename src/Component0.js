@@ -12,7 +12,7 @@ export function dashCase (str) {
   return str.replace(/[A-Z]/g, (c, o) => (p > 0 ? '-' + c : c).toLowerCase());
 }
 
-export default class Presenter {
+export default class Component extends HTMLElement {
   model;
   constructor (model) {
     this.model = model;
@@ -26,59 +26,48 @@ export default class Presenter {
   post (container, nodes, ...rest) {}
 }
 
-export async function present (model, container, presenter, ...extra) {
+export async function present (model, container, component, ...extra) {
   container = typeof container === 'string' ? document.querySelector(container) : container;
   model = typeof model === 'string' ? new Model(model) : model;
 
   if (!model.isNew()) await model.load();
 
-  const PresenterClass = await getPresenterClass(presenter);
-  presenter = new PresenterClass(model);
+  const ComponentClass = await getComponentClass(component);
+  component = new ComponentClass(model);
 
-  const html = presenter.render();
+  const html = component.render();
   const template = document.createElement('template');
   template.innerHTML = html;
   const fragment = template.content;
 
-  await presenter.pre(container, fragment, ...extra);
-  const rendered = await render(model, container, fragment);
-  await presenter.post(container, rendered, ...extra);
+  await component.pre.call(component, container, fragment, ...extra);
+  const rendered = await render(component, container, fragment);
+  await component.post.call(component, container, rendered, ...extra);
 
   return rendered;
 }
 
-async function getPresenterClass (param) {
-  const reg_uri = /^[a-z][a-z-0-9]*:([a-zA-Z0-9-_])*$/;
-  let PresenterClass;
-  if (param instanceof Model) {
-    await param.load();
-    if (!presenter.hasValue('rdf:type', 'v-s:Presenter')) {
-      throw new TypeError('v-s:Presenter type required!');
-    }
-    const presenterName = param['v-s:path'][0];
-    PresenterClass = (await import(presenterName)).default;
-  } else if (typeof param === 'string' && reg_uri.test(param)) {
-    const presenterModel = new Model(param);
-    return getPresenter(presenterModel);
-  } else if (typeof param === 'string') {
-    PresenterClass = class extends Presenter {
+async function getComponentClass (component) {
+  const reg_class = /^([A-Z][a-z0-9_]+)+$/;
+  let ComponentClass;
+  if (typeof component === 'function') {
+    ComponentClass = component;
+  } else if (typeof component === 'string' && reg_class.test(component)) {
+    ComponentClass = (await import(`./${component}.js`)).default;
+  } else if (typeof component === 'string') {
+    ComponentClass = class extends Component {
       render () {
-        return param;
-      }
-    };
-  } else if (param instanceof HTMLElement) {
-    PresenterClass = class extends Presenter {
-      render () {
-        return param.outerHTML;
+        return component;
       }
     };
   } else {
-    PresenterClass = Presenter;
+    ComponentClass = Component;
   }
-  return PresenterClass;
+  return ComponentClass;
 }
 
-async function render (model, container, fragment) {
+async function render (component, container, fragment) {
+  const model = component.model;
   const propNodes = [];
   const relNodes = [];
 
@@ -119,14 +108,14 @@ async function render (model, container, fragment) {
   const relPromises = relNodes.map(async ([node, inline]) => {
     const rel = node.getAttribute('rel');
     const about = node.hasAttribute('about') ? new Model(node.getAttribute('about')) : model;
-    const presenter = inline ?? node.getAttribute('data-presenter');
+    const component = inline ?? node.getAttribute('data-component');
 
     try {
       await about.load();
-      const handler = () => renderRelationValue(about, rel, presenter, node);
+      const handler = () => renderRelationValue(about, rel, component, node);
       about.on(rel, handler);
       node.addEventListener('remove', () => about.off(rel, handler));
-      renderRelationValue(about, rel, presenter, node);
+      renderRelationValue(about, rel, component, node);
     } catch (error) {
       errorPrinter(error, about, rel, node);
     }
@@ -135,30 +124,35 @@ async function render (model, container, fragment) {
   await Promise.all(propPromises);
   await Promise.all(relPromises);
 
-  requestAnimationFrame(() => container.append(fragment));
-  return container.childNodes;
+  const rendered = fragment.children;
+  container.appendChild(fragment);
+  return rendered;
 }
 
 function renderPropertyValue (model, prop, node) {
   node.innerHTML = '';
-  model[prop].forEach?.((literal) => renderLiteral(node, literal)) ?? renderLiteral(node, model[prop]);
+  if (Array.isArray(model[prop])) {
+    model[prop].forEach((literal) => renderLiteral(node, literal));
+  } else {
+    renderLiteral(node, model[prop]);
+  }
 }
 
 function renderLiteral (node, value) {
   const holder = document.createElement('span');
   holder.classList.add('value');
   holder.textContent = value.toString();
-  node.appendChild(valueHolder);
+  node.appendChild(holder);
 }
 
-async function renderRelationValue (model, rel, presenter, node) {
+async function renderRelationValue (model, rel, component, node) {
   node.innerHTML = '';
   if (Array.isArray(model[rel])) {
     await Promise.all(
-      model[rel].map((related) => present(related, node, presenter)),
+      model[rel].map((related) => present(related, node, component)),
     );
   } else {
-    await present(model[rel], node, presenter);
+    await present(model[rel], node, component);
   }
 }
 

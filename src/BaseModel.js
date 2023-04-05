@@ -28,16 +28,19 @@ export default class BaseModel extends Emitter() {
 
       this.isNew(false);
       this.isSync(false);
+      this.isLoaded(false);
     } else if (typeof data === 'undefined') {
       this.id = genUri();
 
       this.isNew(true);
       this.isSync(false);
+      this.isLoaded(false);
     } else if (typeof data === 'object') {
       this.apply(data);
 
       this.isNew(false);
       this.isSync(true);
+      this.isLoaded(true);
     }
     this.on('modified', () => this.isSync(false));
     return BaseModel.cache.get(this.id) ?? (BaseModel.cache.set(this.id, this), this);
@@ -78,6 +81,10 @@ export default class BaseModel extends Emitter() {
     return json;
   }
 
+  toString () {
+    return this.id;
+  }
+
   subscribe () {
     BaseModel.subscription.subscribe(this, [this.id, this.hasValue('v-s:updateCounter') ? this['v-s:updateCounter'][0] : 0, this.updater]);
   }
@@ -99,6 +106,11 @@ export default class BaseModel extends Emitter() {
   #isSync;
   isSync (value) {
     return typeof value === 'undefined' ? this.#isSync : this.#isSync = !!value;
+  }
+
+  #isLoaded;
+  isLoaded (value) {
+    return typeof value === 'undefined' ? this.#isLoaded : this.#isLoaded = !!value;
   }
 
   hasValue (prop, value) {
@@ -159,6 +171,7 @@ export default class BaseModel extends Emitter() {
 
     this.isNew(false);
     this.isSync(true);
+    this.isLoaded(true);
   }
 
   async reset () {
@@ -171,6 +184,7 @@ export default class BaseModel extends Emitter() {
 
     this.isNew(false);
     this.isSync(true);
+    this.isLoaded(true);
   }
 
   async remove () {
@@ -178,5 +192,6 @@ export default class BaseModel extends Emitter() {
 
     this.isNew(true);
     this.isSync(false);
+    this.isLoaded(false);
   }
 }
