@@ -1,5 +1,4 @@
 import Component, {html} from '../src/Component.js';
-import PropertyComponent from './PropertyComponent.js';
 
 export default class TestSettings extends Component(HTMLElement) {
   render () {
@@ -8,6 +7,7 @@ export default class TestSettings extends Component(HTMLElement) {
         <a href="#/${this.model.id}">
           <span is="span-prop-value" about="${this.model.id}" property="id"></span>
         </a>
+        <span is="span-prop-value" about="${this.model.id}" property="rdfs:label"></span>
       </h5>
     `;
   }
