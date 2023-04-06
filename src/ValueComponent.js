@@ -1,4 +1,4 @@
-import Model from './Model.js';
+import Model from '../src/Model.js';
 
 export default function ValueComponent (Class = HTMLElement) {
   return class PropertyComponent extends Class {
