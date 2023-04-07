@@ -1,3 +1,4 @@
+import Component from './Component.js';
 import ValueComponent from './ValueComponent.js';
 
 export default function RelationComponent (Class = HTMLElement) {

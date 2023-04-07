@@ -15,6 +15,7 @@ export default class TestAppComponent extends Component(HTMLElement) {
             <span property="id"></span>
           </a>
         </h4>
+        <strong about="d:TestSettings1" property="rdfs:label"></strong>
         <ul property="rdfs:label"><li></li></ul>
         <div rel="v-s:hasSettings">
           <test-settings></test-settings>

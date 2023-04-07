@@ -12,8 +12,20 @@ export function html (strings, ...values) {
 
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
   class Component extends ElementClass {
+    model;
+
+    create () {}
+
+    async populate () {
+      if (!this.model) {
+        const about = this.getAttribute('about');
+        this.model = about ? new Model(about) : new Model();
+      }
+      if (!this.model.isNew() && !this.model.isLoaded()) await this.model.load();
+      this.model.subscribe();
+    }
+
     pre (root) {}
-    post (root) {}
 
     render () {
       return html`
@@ -21,12 +33,13 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       `;
     }
 
+    post (root) {}
+
+    remove () {}
+
     async connectedCallback () {
-      const about = this.getAttribute('about');
-      const model = new ModelClass(about);
-      this.model = model;
-      if (!model.isNew() && !model.isLoaded()) await model.load();
-      model.subscribe();
+      await this.create();
+      await this.populate();
 
       const html = this.render();
       const template = document.createElement('template');
@@ -40,6 +53,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       this.shadowRoot.appendChild(fragment);
 
       await this.post(this.shadowRoot);
+    }
+
+    async disconnectedCallback () {
+      await this.remove();
     }
 
     #process (fragment) {
@@ -58,9 +75,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       }
 
       propNodes.forEach((node) => {
-        if (!node.hasAttribute('about')) {
-          node.setAttribute('about', model.id);
-        }
         const tag = node.tagName.toLowerCase();
         if (!node.hasAttribute('is') && !~tag.indexOf('-')) {
           const is = `${tag}-prop-value`;
@@ -72,14 +86,14 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           const component = document.createElement(tag, {is});
           [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
           component.append(...node.childNodes);
+          if (!component.hasAttribute('about')) {
+            component.model = model;
+          }
           node.parentNode.replaceChild(component, node);
         }
       });
 
       relNodes.forEach((node) => {
-        if (!node.hasAttribute('about')) {
-          node.setAttribute('about', model.id);
-        }
         const tag = node.tagName.toLowerCase();
         if (!node.hasAttribute('is') && !~tag.indexOf('-')) {
           const is = `${tag}-rel-value`;
@@ -91,6 +105,9 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           const component = document.createElement(tag, {is});
           [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
           component.append(...node.childNodes);
+          if (!component.hasAttribute('about')) {
+            component.model = model;
+          }
           node.parentNode.replaceChild(component, node);
         }
       });
