@@ -9,8 +9,14 @@ export default function PropertyComponent (Class = HTMLElement) {
       const template = document.createElement('template');
       template.innerHTML = this.template;
       const fragment = template.content;
-      const node = fragment.firstElementChild;
-      node.textContent = value.toString();
+      const slot = fragment.querySelector('slot');
+      if (slot) {
+        const valueNode = document.createTextNode(value.toString());
+        slot.parentNode.replaceChild(valueNode, slot);
+      } else {
+        const node = fragment.firstElementChild;
+        node.textContent = value.toString();
+      }
       this.appendChild(fragment);
     }
   };

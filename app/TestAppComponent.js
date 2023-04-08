@@ -16,9 +16,16 @@ export default class TestAppComponent extends Component(HTMLElement) {
           </a>
         </h4>
         <strong about="d:TestSettings1" property="rdfs:label"></strong>
-        <ul property="rdfs:label"><li></li></ul>
+        <ul property="rdfs:label"><li><span><slot></slot></span></li></ul>
         <div rel="v-s:hasSettings">
           <test-settings></test-settings>
+        </div>
+        <hr>
+        <div rel="v-s:hasSettings">
+          <span property="rdfs:label"></span>
+          <ul rel="v-s:hasApplication">
+            <li property="rdfs:label"></li>
+          </ul>
         </div>
       </div>
     `;

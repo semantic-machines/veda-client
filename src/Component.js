@@ -27,11 +27,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     pre (root) {}
 
-    render () {
-      return html`
-        <a href="#/${this.model.id}">${this.model.id}</a>
-      `;
-    }
+    render () {}
 
     post (root) {}
 
@@ -49,10 +45,12 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       await this.pre(fragment);
 
       this.#process(fragment);
-      this.attachShadow({mode: 'open'});
-      this.shadowRoot.appendChild(fragment);
+      // this.attachShadow({mode: 'open'});
+      // this.shadowRoot.appendChild(fragment);
+      // await this.post(this.shadowRoot);
 
-      await this.post(this.shadowRoot);
+      this.appendChild(fragment);
+      await this.post(this);
     }
 
     async disconnectedCallback () {
@@ -61,56 +59,52 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     #process (fragment) {
       const model = this.model;
-      const propNodes = [];
-      const relNodes = [];
 
       const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT);
 
       let node = walker.nextNode();
 
       while (node) {
-        if (node.hasAttribute('property')) propNodes.push(node);
-        if (node.hasAttribute('rel')) relNodes.push(node);
+        if (node.hasAttribute('property')) {
+          const tag = node.tagName.toLowerCase();
+          if (!node.hasAttribute('is') && !~tag.indexOf('-')) {
+            const is = `${tag}-prop-value`;
+            const Class = customElements.get(is);
+            if (!Class) {
+              const Class = PropertyComponent(node.constructor);
+              customElements.define(is, Class, {extends: tag});
+            }
+            const component = document.createElement(tag, {is});
+            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
+            component.template = node.innerHTML;
+            if (!component.hasAttribute('about')) {
+              component.model = model;
+            }
+            node.parentNode.replaceChild(component, node);
+            walker.currentNode = component;
+          }
+        }
+        if (node.hasAttribute('rel')) {
+          const tag = node.tagName.toLowerCase();
+          if (!node.hasAttribute('is') && !~tag.indexOf('-')) {
+            const is = `${tag}-rel-value`;
+            const Class = customElements.get(is);
+            if (!Class) {
+              const Class = RelationComponent(node.constructor);
+              customElements.define(is, Class, {extends: tag});
+            }
+            const component = document.createElement(tag, {is});
+            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
+            component.template = node.innerHTML;
+            if (!component.hasAttribute('about')) {
+              component.model = model;
+            }
+            node.parentNode.replaceChild(component, node);
+            walker.currentNode = component;
+          }
+        }
         node = walker.nextNode();
       }
-
-      propNodes.forEach((node) => {
-        const tag = node.tagName.toLowerCase();
-        if (!node.hasAttribute('is') && !~tag.indexOf('-')) {
-          const is = `${tag}-prop-value`;
-          const Class = customElements.get(is);
-          if (!Class) {
-            const Class = PropertyComponent(node.constructor);
-            customElements.define(is, Class, {extends: tag});
-          }
-          const component = document.createElement(tag, {is});
-          [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-          component.append(...node.childNodes);
-          if (!component.hasAttribute('about')) {
-            component.model = model;
-          }
-          node.parentNode.replaceChild(component, node);
-        }
-      });
-
-      relNodes.forEach((node) => {
-        const tag = node.tagName.toLowerCase();
-        if (!node.hasAttribute('is') && !~tag.indexOf('-')) {
-          const is = `${tag}-rel-value`;
-          const Class = customElements.get(is);
-          if (!Class) {
-            const Class = RelationComponent(node.constructor);
-            customElements.define(is, Class, {extends: tag});
-          }
-          const component = document.createElement(tag, {is});
-          [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-          component.append(...node.childNodes);
-          if (!component.hasAttribute('about')) {
-            component.model = model;
-          }
-          node.parentNode.replaceChild(component, node);
-        }
-      });
     }
   }
 

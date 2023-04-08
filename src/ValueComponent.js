@@ -2,10 +2,11 @@ import Component from '../src/Component.js';
 
 export default function ValueComponent (Class = HTMLElement) {
   return class ValueComponent extends Component(Class) {
+    template;
+
     async connectedCallback () {
       await super.populate();
       this.prop = this.getAttribute('property') ?? this.getAttribute('rel');
-      this.template = this.innerHTML.trim();
       this.handler = this.render.bind(this);
       this.model.on(this.prop, this.handler);
       this.render();
