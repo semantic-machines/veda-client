@@ -26,7 +26,7 @@ export default function ValueComponent (Class = HTMLElement) {
       this.appendChild(node);
     }
 
-    remove () {
+    removed () {
       this.model.off(this.prop, this.handler);
     }
   };

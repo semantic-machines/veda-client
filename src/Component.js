@@ -12,9 +12,16 @@ export function html (strings, ...values) {
 
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
   class Component extends ElementClass {
+    constructor () {
+      super();
+      this.created();
+    }
+
     model;
 
-    create () {}
+    created () {}
+
+    added () {}
 
     async populate () {
       if (!this.model) {
@@ -31,10 +38,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     post (root) {}
 
-    remove () {}
+    removed () {}
 
     async connectedCallback () {
-      await this.create();
+      await this.added();
       await this.populate();
 
       const html = this.render();
@@ -44,20 +51,23 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       await this.pre(fragment);
 
-      this.#process(fragment);
-      // this.attachShadow({mode: 'open'});
-      // this.shadowRoot.appendChild(fragment);
-      // await this.post(this.shadowRoot);
+      this.process(fragment);
 
-      this.appendChild(fragment);
-      await this.post(this);
+      if (this.shadow) {
+        this.attachShadow({mode: 'open'});
+        this.shadowRoot.appendChild(fragment);
+        await this.post(this.shadowRoot);
+      } else {
+        this.appendChild(fragment);
+        await this.post(this);
+      }
     }
 
     async disconnectedCallback () {
-      await this.remove();
+      await this.removed();
     }
 
-    #process (fragment) {
+    process (fragment) {
       const model = this.model;
 
       const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT);
@@ -79,6 +89,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             component.template = node.innerHTML;
             if (!component.hasAttribute('about')) {
               component.model = model;
+              component.setAttribute('about', model.id);
             }
             node.parentNode.replaceChild(component, node);
             walker.currentNode = component;
@@ -98,6 +109,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             component.template = node.innerHTML;
             if (!component.hasAttribute('about')) {
               component.model = model;
+              component.setAttribute('about', model.id);
             }
             node.parentNode.replaceChild(component, node);
             walker.currentNode = component;
