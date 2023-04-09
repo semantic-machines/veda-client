@@ -2,7 +2,12 @@ import ValueComponent from './ValueComponent.js';
 
 export default function RelationComponent (Class = HTMLElement) {
   class RelationComponent extends ValueComponent(Class) {
+    template;
+
     renderValue (value) {
+      if (!this.template) {
+        return super.renderValue(value);
+      }
       const template = document.createElement('template');
       template.innerHTML = this.template;
       const fragment = template.content;

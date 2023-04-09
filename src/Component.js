@@ -23,6 +23,14 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     added () {}
 
+    pre (root) {}
+
+    render () {}
+
+    post (root) {}
+
+    removed () {}
+
     async populate () {
       if (!this.model) {
         const about = this.getAttribute('about');
@@ -31,14 +39,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       if (!this.model.isNew() && !this.model.isLoaded()) await this.model.load();
       this.model.subscribe();
     }
-
-    pre (root) {}
-
-    render () {}
-
-    post (root) {}
-
-    removed () {}
 
     async connectedCallback () {
       await this.added();
