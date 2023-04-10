@@ -8,7 +8,7 @@
     "test": "time -p node --expose-gc test",
     "debug": "node --inspect-brk test",
     "c8": "c8 npm t",
-    "build": "esbuild `find src \\( -name '*.js' \\)` --minify --platform=node --outdir=dist"
+    "build": "esbuild `find src \\( -name '*.js' \\)` --minify --platform=neutral --outdir=dist"
   },
   "repository": {
     "type": "git",

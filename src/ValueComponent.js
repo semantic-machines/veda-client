@@ -1,4 +1,4 @@
-import Component from '../src/Component.js';
+import Component from './Component.js';
 
 export default function ValueComponent (Class = HTMLElement) {
   return class ValueComponent extends Component(Class) {

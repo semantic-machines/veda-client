@@ -1,3 +1,5 @@
+package-lock.json
 *.geany
 **/node_modules
 **/coverage
+dist
