@@ -13,17 +13,21 @@ export default function ValueComponent (Class = HTMLElement) {
     }
 
     render () {
-      this.innerHTML = '';
+      const container = this.dataset.shadow ?
+        this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot) :
+        this;
+      container.innerHTML = '';
+      if (!this.model.hasValue(this.prop)) return;
       if (Array.isArray(this.model[this.prop])) {
-        this.model[this.prop].forEach((value) => this.renderValue(value));
+        this.model[this.prop].forEach((value) => this.renderValue(value, container));
       } else {
-        this.renderValue(this.model[this.prop]);
+        this.renderValue(this.model[this.prop], container);
       }
     }
 
-    renderValue (value) {
+    renderValue (value, container) {
       const node = document.createTextNode(value.toString());
-      this.appendChild(node);
+      container.appendChild(node);
     }
 
     removed () {

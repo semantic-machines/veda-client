@@ -4,9 +4,9 @@ export default function PropertyComponent (Class = HTMLElement) {
   class PropertyComponent extends ValueComponent(Class) {
     template;
 
-    renderValue (value) {
+    renderValue (value, container) {
       if (!this.template) {
-        return super.renderValue(value);
+        return super.renderValue(value, container);
       }
       const template = document.createElement('template');
       template.innerHTML = this.template;
@@ -19,7 +19,7 @@ export default function PropertyComponent (Class = HTMLElement) {
         const node = fragment.firstElementChild;
         node.textContent = value.toString();
       }
-      this.appendChild(fragment);
+      container.appendChild(fragment);
     }
   };
 

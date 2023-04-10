@@ -4,9 +4,9 @@ export default function RelationComponent (Class = HTMLElement) {
   class RelationComponent extends ValueComponent(Class) {
     template;
 
-    renderValue (value) {
+    renderValue (value, container) {
       if (!this.template) {
-        return super.renderValue(value);
+        return super.renderValue(value, container);
       }
       const template = document.createElement('template');
       template.innerHTML = this.template;
@@ -15,7 +15,7 @@ export default function RelationComponent (Class = HTMLElement) {
         if (!node.hasAttribute('about')) node.setAttribute('about', value.id);
       });
       this.process(fragment);
-      this.appendChild(fragment);
+      container.appendChild(fragment);
     }
   };
 

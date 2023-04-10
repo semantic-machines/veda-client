@@ -36,6 +36,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         const about = this.getAttribute('about');
         this.model = about ? new Model(about) : new Model();
       }
+      this.setAttribute('about', this.model.id);
       if (!this.model.isNew() && !this.model.isLoaded()) await this.model.load();
       this.model.subscribe();
     }
@@ -53,14 +54,12 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       this.process(fragment);
 
-      if (this.shadow) {
-        this.attachShadow({mode: 'open'});
-        this.shadowRoot.appendChild(fragment);
-        await this.post(this.shadowRoot);
-      } else {
-        this.appendChild(fragment);
-        await this.post(this);
-      }
+      const container = this.dataset.shadow ?
+        this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot) :
+        this;
+      container.appendChild(fragment);
+
+      await this.post(container);
     }
 
     async disconnectedCallback () {
