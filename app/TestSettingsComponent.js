@@ -5,10 +5,6 @@ export default class TestSettingsComponent extends Component(HTMLElement) {
     root.append('!!!');
   }
 
-  post (root) {
-    root.append('>>>');
-  }
-
   render () {
     return html`
       <h5>
@@ -18,5 +14,9 @@ export default class TestSettingsComponent extends Component(HTMLElement) {
         <ul property="rdfs:label"><li></li></ul>
       </h5>
     `;
+  }
+
+  post (root) {
+    root.append('>>>');
   }
 }
