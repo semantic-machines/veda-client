@@ -19,7 +19,7 @@ export default class TestAppComponent extends Component(HTMLElement) {
         <em about="d:TestSettings1" property="rdfs:comment"></em>
         <ul property="rdfs:label"><li><span><slot></slot></span></li></ul>
         <div rel="v-s:hasSettings">
-          <test-settings data-shadow="true"></test-settings>
+          <test-settings></test-settings>
         </div>
         <hr>
         <div rel="v-s:hasSettings" data-shadow="true">
