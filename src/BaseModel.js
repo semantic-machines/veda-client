@@ -162,46 +162,27 @@ export default class BaseModel extends Emitter() {
     return this.getPropertyChain.apply(Array.isArray(this[prop]) ? this[prop][0] : this[prop], props);
   }
 
-  #isLoading;
-
   async load (cache = true) {
     if (this.isSync()) return;
-    if (this.#isLoading) {
-      await this.#isLoading;
-      return;
-    }
-    return this.#isLoading = new Promise(async (resolve) => {
-      const data = await BaseModel.backend.get_individual(this.id, cache);
-      this.apply(data);
+    const data = await BaseModel.backend.get_individual(this.id, cache);
+    this.apply(data);
 
-      this.isNew(false);
-      this.isSync(true);
-      this.isLoaded(true);
-      this.isLoading = false;
-      resolve();
-    });
+    this.isNew(false);
+    this.isSync(true);
+    this.isLoaded(true);
   }
 
   async reset () {
-    return await this.load(false);
+    await this.load(false);
   }
-
-  #isSaving;
 
   async save () {
     if (this.isSync()) return;
-    if (this.#isSaving) {
-      await this.#isSaving;
-      return;
-    }
-    return this.#isLoading = new Promise(async (resolve) => {
-      await BaseModel.backend.put_individual(this.toJSON());
+    await BaseModel.backend.put_individual(this.toJSON());
 
-      this.isNew(false);
-      this.isSync(true);
-      this.isLoaded(true);
-      resolve();
-    });
+    this.isNew(false);
+    this.isSync(true);
+    this.isLoaded(true);
   }
 
   async remove () {

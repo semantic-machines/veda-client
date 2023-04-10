@@ -1,4 +1,4 @@
-import Component, {html} from '../dist/Component.js';
+import Component, {html} from '../src/Component.js';
 
 export default class TestSettingsComponent extends Component(HTMLElement) {
   pre (root) {

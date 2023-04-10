@@ -211,39 +211,52 @@ export default class Backend {
     return this.#call_server(params);
   }
 
+  #pending = {};
+
   /**
    * Common server call function
    * @param {Object} params
    * @return {Promise<Object>}
    */
   async #call_server (params) {
-    const url = new URL(params.url, this.base);
-    if (params.method === 'GET' && params.data) {
-      for (const prop in params.data) {
-        if (typeof params.data[prop] === 'undefined') {
-          delete params.data[prop];
+    const key = JSON.stringify(params);
+    if (this.#pending[key]) return this.#pending[key];
+
+    return this.#pending[key] = new Promise(async (resolve, reject) => {
+      try {
+        const url = new URL(params.url, this.base);
+        if (params.method === 'GET' && params.data) {
+          for (const prop in params.data) {
+            if (typeof params.data[prop] === 'undefined') {
+              delete params.data[prop];
+            }
+          }
+          url.search = new URLSearchParams(params.data).toString();
         }
+        if (params.ticket) {
+          url.searchParams.append('ticket', params.ticket);
+        }
+        const response = await fetch(url, {
+          method: params.method,
+          mode: 'same-origin',
+          cache: 'no-cache',
+          credentials: 'same-origin',
+          ...(params.method !== 'GET' && {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            ...(params.data && {body: JSON.stringify(params.data)}),
+          }),
+        });
+        if (response.ok) {
+          resolve(response.json());
+        }
+        reject(new BackendError(response.status));
+      } catch (error) {
+        reject(error);
+      } finally {
+        delete this.#pending[key];
       }
-      url.search = new URLSearchParams(params.data).toString();
-    }
-    if (params.ticket) {
-      url.searchParams.append('ticket', params.ticket);
-    }
-    const response = await fetch(url, {
-      method: params.method,
-      mode: 'same-origin',
-      cache: 'no-cache',
-      credentials: 'same-origin',
-      ...(params.method !== 'GET' && {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        ...(params.data && {body: JSON.stringify(params.data)}),
-      }),
     });
-    if (response.ok) {
-      return response.json();
-    }
-    throw new BackendError(response.status);
   }
 }

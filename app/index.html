@@ -15,17 +15,17 @@
   <body>
     <main></main>
     <script type="module" async>
-      import Backend from '../dist/Backend.js';
-      import Model from '../dist/Model.js';
+      import Backend from '../src/Backend.js';
+      import Model from '../src/Model.js';
       import TestAppComponent from './TestAppComponent.js';
 
       const backend = new Backend();
       await backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
 
       customElements.define('test-app', TestAppComponent);
-      const app = new Model("d:TestApplication");
+      const testApp = new Model("d:TestApplication");
       const component = document.createElement('test-app');
-      component.model = app;
+      component.model = testApp;
       document.querySelector('main').append(component);
     </script>
   </body>
