@@ -32,5 +32,9 @@ export default ({test, assert}) => {
     assert(r.check('#/hello/new/111/222').length === 2);
 
     assert(r.get('#').length === 1);
+
+    r.clear();
+
+    assert(r.get('#').length === 0);
   });
 };
