@@ -2,7 +2,8 @@
   "name": "veda-client",
   "version": "1.0.0",
   "description": "veda platform client framework",
-  "main": "index.js",
+  "module": "dist/index.js",
+  "main": "dist/index.js",
   "type": "module",
   "scripts": {
     "test": "time -p node --expose-gc test",
