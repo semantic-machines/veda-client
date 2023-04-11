@@ -7,11 +7,17 @@ export default class Router {
     Router.#instance = this;
 
     if (typeof window !== 'undefined') {
-      window.onhashchange = () => this.follow(location.hash);
+      window.onhashchange = () => this.follow(window.location.hash);
     }
   }
 
   #routes = [];
+
+  go (where) {
+    if (window.location.hash !== where) {
+      window.location.hash = where;
+    }
+  }
 
   add (pattern, fn) {
     const re = this.#parse(pattern);
