@@ -22,5 +22,15 @@ export default ({test, assert}) => {
     r.follow('#/hello/new/111/222');
 
     assert(vars.length === 2 && JSON.stringify(['new', '111']) === JSON.stringify(vars));
+
+    r.remove('#/hello/new/:var2');
+
+    r.follow('#/hello/new/111/222');
+
+    assert(vars.length === 3 && JSON.stringify(['new', '111', 'new']) === JSON.stringify(vars));
+
+    assert(r.check('#/hello/new/111/222').length === 2);
+
+    assert(r.get('#').length === 1);
   });
 };
