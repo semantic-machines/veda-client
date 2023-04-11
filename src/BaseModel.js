@@ -65,9 +65,7 @@ export default class BaseModel extends Emitter() {
         return acc;
       }
       const value = this[key];
-      if (value instanceof Function) {
-        return acc;
-      } else if (Array.isArray(value)) {
+      if (Array.isArray(value)) {
         acc[key] = value.map(Value.serialize).filter(Boolean);
         if (!acc[key].length) delete acc[key];
       } else {

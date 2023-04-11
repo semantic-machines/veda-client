@@ -3,6 +3,11 @@ import Backend from '../src/Backend.js';
 import {timeout} from '../src/Util.js';
 
 export default ({test, assert}) => {
+  test('Model #00', async () => {
+    const m = new Model();
+    assert(m.toString() === m.id);
+  });
+
   test('Model #01', async () => {
     let counter = 0;
     const m = new Model();
