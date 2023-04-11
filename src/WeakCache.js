@@ -17,10 +17,6 @@ export default class WeakCache {
     this.#map.set(key, new WeakRef(value));
   }
 
-  keys () {
-    return this.#map.keys();
-  }
-
   delete (key) {
     this.#map.delete(key);
   }
