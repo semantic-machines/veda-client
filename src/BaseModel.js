@@ -13,11 +13,9 @@ import Value from './Value.js';
 import {genUri} from './Util.js';
 
 export default class BaseModel extends Emitter() {
-  static {
-    BaseModel.cache = new WeakCache();
-    BaseModel.subscription = new Subscription();
-    BaseModel.backend = new Backend();
-  }
+  static cache = new WeakCache();
+  static subscription = new Subscription();
+  static backend = new Backend();
 
   constructor (data) {
     super();

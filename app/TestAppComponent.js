@@ -1,4 +1,4 @@
-import Component, {html} from '../src/Component.js';
+import {Component, html} from '../dist/index.js';
 import TestSettingsComponent from './TestSettingsComponent.js';
 
 customElements.define('test-settings', TestSettingsComponent);
