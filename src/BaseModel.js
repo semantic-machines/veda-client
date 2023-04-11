@@ -163,7 +163,7 @@ export default class BaseModel extends Emitter() {
   }
 
   async load (cache = true) {
-    if (this.isSync()) return;
+    if (this.isSync() && cache) return;
     const data = await BaseModel.backend.get_individual(this.id, cache);
     this.apply(data);
 

@@ -74,33 +74,14 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       let node = walker.nextNode();
 
       while (node) {
-        if (node.hasAttribute('property')) {
+        if (node.hasAttribute('property') || node.hasAttribute('rel')) {
+          const ClassFactory = node.hasAttribute('property') ? PropertyComponent : RelationComponent;
           const tag = node.tagName.toLowerCase();
           if (!node.hasAttribute('is') && !~tag.indexOf('-')) {
-            const is = `${tag}-prop-value`;
+            const is = `${tag}-${ClassFactory.name.toLowerCase()}`;
             const Class = customElements.get(is);
             if (!Class) {
-              const Class = PropertyComponent(node.constructor);
-              customElements.define(is, Class, {extends: tag});
-            }
-            const component = document.createElement(tag, {is});
-            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-            component.template = node.innerHTML;
-            if (!component.hasAttribute('about')) {
-              component.model = model;
-              component.setAttribute('about', model.id);
-            }
-            node.parentNode.replaceChild(component, node);
-            walker.currentNode = component;
-          }
-        }
-        if (node.hasAttribute('rel')) {
-          const tag = node.tagName.toLowerCase();
-          if (!node.hasAttribute('is') && !~tag.indexOf('-')) {
-            const is = `${tag}-rel-value`;
-            const Class = customElements.get(is);
-            if (!Class) {
-              const Class = RelationComponent(node.constructor);
+              const Class = ClassFactory(node.constructor);
               customElements.define(is, Class, {extends: tag});
             }
             const component = document.createElement(tag, {is});

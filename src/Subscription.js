@@ -16,19 +16,22 @@ export default class Subscription {
   constructor (address = defaults.ccus) {
     if (Subscription.#instance) return Subscription.#instance;
 
+    Subscription.#instance = this;
     this.#address = address;
     this.#connect();
-    Subscription.#instance = this;
   }
 
   async #connect (event) {
-    if (event) await timeout(30_000);
+    if (event) {
+      console.log(`Socket: ${event.type}, will re-connect in 30 sec.`);
+      await timeout(30_000);
+    }
     const socket = new WebSocket(this.#address);
-    socket.onopen = () => this.#send();
+    this.#socket = socket;
+    socket.onopen = (event) => console.log(`Socket: ${event.type}`) && this.#send();
     socket.onclose = this.#connect.bind(this);
     socket.onerror = this.#connect.bind(this);
     socket.onmessage = this.#receive.bind(this);
-    this.#socket = socket;
   }
 
   async #send (msg) {
