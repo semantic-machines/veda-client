@@ -7,7 +7,7 @@ export default ({test, assert}) => {
     assert(r1 === r2);
   });
 
-  test.only('Router #02. Rest', async () => {
+  test('Router #02. Rest', async () => {
     const r = new Router();
 
     let vars = [];

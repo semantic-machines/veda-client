@@ -59,7 +59,7 @@ export default function Observable (Class, {setters = [], actions = []} = {sette
         this.emit('modified', prop, this[prop]);
       });
     };
-    return decorator(fn, pre, post, console.error);
+    return decorator(fn, pre, post);
   }
 
   function actionDecorator (fn) {
@@ -71,7 +71,7 @@ export default function Observable (Class, {setters = [], actions = []} = {sette
       const after = this.toJSON();
       await this.emit('after' + fn.name, after);
     };
-    return decorator(fn, pre, post, console.error);
+    return decorator(fn, pre, post);
   }
 
   setters.forEach((name) => {
