@@ -15,17 +15,14 @@
   <body>
     <main></main>
     <script type="module" async>
-      import {Backend, Model} from '../dist/index.js';
-      import TestAppComponent from './TestAppComponent.js';
+      import {Backend, Router} from '../dist/index.js';
+      import './routes.js';
 
       const backend = new Backend();
       await backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
 
-      customElements.define('test-app', TestAppComponent);
-      const testApp = new Model("d:TestApplication");
-      const component = document.createElement('test-app');
-      component.model = testApp;
-      document.querySelector('main').append(component);
+      const router = new Router();
+      router.go(location.hash || '#/app/d:TestApplication');
     </script>
   </body>
 </html>

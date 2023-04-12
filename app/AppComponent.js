@@ -1,9 +1,7 @@
 import {Component, html} from '../dist/index.js';
-import TestSettingsComponent from './TestSettingsComponent.js';
+import './SettingsComponent.js';
 
-customElements.define('test-settings', TestSettingsComponent);
-
-export default class TestAppComponent extends Component(HTMLElement) {
+export default class AppComponent extends Component(HTMLElement) {
   render () {
     return html`
       <style>
@@ -11,7 +9,7 @@ export default class TestAppComponent extends Component(HTMLElement) {
       </style>
       <div>
         <h4>
-          <a href="#/${this.model.id}">
+          <a href="#/app/${this.model.id}">
             <span property="id"></span>
           </a>
         </h4>
@@ -19,7 +17,7 @@ export default class TestAppComponent extends Component(HTMLElement) {
         <em about="d:TestSettings1" property="rdfs:comment"></em>
         <ul property="rdfs:label"><li><span><slot></slot></span></li></ul>
         <div rel="v-s:hasSettings">
-          <test-settings></test-settings>
+          <veda-settings></veda-settings>
         </div>
         <hr>
         <div rel="v-s:hasSettings" data-shadow="true">
@@ -35,3 +33,5 @@ export default class TestAppComponent extends Component(HTMLElement) {
     `;
   }
 }
+
+customElements.define('veda-app', AppComponent);

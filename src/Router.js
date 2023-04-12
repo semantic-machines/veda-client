@@ -7,16 +7,27 @@ export default class Router {
     Router.#instance = this;
 
     if (typeof window !== 'undefined') {
-      window.onhashchange = () => this.follow(window.location.hash);
+      window.addEventListener('popstate', (e) => this.go(e));
     }
   }
 
   #routes = [];
 
-  go (where) {
-    if (window.location.hash !== where) {
-      window.location.hash = where;
+  go (to) {
+    if (typeof window === 'undefined') return;
+    if (to instanceof Event) {
+      this.route(location.hash);
+    } else {
+      window.history.pushState(0, 0, to);
+      this.route(to);
     }
+  }
+
+  route (to) {
+    this.#routes.forEach(([p, fn, re]) => {
+      const [match, ...vars] = to.match(re) ?? [];
+      if (match) fn(...vars);
+    });
   }
 
   add (pattern, fn) {
@@ -33,29 +44,22 @@ export default class Router {
     return this.#routes.filter(([p]) => p === pattern);
   }
 
-  check (hash) {
-    return this.#routes.filter(([p, fn, re]) => re.test(hash));
+  check (to) {
+    return this.#routes.filter(([p, fn, re]) => re.test(to));
   }
 
   clear () {
     this.#routes = [];
   }
 
-  follow (hash) {
-    this.#routes.forEach(([p, fn, re]) => {
-      const [match, ...vars] = hash.match(re) ?? [];
-      if (match) fn(...vars);
-    });
-  }
-
   #token_re = /^(#|:?\w+)$/;
 
-  #parse (route) {
-    const tokens = decodeURIComponent(route).split('/').filter(Boolean);
+  #parse (pattern) {
+    const tokens = decodeURIComponent(pattern).split('/').filter(Boolean);
     const re = new RegExp(
       '^' + tokens.map((token) => {
         if (!this.#token_re.test(token)) throw Error('invalid token: ' + token);
-        return !!~token.indexOf(':') ? `(?<${token.substring(1)}>[^/]+)` : token;
+        return token.indexOf(':') === 0 ? `(?<${token.slice(1)}>[^/]+)` : token;
       }).join('/'),
     );
     return re;

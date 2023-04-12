@@ -10,7 +10,7 @@
     "debug": "node --inspect-brk test",
     "c8": "c8 npm t",
     "minify": "esbuild `find src \\( -name '*.js' \\)` --minify --platform=neutral --outdir=dist",
-    "build": "esbuild ./src/index.js --minify --bundle --platform=neutral --outdir=dist"
+    "build": "esbuild ./src/index.js --minify --sourcemap --bundle --platform=neutral --outdir=dist"
   },
   "repository": {
     "type": "git",

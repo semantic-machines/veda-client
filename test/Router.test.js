@@ -19,13 +19,13 @@ export default ({test, assert}) => {
 
     r.add('#/hello/new/:var2', handler);
 
-    r.follow('#/hello/new/111/222');
+    r.route('#/hello/new/111/222');
 
     assert(vars.length === 2 && JSON.stringify(['new', '111']) === JSON.stringify(vars));
 
     r.remove('#/hello/new/:var2');
 
-    r.follow('#/hello/new/111/222');
+    r.route('#/hello/new/111/222');
 
     assert(vars.length === 3 && JSON.stringify(['new', '111', 'new']) === JSON.stringify(vars));
 
