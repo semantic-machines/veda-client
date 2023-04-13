@@ -1,6 +1,7 @@
 import Model from './Model.js';
 import PropertyComponent from './PropertyComponent.js';
 import RelationComponent from './RelationComponent.js';
+import InlineComponent from './InlineComponent.js';
 
 export function html (strings, ...values) {
   let result = '';
@@ -52,7 +53,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       await this.pre(fragment);
 
-      this.process(fragment, this.model);
+      this.process(fragment);
 
       const container = this.dataset.shadow ?
         this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot) :
@@ -66,31 +67,57 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       await this.removed();
     }
 
-    process (fragment, model) {
-      const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT);
+    process (fragment, model = this.model) {
+      const context = Object.create(this, {model: {value: model}});
+      const evaluate = (_, e) => Function('e', `return ${e}`).call(context, e);
+
+      const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
 
       let node = walker.nextNode();
 
       while (node) {
-        if (node.hasAttribute('property') || node.hasAttribute('rel')) {
-          const ClassFactory = node.hasAttribute('property') ? PropertyComponent : RelationComponent;
-          const tag = node.tagName.toLowerCase();
-          if (!node.hasAttribute('is') && !~tag.indexOf('-')) {
-            const is = `${tag}-${ClassFactory.name.toLowerCase()}`;
-            const Class = customElements.get(is);
-            if (!Class) {
-              const Class = ClassFactory(node.constructor);
-              customElements.define(is, Class, {extends: tag});
+        if (node.nodeType === Node.TEXT_NODE) {
+          node.nodeValue = node.nodeValue.replaceAll(/{{(.*?)}}/gs, evaluate);
+        } else {
+          for (const attr of node.attributes) {
+            attr.nodeValue = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, evaluate);
+          }
+          if (node.hasAttribute('about') && !node.hasAttribute('property') && !node.hasAttribute('rel')) {
+            const tag = node.tagName.toLowerCase();
+            if (!node.hasAttribute('is') && !~tag.indexOf('-')) {
+              const is = `${tag}-${InlineComponent.name.toLowerCase()}`;
+              const Class = customElements.get(is);
+              if (!Class) {
+                const Class = InlineComponent(node.constructor);
+                customElements.define(is, Class, {extends: tag});
+              }
+              const component = document.createElement(tag, {is});
+              [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
+              component.template = node.innerHTML;
+              node.parentNode.replaceChild(component, node);
+              walker.currentNode = component;
             }
-            const component = document.createElement(tag, {is});
-            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-            component.template = node.innerHTML;
-            if (!component.hasAttribute('about')) {
-              component.model = model;
-              component.setAttribute('about', model.id);
+          }
+          if (node.hasAttribute('property') || node.hasAttribute('rel')) {
+            const ClassFactory = node.hasAttribute('property') ? PropertyComponent : RelationComponent;
+            const tag = node.tagName.toLowerCase();
+            if (!node.hasAttribute('is') && !~tag.indexOf('-')) {
+              const is = `${tag}-${ClassFactory.name.toLowerCase()}`;
+              const Class = customElements.get(is);
+              if (!Class) {
+                const Class = ClassFactory(node.constructor);
+                customElements.define(is, Class, {extends: tag});
+              }
+              const component = document.createElement(tag, {is});
+              [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
+              component.template = node.innerHTML;
+              if (!component.hasAttribute('about')) {
+                component.model = model;
+                component.setAttribute('about', model.id);
+              }
+              node.parentNode.replaceChild(component, node);
+              walker.currentNode = component;
             }
-            node.parentNode.replaceChild(component, node);
-            walker.currentNode = component;
           }
         }
         node = walker.nextNode();

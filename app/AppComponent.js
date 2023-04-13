@@ -9,13 +9,13 @@ export default class AppComponent extends Component(HTMLElement) {
       </style>
       <div>
         <h4>
-          <a href="#/app/${this.model.id}">
-            <span property="id"></span>
+          <a href="#/app/{{this.model.id}}">
+            {{this.model.id}}
           </a>
         </h4>
-        <strong about="d:TestSettings1" property="rdfs:label"></strong>
-        <em about="d:TestSettings1" property="rdfs:comment"></em>
+        <strong about="rdfs:label" property="rdfs:label"></strong>
         <ul property="rdfs:label"><li><span><slot></slot></span></li></ul>
+        <hr>
         <div rel="v-s:hasSettings">
           <veda-settings></veda-settings>
         </div>
@@ -24,7 +24,8 @@ export default class AppComponent extends Component(HTMLElement) {
           <style>
             * {font-style: italic;}
           </style>
-          <span property="rdfs:label"></span>
+          <h5>{{this.model.id}}</h5>
+          <strong property="rdfs:label"></strong>
           <ul rel="v-s:hasApplication">
             <li property="rdfs:label"></li>
           </ul>

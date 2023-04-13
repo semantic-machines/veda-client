@@ -11,9 +11,9 @@ export default function RelationComponent (Class = HTMLElement) {
       const template = document.createElement('template');
       template.innerHTML = this.template;
       const fragment = template.content;
-      fragment.childNodes.forEach((node) => {
+      for (const node of fragment.children) {
         if (!node.hasAttribute('about')) node.setAttribute('about', value.id);
-      });
+      }
       this.process(fragment, value);
       container.appendChild(fragment);
     }
