@@ -2,24 +2,23 @@ import {Model, Router} from '../dist/index.js';
 import './AppComponent.js';
 import './SettingsComponent.js';
 
-function present (component) {
+const present = (component) => {
   const main = document.querySelector('main');
   main.innerHTML = '';
   main.append(component);
-}
+};
 
 const router = new Router();
 
-router.add('#/app/:id', (id) => {
-  const app = new Model(id);
-  const component = document.createElement('veda-app');
-  component.model = app;
-  present(component);
-});
+const tagDictionary = {
+  app: 'veda-app',
+  settings: 'veda-settings',
+};
 
-router.add('#/settings/:id', (id) => {
-  const settings = new Model(id);
-  const component = document.createElement('veda-settings');
-  component.model = settings;
+router.add('#/:comp/:id', (comp, id) => {
+  const model = new Model(id);
+  const tag = tagDictionary[comp];
+  const component = document.createElement(tag);
+  component.model = model;
   present(component);
 });

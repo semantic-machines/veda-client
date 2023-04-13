@@ -1,4 +1,4 @@
-import Model from './Model.js';
+import Model from '../Model.js';
 import PropertyComponent from './PropertyComponent.js';
 import RelationComponent from './RelationComponent.js';
 import InlineComponent from './InlineComponent.js';
