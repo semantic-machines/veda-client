@@ -16,11 +16,12 @@ export default class SettingsComponent extends Component(HTMLElement) {
           <span property="rdfs:label"></span>
           <a property="id" href="#/app/${this.model.id}"></a>
         </div>
-        <!--div rel="v-s:hasApplication">
+
+        <i rel="v-s:hasApplication">
           <a href="#/app/${this.model.id}">
             <span property="id"></span>
           </a>
-        </div-->
+        </i>
       </h5>
     `;
   }

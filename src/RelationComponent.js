@@ -14,7 +14,7 @@ export default function RelationComponent (Class = HTMLElement) {
       fragment.childNodes.forEach((node) => {
         if (!node.hasAttribute('about')) node.setAttribute('about', value.id);
       });
-      this.process(fragment);
+      this.process(fragment, value);
       container.appendChild(fragment);
     }
   };

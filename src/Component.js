@@ -52,7 +52,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       await this.pre(fragment);
 
-      this.process(fragment);
+      this.process(fragment, this.model);
 
       const container = this.dataset.shadow ?
         this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot) :
@@ -66,9 +66,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       await this.removed();
     }
 
-    process (fragment) {
-      const model = this.model;
-
+    process (fragment, model) {
       const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT);
 
       let node = walker.nextNode();
