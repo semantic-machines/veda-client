@@ -15,7 +15,7 @@ export default class Router {
 
   go (to) {
     if (typeof window === 'undefined') return;
-    if (to instanceof Event) {
+    if (to instanceof PopStateEvent) {
       this.route(location.hash);
     } else {
       window.history.pushState(0, 0, to);
