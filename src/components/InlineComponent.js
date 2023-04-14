@@ -20,7 +20,5 @@ export default function InlineComponent (Class = HTMLElement) {
     }
   };
 
-  Object.defineProperty(InlineComponent, 'name', {value: `InlineComponent(${Class.name})`});
-
   return InlineComponent;
 }

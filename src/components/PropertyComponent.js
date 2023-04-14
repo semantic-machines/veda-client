@@ -23,7 +23,5 @@ export default function PropertyComponent (Class = HTMLElement) {
     }
   };
 
-  Object.defineProperty(PropertyComponent, 'name', {value: `PropertyComponent(${Class.name})`});
-
   return PropertyComponent;
 }

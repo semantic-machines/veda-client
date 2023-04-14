@@ -14,12 +14,10 @@ export default function RelationComponent (Class = HTMLElement) {
       for (const node of fragment.children) {
         if (!node.hasAttribute('about')) node.setAttribute('about', value.id);
       }
-      this.process(fragment, value);
+      this.process(fragment);
       container.appendChild(fragment);
     }
   };
-
-  Object.defineProperty(RelationComponent, 'name', {value: `RelationComponent(${Class.name})`});
 
   return RelationComponent;
 }

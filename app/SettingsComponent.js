@@ -11,20 +11,25 @@ export default class SettingsComponent extends Component(HTMLElement) {
         <a href="#/settings/{{this.model.id}}">
           <span property="id"></span>
         </a>
-        <ul property="rdfs:label"><li></li></ul>
-        <div rel="v-s:hasApplication">
+      </h5>
+
+      <ul property="rdfs:label"><li></li></ul>
+      <div rel="v-s:hasApplication">
+        <span>
+          {{this.model.id}}
           <span property="rdfs:label"></span>
           <a property="id" href="#/app/{{this.model.id}}"></a>
-        </div>
+        </span>
+      </div>
 
-        <i rel="v-s:hasApplication">
-          {{this.model.id}}
-          <a href="#/app/{{this.model.id}}">
-            <span property="id"></span>
-          </a>
-        </i>
-      </h5>
+      <br>
+      <i rel="v-s:hasApplication">
+        {{this.model.id}}
+        <a property="id" href="#/app/{{this.model.id}}"></a>
+      </i>
+
       <hr>
+
       <div about="rdfs:label" data-shadow="true">
         <div rel="rdf:type"></div>
         <div property="rdfs:label"></div>

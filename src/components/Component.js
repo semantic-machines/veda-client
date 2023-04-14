@@ -67,9 +67,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       await this.removed();
     }
 
-    process (fragment, model = this.model) {
-      const context = Object.create(this, {model: {value: model}});
-      const evaluate = (_, e) => Function('e', `return ${e}`).call(context, e);
+    process (fragment) {
+      const evaluate = (_, e) => Function('e', `return ${e}`).call(this, e);
 
       const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
 
@@ -112,8 +111,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
               component.template = node.innerHTML;
               if (!component.hasAttribute('about')) {
-                component.model = model;
-                component.setAttribute('about', model.id);
+                component.model = this.model;
+                component.setAttribute('about', this.model.id);
               }
               node.parentNode.replaceChild(component, node);
               walker.currentNode = component;
@@ -124,8 +123,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       }
     }
   }
-
-  Object.defineProperty(Component, 'name', {value: `Component(${ElementClass.name}, ${ModelClass.name})`});
 
   return Component;
 }
