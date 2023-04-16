@@ -1,4 +1,4 @@
-import {Component, html} from '../dist/index.js';
+import {Component, html} from '../src/index.js';
 
 export default class SettingsComponent extends Component(HTMLElement) {
   pre (root) {
@@ -30,7 +30,7 @@ export default class SettingsComponent extends Component(HTMLElement) {
 
       <hr>
 
-      <div about="rdfs:label" data-shadow="true">
+      <div about="rdfs:label">
         <div rel="rdf:type"></div>
         <div property="rdfs:label"></div>
       </div>

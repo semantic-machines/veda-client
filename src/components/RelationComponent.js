@@ -1,4 +1,5 @@
 import ValueComponent from './ValueComponent.js';
+import InlineComponent from './InlineComponent.js';
 
 export default function RelationComponent (Class = HTMLElement) {
   class RelationComponent extends ValueComponent(Class) {
@@ -8,14 +9,16 @@ export default function RelationComponent (Class = HTMLElement) {
       if (!this.template) {
         return super.renderValue(value, container);
       }
-      const template = document.createElement('template');
-      template.innerHTML = this.template;
-      const fragment = template.content;
-      for (const node of fragment.children) {
-        if (!node.hasAttribute('about')) node.setAttribute('about', value.id);
+      const is = 'slot-inline-component';
+      let Class = customElements.get(is);
+      if (!Class) {
+        Class = InlineComponent(HTMLSlotElement);
+        customElements.define(is, Class, {extends: 'slot'});
       }
-      this.process(fragment);
-      container.appendChild(fragment);
+      const slot = document.createElement('slot', {is});
+      slot.template = this.template;
+      slot.model = value;
+      container.appendChild(slot);
     }
   };
 

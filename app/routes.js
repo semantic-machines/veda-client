@@ -1,4 +1,4 @@
-import {Model, Router} from '../dist/index.js';
+import {Model, Router} from '../src/index.js';
 import './AppComponent.js';
 import './SettingsComponent.js';
 

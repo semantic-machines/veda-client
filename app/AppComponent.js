@@ -1,4 +1,4 @@
-import {Component, html} from '../dist/index.js';
+import {Component, html} from '../src/index.js';
 import './SettingsComponent.js';
 
 export default class AppComponent extends Component(HTMLElement) {
@@ -17,7 +17,7 @@ export default class AppComponent extends Component(HTMLElement) {
         <ul property="rdfs:label"><li><span><slot></slot></span></li></ul>
         <hr>
         <div rel="v-s:hasSettings">
-          <veda-settings></veda-settings>
+          <veda-settings about="{{this.model.id}}"></veda-settings>
         </div>
         <hr>
         <div rel="v-s:hasSettings" data-shadow="true">
