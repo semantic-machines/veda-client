@@ -25,10 +25,7 @@ const API_FNS = [
   '/watch',
 ];
 
-/**
- * Watch cached resources changes
- */
-function watchChanges () {
+function watchChanges (CACHE) {
   if (typeof EventSource === 'undefined') return;
 
   const events = new EventSource('/watch');
@@ -52,7 +49,7 @@ function watchChanges () {
           const cache_modified = response.headers.get('last-modified');
           const event_modified = change[path];
           if (cache_modified !== event_modified) {
-            caches.open(STATIC).then((cache) => cache.delete(path)).then(() => {
+            caches.open(CACHE).then((cache) => cache.delete(path)).then(() => {
               console.log(new Date().toISOString(), 'Cached resource deleted: ', path);
             });
           }
@@ -61,14 +58,14 @@ function watchChanges () {
     });
   };
 }
-watchChanges();
+watchChanges(FILES);
 
 /**
  * Clear cached resources
  */
 self.addEventListener('install', (event) => {
   this.skipWaiting();
-  console.log(`Service worker updated, clear cache`);
+  console.log('Service worker updated, clear cache');
   event.waitUntil(
     caches.keys().then((keyList) => Promise.all(keyList.map((key) => caches.delete(key)))),
   );
@@ -106,11 +103,6 @@ function handleFetch (event, CACHE) {
   }));
 }
 
-/**
- * API call handler
- * @param {Event} event
- * @return {Response}
- */
 function handleAPI (event, CACHE) {
   const url = new URL(event.request.url);
   url.searchParams.delete('ticket');
@@ -139,6 +131,7 @@ function handleAPI (event, CACHE) {
           throw error;
         });
       });
+
   // Cache first
   case 'get_individual':
     return caches.match(url).then((cached) => cached || fetch(event.request)
@@ -160,12 +153,13 @@ function handleAPI (event, CACHE) {
           throw error;
         });
       });
+
   // Fetch only
   case 'authenticate':
   case 'get_ticket_trusted':
   case 'is_ticket_valid':
   case 'logout':
   default:
-    return fetch(event.request)
+    return fetch(event.request);
   }
 }
