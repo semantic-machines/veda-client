@@ -18,6 +18,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       this.created();
     }
 
+    root;
+
     model;
 
     created () {}
@@ -51,23 +53,29 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       template.innerHTML = html;
       const fragment = template.content;
 
-      await this.pre(fragment);
+      this.root = fragment;
 
-      this.process(fragment);
+      await this.pre();
+
+      this.process();
 
       const container = this.dataset.shadow ?
         this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot) :
         this;
       container.appendChild(fragment);
 
-      await this.post(container);
+      this.root = container;
+
+      await this.post();
     }
 
     async disconnectedCallback () {
       await this.removed();
     }
 
-    process (fragment) {
+    process () {
+      const fragment = this.root;
+
       const evaluate = (_, e) => Function('e', `return ${e}`).call(this, e);
 
       const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
