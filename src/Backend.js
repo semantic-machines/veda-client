@@ -23,6 +23,11 @@ export default class Backend {
     this.#ticket = result.id;
     this.user = result.user_uri;
     this.expires = Math.floor((result.end_time - 621355968000000000) / 10000);
+    return {
+      user: this.user,
+      ticket: this.ticket,
+      expires: this.expires
+    };
   }
 
   async authenticate (login, password, secret) {
