@@ -45,11 +45,11 @@ export default class Backend {
     return this.#call_server(params).then(this.#handleTicket.bind(this));
   }
 
-  async is_ticket_valid () {
+  async is_ticket_valid (ticket) {
     const params = {
       method: 'GET',
       url: '/is_ticket_valid',
-      ticket: this.#ticket,
+      ticket,
     };
     return this.#call_server(params);
   }
