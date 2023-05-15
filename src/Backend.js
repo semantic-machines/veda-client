@@ -25,7 +25,7 @@ export default class Backend {
     this.expires = Math.floor((result.end_time - 621355968000000000) / 10000);
     return {
       user: this.user,
-      ticket: this.ticket,
+      ticket: this.#ticket,
       expires: this.expires
     };
   }
