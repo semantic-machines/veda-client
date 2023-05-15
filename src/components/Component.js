@@ -26,11 +26,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     added () {}
 
-    pre (root) {}
+    pre () {}
 
     render () {}
 
-    post (root) {}
+    post () {}
 
     removed () {}
 
