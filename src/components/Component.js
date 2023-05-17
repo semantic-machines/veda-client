@@ -37,11 +37,16 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     async populate () {
       if (!this.model) {
         const about = this.getAttribute('about');
-        this.model = about ? new Model(about) : new Model();
+        if (about) {
+          this.model = new Model(about);
+          if (!this.model.isNew() && !this.model.isLoaded()) await this.model.load();
+          this.model.subscribe();
+        }
+      } else {
+        this.setAttribute('about', this.model.id);
+        if (!this.model.isNew() && !this.model.isLoaded()) await this.model.load();
+        this.model.subscribe();
       }
-      this.setAttribute('about', this.model.id);
-      if (!this.model.isNew() && !this.model.isLoaded()) await this.model.load();
-      this.model.subscribe();
     }
 
     async connectedCallback () {
@@ -118,9 +123,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               const component = document.createElement(tag, {is});
               [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
               component.template = node.innerHTML;
-              if (!component.hasAttribute('about')) {
+              if (!component.hasAttribute('about') && this.model) {
                 component.model = this.model;
-                component.setAttribute('about', this.model.id);
               }
               node.parentNode.replaceChild(component, node);
               walker.currentNode = component;
