@@ -166,10 +166,12 @@ export default class BaseModel extends Emitter() {
     this.isNew(false);
     this.isSync(true);
     this.isLoaded(true);
+    return this;
   }
 
   async reset () {
     await this.load(false);
+    return this;
   }
 
   async save () {
@@ -179,6 +181,7 @@ export default class BaseModel extends Emitter() {
     this.isNew(false);
     this.isSync(true);
     this.isLoaded(true);
+    return this;
   }
 
   async remove () {
@@ -187,5 +190,6 @@ export default class BaseModel extends Emitter() {
     this.isNew(true);
     this.isSync(false);
     this.isLoaded(false);
+    return this;
   }
 }
