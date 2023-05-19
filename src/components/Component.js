@@ -35,7 +35,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     removed () {}
 
     async rerender () {
-      await connectedCallback ();
+      await this.connectedCallback ();
     }
 
     async populate () {
