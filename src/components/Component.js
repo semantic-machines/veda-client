@@ -57,7 +57,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       await this.added();
       await this.populate();
 
-      const html = this.render();
+      const html = await this.render();
       const template = document.createElement('template');
       template.innerHTML = html;
       const fragment = template.content;
