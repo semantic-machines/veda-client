@@ -71,6 +71,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       const container = this.dataset.shadow ?
         this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot) :
         this;
+      container.innerHTML = '';
       container.appendChild(fragment);
 
       this.root = container;
