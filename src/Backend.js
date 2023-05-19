@@ -255,8 +255,9 @@ export default class Backend {
         });
         if (response.ok) {
           resolve(response.json());
+        } else {
+          reject(new BackendError(response.status));
         }
-        reject(new BackendError(response.status));
       } catch (error) {
         reject(error);
       } finally {
