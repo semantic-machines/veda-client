@@ -4,6 +4,8 @@ import BackendError from './BackendError.js';
 
 import {timeout} from './Util.js';
 
+const storage = sessionStorage ?? {};
+
 export default class Backend {
   static #instance;
 
@@ -15,7 +17,12 @@ export default class Backend {
   constructor (base = defaults.base) {
     if (Backend.#instance) return Backend.#instance;
 
+    const {ticket, user, expires} = storage;
+    this.#ticket = ticket;
+    this.user = user;
+    this.expires = expires;
     this.base = base;
+
     Backend.#instance = this;
   }
 
