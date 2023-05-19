@@ -30,6 +30,12 @@ export default class Backend {
     };
   }
 
+  #removeTicket () {
+    this.#ticket = undefined;
+    delete this.user;
+    delete this.expires;
+  }
+
   async authenticate (login, password, secret) {
     const params = {
       method: 'POST',
@@ -65,7 +71,7 @@ export default class Backend {
       url: '/logout',
       ticket: this.#ticket,
     };
-    return this.#call_server(params);
+    return this.#call_server(params).then(this.#removeTicket.bind(this));
   }
 
   async get_rights (uri, user_id) {
