@@ -34,6 +34,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     removed () {}
 
+    rerender () {
+      await connectedCallback ();
+    }
+
     async populate () {
       if (!this.model) {
         const about = this.getAttribute('about');
