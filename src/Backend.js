@@ -27,9 +27,9 @@ export default class Backend {
   }
 
   #handleTicket (result) {
-    this.#ticket = result.id;
-    this.user = result.user_uri;
-    this.expires = Math.floor((result.end_time - 621355968000000000) / 10000);
+    this.#ticket = storage.ticket = result.id;
+    this.user = storage.user = result.user_uri;
+    this.expires = storage.expires = Math.floor((result.end_time - 621355968000000000) / 10000);
     return {
       user: this.user,
       ticket: this.#ticket,
