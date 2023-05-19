@@ -11,12 +11,17 @@ export default function InlineComponent (Class = HTMLElement) {
       const template = document.createElement('template');
       template.innerHTML = this.template;
       const fragment = template.content;
+
+      this.root = fragment;
+
       this.process(fragment);
 
       const container = this.dataset.shadow ?
         this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot) :
         this;
       container.appendChild(fragment);
+
+      this.root = container;
     }
   };
 
