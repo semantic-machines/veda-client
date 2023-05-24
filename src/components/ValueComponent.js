@@ -4,6 +4,14 @@ export default function ValueComponent (Class = HTMLElement) {
   return class ValueComponent extends Component(Class) {
     template;
 
+    static get observedAttributes () {
+      return ['lang'];
+    }
+
+    attributeChangedCallback (name, oldValue, newValue) {
+      this.render();
+    }
+
     async connectedCallback () {
       await super.populate();
       this.prop = this.getAttribute('property') ?? this.getAttribute('rel');
@@ -26,6 +34,13 @@ export default function ValueComponent (Class = HTMLElement) {
     }
 
     renderValue (value, container) {
+      if (typeof value === 'string') {
+        const lang = document.documentElement.lang;
+        this.setAttribute('lang', lang);
+        if (value.indexOf(`^^${lang}`) > 0 || value.indexOf('^^') < 0) {
+          value = value.substring(0, value.length - value.indexOf('^^'));
+        } else return;
+      }
       const node = document.createTextNode(value.toString());
       container.appendChild(node);
     }
