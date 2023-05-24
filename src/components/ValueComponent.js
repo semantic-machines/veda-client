@@ -9,6 +9,7 @@ export default function ValueComponent (Class = HTMLElement) {
     }
 
     attributeChangedCallback (name, oldValue, newValue) {
+      if (!oldValue || oldValue === newValue) return;
       this.render();
     }
 
