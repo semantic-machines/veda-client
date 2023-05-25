@@ -13,6 +13,10 @@ export function html (strings, ...values) {
 
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
   class Component extends ElementClass {
+    static toString () {
+      return Component.name;
+    }
+
     constructor () {
       super();
       this.created();
@@ -35,14 +39,14 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     removed () {}
 
     async rerender () {
-      await this.connectedCallback ();
+      await this.connectedCallback();
     }
 
     async populate () {
       if (!this.model) {
         const about = this.getAttribute('about');
         if (about) {
-          this.model = new Model(about);
+          this.model = new ModelClass(about);
           if (!this.model.isNew() && !this.model.isLoaded()) await this.model.load();
           this.model.subscribe();
         }

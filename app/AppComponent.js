@@ -2,6 +2,10 @@ import {Component, html} from '../src/index.js';
 import './SettingsComponent.js';
 
 export default class AppComponent extends Component(HTMLElement) {
+  static toString () {
+    return 'veda-app';
+  }
+
   render () {
     return html`
       <style>
@@ -35,4 +39,4 @@ export default class AppComponent extends Component(HTMLElement) {
   }
 }
 
-customElements.define('veda-app', AppComponent);
+customElements.define(AppComponent.toString(), AppComponent);

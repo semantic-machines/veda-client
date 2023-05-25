@@ -1,8 +1,8 @@
 import {Component, html} from '../src/index.js';
 
 export default class SettingsComponent extends Component(HTMLElement) {
-  pre (root) {
-    root.append('!!!');
+  pre () {
+    this.root.append('!!!');
   }
 
   render () {
@@ -37,8 +37,8 @@ export default class SettingsComponent extends Component(HTMLElement) {
     `;
   }
 
-  post (root) {
-    root.append('>>>');
+  post () {
+    this.root.append('>>>');
   }
 }
 
