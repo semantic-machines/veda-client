@@ -39,9 +39,10 @@ export default function ValueComponent (Class = HTMLElement) {
         const lang = document.documentElement.lang;
         this.setAttribute('lang', lang);
         if (value.indexOf(`^^${lang.toUpperCase()}`) > 0) {
+          // Cut language suffix
           value = value.substring(0, value.indexOf('^^'));
         } else if (value.indexOf('^^') < 0) {
-          // Do nothing
+          // Keep value untouched
         } else return;
       }
       const node = document.createTextNode(value.toString());
