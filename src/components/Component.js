@@ -13,20 +13,9 @@ export function html (strings, ...values) {
 
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
   class Component extends ElementClass {
-    static toString () {
-      return Component.name;
-    }
-
-    constructor () {
-      super();
-      this.created();
-    }
-
     root;
 
     model;
-
-    created () {}
 
     added () {}
 
@@ -38,29 +27,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     removed () {}
 
-    async rerender () {
-      await this.connectedCallback();
-    }
-
-    async populate () {
-      if (!this.model) {
-        const about = this.getAttribute('about');
-        if (about) {
-          this.model = new ModelClass(about);
-          if (!this.model.isNew() && !this.model.isLoaded()) await this.model.load();
-          this.model.subscribe();
-        }
-      } else {
-        this.setAttribute('about', this.model.id);
-        if (!this.model.isNew() && !this.model.isLoaded()) await this.model.load();
-        this.model.subscribe();
-      }
-    }
-
-    async connectedCallback () {
-      await this.added();
-      await this.populate();
-
+    async update () {
       const html = await this.render();
       const template = document.createElement('template');
       template.innerHTML = html;
@@ -81,6 +48,27 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       this.root = container;
 
       await this.post();
+    }
+
+    async populate () {
+      if (!this.model) {
+        const about = this.getAttribute('about');
+        if (about) {
+          this.model = new ModelClass(about);
+          if (!this.model.isNew() && !this.model.isLoaded()) await this.model.load();
+          this.model.subscribe();
+        }
+      } else {
+        this.setAttribute('about', this.model.id);
+        if (!this.model.isNew() && !this.model.isLoaded()) await this.model.load();
+        this.model.subscribe();
+      }
+    }
+
+    async connectedCallback () {
+      await this.added();
+      await this.populate();
+      await this.update();
     }
 
     async disconnectedCallback () {
