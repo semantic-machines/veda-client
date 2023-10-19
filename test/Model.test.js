@@ -28,8 +28,6 @@ export default ({test, assert}) => {
     }
 
     const m1 = new Model('rdfs:Resource');
-    const m2 = new Model('rdfs:Resource');
-    assert(m1 === m2);
 
     let counter = 0;
     m1.on('beforeload afterload', () => counter++);
@@ -47,7 +45,7 @@ export default ({test, assert}) => {
       'rdf:type': {data: 'owl:Thing', type: 'Uri'},
     });
     const m4 = new Model('owl:Thing');
-    assert(m3['rdf:type'] === m4);
+    assert(m3['rdf:type'].id === m4.id);
   });
 
   test('Model #04', async () => {

@@ -2,8 +2,6 @@ import {diff, decorator} from './Util.js';
 
 import NotifyArray from './NotifyArray.js';
 
-import WeakCache from './WeakCache.js';
-
 const handler = {
   'get': function (target, prop, receiver) {
     const value = Reflect.get(target, prop, receiver);
@@ -31,17 +29,8 @@ const handler = {
 
 export default function Observable (Class, {setters = [], actions = []} = {setters: [], actions: []}) {
   class Observable extends Class {
-    static cache = new WeakCache();
-
     constructor (...args) {
       super(...args);
-      if (this.id) {
-        const cached = Observable.cache.get(this.id);
-        if (cached) return cached;
-        const proxy = new Proxy(this, handler);
-        Observable.cache.set(this.id, proxy);
-        return proxy;
-      }
       return new Proxy(this, handler);
     }
   }
