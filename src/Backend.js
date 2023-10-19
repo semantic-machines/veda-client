@@ -4,7 +4,7 @@ import BackendError from './BackendError.js';
 
 import {timeout} from './Util.js';
 
-const storage = sessionStorage ?? {};
+const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : {};
 
 export default class Backend {
   static #instance;
