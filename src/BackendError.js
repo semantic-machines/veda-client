@@ -1,10 +1,11 @@
 export default class BackendError extends Error {
-  constructor (code) {
+  constructor(code, response) {
     const message = typeof code !== 'undefined' ? `${BackendError.#errorCodes[code]}` : undefined;
     super(message);
     this.name = 'BackendError';
     this.code = code;
     this.message = message;
+    this.response = response;
   }
 
   toString () {

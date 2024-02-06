@@ -4,6 +4,8 @@ import BackendError from './BackendError.js';
 
 import {timeout} from './Util.js';
 
+import FormData from 'form-data';
+
 const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : {};
 
 export default class Backend {
@@ -33,7 +35,7 @@ export default class Backend {
     return {
       user: this.user,
       ticket: this.#ticket,
-      expires: this.expires
+      expires: this.expires,
     };
   }
 
@@ -269,7 +271,7 @@ export default class Backend {
         if (response.ok) {
           resolve(response.json());
         } else {
-          reject(new BackendError(response.status));
+          reject(new BackendError(response.status, response));
         }
       } catch (error) {
         reject(error);
@@ -278,4 +280,46 @@ export default class Backend {
       }
     });
   }
+
+  async uploadFile ({file, path, uri}) {
+    const form = new FormData();
+    form.append('path', path);
+    form.append('uri', uri);
+    form.append('file', file);
+
+    const url = new URL('/files', this.base);
+    const response = await fetch(url, {
+      method: 'POST',
+      mode: 'same-origin',
+      cache: 'no-cache',
+      credentials: 'same-origin',
+      body: form,
+      headers: {
+        'Cookie': `ticket=${ticket}`,
+      },
+    });
+    if (!response.ok) throw new BackendError(response.status, response);
+  }
+
+  async uploadBinaryFile ({name, content, path, uri}) {
+    const form = new FormData();
+    form.append('path', path);
+    form.append('uri', uri);
+    form.append('content', content);
+
+    const url = new URL('/files', this.base);
+    const response = await fetch(url, {
+      method: 'POST',
+      mode: 'same-origin',
+      cache: 'no-cache',
+      credentials: 'same-origin',
+      body: form,
+      headers: {
+        'Cookie': `ticket=${ticket}`,
+      },
+    });
+    if (!response.ok) throw new BackendError(response.status, response);
+  }
 }
+
+
