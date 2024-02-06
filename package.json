@@ -9,8 +9,8 @@
     "test": "time -p node --expose-gc test",
     "debug": "node --inspect-brk test",
     "c8": "c8 npm t",
-    "minify": "esbuild `find src \\( -name '*.js' \\)` --minify --platform=neutral --outdir=dist",
-    "build": "esbuild ./src/index.js --minify --sourcemap --bundle --platform=neutral --outdir=dist"
+    "minify": "esbuild `find src \\( -name '*.js' \\)` --minify --platform=node --outdir=dist",
+    "build": "esbuild ./src/index.js --minify --sourcemap --bundle --platform=node --outdir=dist"
   },
   "repository": {
     "type": "git",
@@ -35,6 +35,6 @@
     "eslint-plugin-security-node": "^1.1.1"
   },
   "dependencies": {
-    "isomorphic-ws": "^5.0.0"
+    "ws": "^8.16.0"
   }
 }

@@ -1,5 +1,10 @@
 import defaults from './defaults.js';
 
+import WebSocket from 'ws';
+if (!globalThis.WebSocket) {
+  globalThis.WebSocket = WebSocket;
+}
+
 import {timeout} from './Util.js';
 
 export default class Subscription {
