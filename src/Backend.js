@@ -14,6 +14,10 @@ const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : {};
 export default class Backend {
   static #instance;
 
+  static getInstance () {
+    return Backend.#instance ?? new Backend();
+  }
+
   #ticket;
   user;
   expires;
@@ -29,10 +33,6 @@ export default class Backend {
     this.base = base;
 
     Backend.#instance = this;
-  }
-
-  getInstance () {
-    return Backend.#instance ?? new Backend();
   }
 
   #handleTicket (result) {
