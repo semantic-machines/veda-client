@@ -312,7 +312,7 @@ export default class Backend {
     const form = new FormData();
     form.append('path', path);
     form.append('uri', uri);
-    form.append('content', content);
+    form.append('content', `data:text/plain;base64,${content}`);
 
     const url = new URL('/files', this.base);
     const params = {
@@ -323,6 +323,7 @@ export default class Backend {
       body: form,
       headers: {
         'Cookie': `ticket=${this.#ticket}`,
+        'Content-Type': `multipart/form-data`,
       },
     };
     const response = await fetch(url, params);
