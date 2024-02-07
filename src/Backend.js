@@ -302,7 +302,7 @@ export default class Backend {
       credentials: 'same-origin',
       body: form,
       headers: {
-        'Cookie': `ticket=${ticket}`,
+        'Cookie': `ticket=${this.#ticket}`,
       },
     });
     if (!response.ok) throw new BackendError(response.status, response);
@@ -323,7 +323,7 @@ export default class Backend {
       credentials: 'same-origin',
       body: form,
       headers: {
-        'Cookie': `ticket=${ticket}`,
+        'Cookie': `ticket=${this.#ticket}`,
       },
     });
     if (!response.ok) throw new BackendError(response.status, response);
