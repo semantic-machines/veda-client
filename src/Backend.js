@@ -316,7 +316,7 @@ export default class Backend {
     form.append('content', content);
 
     const url = new URL('/files', this.base);
-    const response = await fetch(url, {
+    const params = {
       method: 'POST',
       mode: 'same-origin',
       cache: 'no-cache',
@@ -325,7 +325,8 @@ export default class Backend {
       headers: {
         'Cookie': `ticket=${this.#ticket}`,
       },
-    });
+    };
+    const response = await fetch(url, params);
     if (!response.ok) throw new BackendError(response.status, response);
   }
 }
