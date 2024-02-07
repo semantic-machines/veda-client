@@ -31,6 +31,10 @@ export default class Backend {
     Backend.#instance = this;
   }
 
+  getInstance () {
+    return Backend.#instance ?? new Backend();
+  }
+
   #handleTicket (result) {
     this.#ticket = storage.ticket = result.id;
     this.user = storage.user = result.user_uri;
