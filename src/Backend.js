@@ -4,10 +4,10 @@ import BackendError from './BackendError.js';
 
 import {timeout} from './Util.js';
 
-import FormData from 'form-data';
+/*import FormData from 'form-data';
 if (!globalThis.FormData) {
   globalThis.FormData = FormData;
-}
+}*/
 
 const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : {};
 
