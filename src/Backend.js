@@ -304,8 +304,9 @@ export default class Backend {
     if (!response.ok) throw new BackendError(response.status, response);
   }
 
-  async uploadBinaryFile ({name, content, path, uri}) {
+  async uploadBinaryFile ({name, path, uri, content}) {
     const form = new FormData();
+    form.append('name', name);
     form.append('path', path);
     form.append('uri', uri);
     form.append('content', content);
