@@ -4,11 +4,6 @@ import BackendError from './BackendError.js';
 
 import {timeout} from './Util.js';
 
-/*import FormData from 'form-data';
-if (!globalThis.FormData) {
-  globalThis.FormData = FormData;
-}*/
-
 const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : {};
 
 export default class Backend {
@@ -288,31 +283,16 @@ export default class Backend {
     });
   }
 
-  async uploadFile ({file, path, uri}) {
+  async uploadFile ({path, uri, file}) {
     const form = new FormData();
     form.append('path', path);
     form.append('uri', uri);
-    form.append('file', file);
-
-    const url = new URL('/files', this.base);
-    const response = await fetch(url, {
-      method: 'POST',
-      mode: 'same-origin',
-      cache: 'no-cache',
-      credentials: 'same-origin',
-      body: form,
-      headers: {
-        'Cookie': `ticket=${this.#ticket}`,
-      },
-    });
-    if (!response.ok) throw new BackendError(response.status, response);
-  }
-
-  async uploadBinaryFile ({path, uri, content}) {
-    const form = new FormData();
-    form.append('path', path);
-    form.append('uri', uri);
-    form.append('content', `data:text/plain;base64,${content}`);
+    if (typeof file === 'string') {
+      const content = file.startsWith('data:text/plain;base64') ? file : `data:text/plain;base64,${file}`;
+      form.append('content', content);
+    } else {
+      form.append('file', file);
+    }
 
     const url = new URL('/files', this.base);
     const params = {
@@ -323,7 +303,6 @@ export default class Backend {
       body: form,
       headers: {
         'Cookie': `ticket=${this.#ticket}`,
-        'Content-Type': `multipart/form-data`,
       },
     };
     const response = await fetch(url, params);
