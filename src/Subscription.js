@@ -35,7 +35,7 @@ export default class Subscription {
     this.#socket = socket;
     socket.onopen = (event) => console.log(`Socket: ${event.type}`) && this.#send();
     socket.onclose = this.#connect.bind(this);
-    socket.onerror = console.log;
+    socket.onerror = (event) => console.error(error.message);
     socket.onmessage = this.#receive.bind(this);
   }
 
