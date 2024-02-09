@@ -14,8 +14,6 @@ import {genUri} from './Util.js';
 
 export default class BaseModel extends Emitter() {
   static cache = new WeakCache();
-  static subscription = new Subscription();
-  static backend = new Backend();
 
   constructor (data) {
     super();
@@ -80,7 +78,7 @@ export default class BaseModel extends Emitter() {
   }
 
   subscribe () {
-    BaseModel.subscription.subscribe(this, [this.id, this.hasValue('v-s:updateCounter') ? this['v-s:updateCounter'][0] : 0, this.updater]);
+    Subscription.subscribe(this, [this.id, this.hasValue('v-s:updateCounter') ? this['v-s:updateCounter'][0] : 0, this.updater]);
   }
 
   updater (id, updateCounter) {
@@ -89,7 +87,7 @@ export default class BaseModel extends Emitter() {
   }
 
   unsubscribe () {
-    BaseModel.subscription.unsubscribe(this.id);
+    Subscription.unsubscribe(this.id);
   }
 
   #isNew;
@@ -160,7 +158,7 @@ export default class BaseModel extends Emitter() {
 
   async load (cache = true) {
     if (this.isSync() && cache) return this;
-    const data = await BaseModel.backend.get_individual(this.id, cache);
+    const data = await Backend.get_individual(this.id, cache);
     this.apply(data);
 
     this.isNew(false);
@@ -176,7 +174,7 @@ export default class BaseModel extends Emitter() {
 
   async save () {
     if (this.isSync()) return this;
-    await BaseModel.backend.put_individual(this.toJSON());
+    await Backend.put_individual(this.toJSON());
 
     this.isNew(false);
     this.isSync(true);
@@ -185,7 +183,7 @@ export default class BaseModel extends Emitter() {
   }
 
   async remove () {
-    await BaseModel.backend.remove_individual(this.id);
+    await Backend.remove_individual(this.id);
 
     this.isNew(true);
     this.isSync(false);

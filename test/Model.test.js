@@ -2,6 +2,8 @@ import Model from '../src/Model.js';
 import Backend from '../src/Backend.js';
 import {timeout} from '../src/Util.js';
 
+Backend.init();
+
 export default ({test, assert}) => {
   test('Model #00', async () => {
     const m = new Model();
@@ -19,9 +21,8 @@ export default ({test, assert}) => {
 
   test('Model #02', async () => {
     try {
-      const backend = new Backend();
-      await backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
-      assert(backend.user === 'cfg:VedaSystem');
+      await Backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
+      assert(Backend.user === 'cfg:VedaSystem');
     } catch (error) {
       console.error('Authentication failed', error);
       throw error;
@@ -51,9 +52,8 @@ export default ({test, assert}) => {
   test('Model #04', async () => {
     for (let i = 0; i < 1; i++) {
       try {
-        const backend = new Backend();
-        await backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
-        assert(backend.user === 'cfg:VedaSystem');
+        await Backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
+        assert(Backend.user === 'cfg:VedaSystem');
       } catch (error) {
         console.error('Authentication failed', error);
         throw error;

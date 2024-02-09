@@ -7,246 +7,236 @@ import {timeout} from './Util.js';
 const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : {};
 
 export default class Backend {
-  static #instance;
+  static #ticket;
+  static user;
+  static expires;
+  static base;
 
-  static getInstance () {
-    return Backend.#instance ?? new Backend();
-  }
-
-  #ticket;
-  user;
-  expires;
-  base;
-
-  constructor (base = defaults.base) {
-    if (Backend.#instance) return Backend.#instance;
-
+  static init (base = defaults.base) {
     const {ticket, user, expires} = storage;
-    this.#ticket = ticket;
-    this.user = user;
-    this.expires = expires;
-    this.base = base;
-
-    Backend.#instance = this;
+    Backend.#ticket = ticket;
+    Backend.user = user;
+    Backend.expires = expires;
+    Backend.base = base;
   }
 
-  #handleTicket (result) {
-    this.#ticket = storage.ticket = result.id;
-    this.user = storage.user = result.user_uri;
-    this.expires = storage.expires = Math.floor((result.end_time - 621355968000000000) / 10000);
+  static #handleTicket (result) {
+    Backend.#ticket = storage.ticket = result.id;
+    Backend.user = storage.user = result.user_uri;
+    Backend.expires = storage.expires = Math.floor((result.end_time - 621355968000000000) / 10000);
     return {
-      user: this.user,
-      ticket: this.#ticket,
-      expires: this.expires,
+      user: Backend.user,
+      ticket: Backend.#ticket,
+      expires: Backend.expires,
     };
   }
 
-  #removeTicket () {
-    this.#ticket = undefined;
-    delete this.user;
-    delete this.expires;
+  static #removeTicket () {
+    Backend.#ticket = undefined;
+    delete Backend.user;
+    delete Backend.expires;
   }
 
-  async authenticate (login, password, secret) {
+  static async authenticate (login, password, secret) {
     const params = {
       method: 'POST',
       url: '/authenticate',
       data: {login, password, secret},
     };
-    return this.#call_server(params).then(this.#handleTicket.bind(this));
+    return Backend.#call_server(params).then(Backend.#handleTicket);
   }
 
-  async get_ticket_trusted (login) {
+  static async get_ticket_trusted (login) {
     const params = {
       method: 'GET',
       url: '/get_ticket_trusted',
-      ticket: this.#ticket,
+      ticket: Backend.#ticket,
       data: {login},
     };
     console.log(params);
-    return this.#call_server(params).then(this.#handleTicket.bind(this));
+    return Backend.#call_server(params).then(Backend.#handleTicket);
   }
 
-  async is_ticket_valid (ticket = this.#ticket) {
+  static async is_ticket_valid (ticket = Backend.#ticket) {
     const params = {
       method: 'GET',
       url: '/is_ticket_valid',
       ticket,
     };
-    return this.#call_server(params);
+    return Backend.#call_server(params);
   }
 
-  async logout () {
+  static async logout () {
     const params = {
       method: 'GET',
       url: '/logout',
-      ticket: this.#ticket,
+      ticket: Backend.#ticket,
     };
-    return this.#call_server(params).then(this.#removeTicket.bind(this));
+    return Backend.#call_server(params).then(Backend.#removeTicket);
   }
 
-  async get_rights (uri, user_id) {
+  static async get_rights (uri, user_id) {
     const params = {
       method: 'GET',
       url: '/get_rights',
-      ticket: this.#ticket,
+      ticket: Backend.#ticket,
       data: {uri, user_id},
     };
-    return this.#call_server(params);
+    return Backend.#call_server(params);
   }
 
-  async get_rights_origin (uri) {
+  static async get_rights_origin (uri) {
     const params = {
       method: 'GET',
       url: '/get_rights_origin',
-      ticket: this.#ticket,
+      ticket: Backend.#ticket,
       data: {uri},
     };
-    return this.#call_server(params);
+    return Backend.#call_server(params);
   }
 
-  async get_membership (uri) {
+  static async get_membership (uri) {
     const params = {
       method: 'GET',
       url: '/get_membership',
-      ticket: this.#ticket,
+      ticket: Backend.#ticket,
       data: {uri},
     };
-    return this.#call_server(params);
+    return Backend.#call_server(params);
   }
 
-  async get_operation_state (module_id, wait_op_id) {
+  static async get_operation_state (module_id, wait_op_id) {
     const params = {
       method: 'GET',
       url: '/get_operation_state',
       data: {module_id, wait_op_id},
     };
-    return this.#call_server(params);
+    return Backend.#call_server(params);
   }
 
-  async wait_module (module_id, op_id, __maxCalls = 10) {
+  static async wait_module (module_id, op_id, __maxCalls = 10) {
     if (!__maxCalls) return false;
     await timeout(250 * (10 - __maxCalls));
-    const module_op_id = await this.get_operation_state(module_id, op_id);
+    const module_op_id = await Backend.get_operation_state(module_id, op_id);
     if (module_op_id < op_id) {
-      return this.wait_module(module_id, op_id, --__maxCalls);
+      return Backend.wait_module(module_id, op_id, --__maxCalls);
     }
     return true;
   }
 
-  async query (queryStr, sort, databases, top, limit, from, sql, tries = 10) {
+  static async query (queryStr, sort, databases, top, limit, from, sql, tries = 10) {
     if (!tries) throw new BackendError(429);
     const arg = queryStr;
     const isObj = typeof arg === 'object';
     const params = {
       method: 'POST',
       url: '/query',
-      ticket: this.#ticket,
+      ticket: Backend.#ticket,
       data: isObj ? {...queryStr} : {queryStr, sort, databases, top, limit, from, sql},
     };
-    return this.#call_server(params).catch(async (backendError) => {
+    return Backend.#call_server(params).catch(async (backendError) => {
       if (backendError.code === 999) {
         await timeout(1000);
-        return this.query(queryStr, sort, databases, top, limit, from, sql, --tries);
+        return Backend.query(queryStr, sort, databases, top, limit, from, sql, --tries);
       }
       throw backendError;
     });
   }
 
-  async get_individual (uri, cache = true) {
+  static async get_individual (uri, cache = true) {
     const params = {
       method: 'GET',
       url: '/get_individual',
-      ticket: this.#ticket,
+      ticket: Backend.#ticket,
       data: {uri, ...(!cache && {'vsn': Date.now()})},
     };
-    return this.#call_server(params);
+    return Backend.#call_server(params);
   }
 
-  async get_individuals (uris) {
+  static async get_individuals (uris) {
     const params = {
       method: 'POST',
       url: '/get_individuals',
-      ticket: this.#ticket,
+      ticket: Backend.#ticket,
       data: {uris},
     };
-    return this.#call_server(params);
+    return Backend.#call_server(params);
   }
 
-  async remove_individual (uri) {
+  static async remove_individual (uri) {
     const params = {
       method: 'PUT',
       url: '/remove_individual',
-      ticket: this.#ticket,
+      ticket: Backend.#ticket,
       data: {uri},
     };
-    return this.#call_server(params);
+    return Backend.#call_server(params);
   }
 
-  async put_individual (individual) {
+  static async put_individual (individual) {
     const params = {
       method: 'PUT',
       url: '/put_individual',
-      ticket: this.#ticket,
+      ticket: Backend.#ticket,
       data: {individual},
     };
-    return this.#call_server(params);
+    return Backend.#call_server(params);
   }
 
-  async add_to_individual (individual) {
+  static async add_to_individual (individual) {
     const params = {
       method: 'PUT',
       url: '/add_to_individual',
-      ticket: this.#ticket,
+      ticket: Backend.#ticket,
       data: {individual},
     };
-    return this.#call_server(params);
+    return Backend.#call_server(params);
   }
 
-  async set_in_individual (individual) {
+  static async set_in_individual (individual) {
     const params = {
       method: 'PUT',
       url: '/set_in_individual',
-      ticket: this.#ticket,
+      ticket: Backend.#ticket,
       data: {individual},
     };
-    return this.#call_server(params);
+    return Backend.#call_server(params);
   }
 
-  async remove_from_individual (individual) {
+  static async remove_from_individual (individual) {
     const params = {
       method: 'PUT',
       url: '/remove_from_individual',
-      ticket: this.#ticket,
+      ticket: Backend.#ticket,
       data: {individual},
     };
-    return this.#call_server(params);
+    return Backend.#call_server(params);
   }
 
-  async put_individuals (individuals) {
+  static async put_individuals (individuals) {
     const params = {
       method: 'PUT',
       url: '/put_individuals',
-      ticket: this.#ticket,
+      ticket: Backend.#ticket,
       data: {individuals},
     };
-    return this.#call_server(params);
+    return Backend.#call_server(params);
   }
 
-  #pending = {};
+  static #pending = {};
 
   /**
    * Common server call function
    * @param {Object} params
    * @return {Promise<Object>}
    */
-  async #call_server (params) {
+  static async #call_server (params) {
     const key = JSON.stringify(params);
-    if (this.#pending[key]) return this.#pending[key];
+    if (Backend.#pending[key]) return Backend.#pending[key];
 
-    return this.#pending[key] = new Promise(async (resolve, reject) => {
+    return Backend.#pending[key] = new Promise(async (resolve, reject) => {
       try {
-        const url = new URL(params.url, this.base);
+        const url = new URL(params.url, Backend.base);
         if (params.method === 'GET' && params.data) {
           for (const prop in params.data) {
             if (typeof params.data[prop] === 'undefined') {
@@ -278,12 +268,12 @@ export default class Backend {
       } catch (error) {
         reject(error);
       } finally {
-        delete this.#pending[key];
+        delete Backend.#pending[key];
       }
     });
   }
 
-  async uploadFile ({path, uri, file}) {
+  static async uploadFile ({path, uri, file}) {
     const form = new FormData();
     form.append('path', path);
     form.append('uri', uri);
@@ -294,7 +284,7 @@ export default class Backend {
       form.append('file', file);
     }
 
-    const url = new URL('/files', this.base);
+    const url = new URL('/files', Backend.base);
     const params = {
       method: 'POST',
       mode: 'same-origin',
@@ -302,7 +292,7 @@ export default class Backend {
       credentials: 'same-origin',
       body: form,
       headers: {
-        'Cookie': `ticket=${this.#ticket}`,
+        'Cookie': `ticket=${Backend.#ticket}`,
       },
     };
     const response = await fetch(url, params);

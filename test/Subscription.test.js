@@ -1,5 +1,8 @@
+import Subscription from '../src/Subscription.js';
 import Model from '../src/Model.js';
 import {timeout} from '../src/Util.js';
+
+Subscription.init();
 
 export default ({test, assert}) => {
   test('Subscription #01', async () => {
