@@ -143,6 +143,16 @@ export default class Backend {
     });
   }
 
+  static async stored_query (data) {
+    const params = {
+      method: 'POST',
+      url: '/stored_query',
+      ticket: Backend.#ticket,
+      data,
+    };
+    return Backend.#call_server(params);
+  }
+
   static async get_individual (uri, cache = true) {
     const params = {
       method: 'GET',
