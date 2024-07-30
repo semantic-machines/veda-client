@@ -30,4 +30,18 @@ export default ({test, assert}) => {
     assert(modifiedEmitted === 3);
     assert(idEmitted === 3);
   });
+
+  test('NotifyArray', async () => {
+    const array = new NotifyArray(null , null, "123123123");
+    const array1 = new NotifyArray(null , null, 6904324967);
+    const array2 = new NotifyArray(null , null, 6904324967);
+    console.log(array);
+    assert(array.length === 1);
+    assert(array1.length === 1);
+    assert(array2.length === 1);
+
+    assert(array[0] === "123123123");
+    assert(array1[0] === 6904324967);
+    assert(array2[0] === 6904324967);
+  })
 };

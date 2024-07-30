@@ -30,11 +30,11 @@ export default class NotifyArray extends Array {
   }
 
   constructor (observable, prop, ...args) {
-    super(...args);
-    // Array(number) workaround
     if (args.length === 1 && Number.isInteger(args[0])) {
-      this.length = 1;
+      super();
       this[0] = args[0];
+    } else {
+      super(...args);
     }
     this.#observable = observable;
     this.#prop = prop;
