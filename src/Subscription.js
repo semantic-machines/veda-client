@@ -8,9 +8,7 @@ if (!globalThis.WebSocket) {
 import {timeout} from './Util.js';
 
 export default class Subscription {
-  static #instance;
-
-  static #address;
+  static #address = defaults.ccus;
   static #socket;
   static #buffer = [];
   static #subscriptions = new Map();
