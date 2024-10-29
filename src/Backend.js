@@ -10,7 +10,7 @@ export default class Backend {
   static #ticket;
   static user;
   static expires;
-  static base;
+  static base = defaults.base;
 
   static init (base = defaults.base) {
     const {ticket, user, expires} = storage;
