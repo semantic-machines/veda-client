@@ -132,7 +132,7 @@ export default class Backend {
       method: 'POST',
       url: '/query',
       ticket: Backend.#ticket,
-      data: isObj ? {...queryStr} : {queryStr, sort, databases, top, limit, from, sql},
+      data: isObj ? {...queryStr} : {query: queryStr, sort, databases, top, limit, from, sql},
     };
     return Backend.#call_server(params).catch(async (backendError) => {
       if (backendError.code === 999) {
