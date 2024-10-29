@@ -1,6 +1,6 @@
-import WebSocket from 'ws';
+import ImportedWebSocket from 'ws';
 if (!globalThis.WebSocket) {
-  globalThis.WebSocket = WebSocket;
+  globalThis.WebSocket = ImportedWebSocket;
 }
 
 import baretest from 'baretest';
