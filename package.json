@@ -8,7 +8,7 @@
   "scripts": {
     "test": "time -p node --expose-gc test",
     "debug": "node --inspect-brk test",
-    "c8": "c8 npm t",
+    "c8": "time -p c8 node --expose-gc test",
     "minify": "esbuild `find src \\( -name '*.js' \\)` --minify --platform=node --outdir=dist",
     "build": "esbuild ./src/index.js --minify --sourcemap --bundle --platform=node --outdir=dist"
   },
@@ -23,16 +23,12 @@
   },
   "homepage": "https://github.com/semantic-machines/veda-client#readme",
   "devDependencies": {
+    "@eslint/js": "^9.13.0",
     "baretest": "^2.0.0",
-    "c8": "^7.13.0",
-    "esbuild": "^0.17.12",
-    "eslint": "^8.35.0",
-    "eslint-config-google": "^0.14.0",
-    "eslint-config-standard": "^17.0.0",
-    "eslint-plugin-import": "^2.27.5",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-promise": "^6.1.1",
-    "eslint-plugin-security-node": "^1.1.1"
+    "c8": "^10.1.2",
+    "esbuild": "^0.24.0",
+    "eslint": "^9.13.0",
+    "globals": "^15.11.0"
   },
   "dependencies": {
     "ws": "^8.18.0"

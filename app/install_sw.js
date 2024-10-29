@@ -18,7 +18,7 @@ if ('serviceWorker' in navigator) {
     .then((registration) => {
       console.log('Service worker registered:', registration.scope);
     })
-    .catch((error) => console.error('Service worker registration failed'));
+    .catch((error) => console.error('Service worker registration failed', error));
 
   // Install application prompt
   const showAddToHomeScreen = () => {

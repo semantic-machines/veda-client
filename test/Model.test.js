@@ -201,9 +201,7 @@ export default ({test, assert}) => {
     const m1 = new Model();
 
     let counter = 0;
-    const handler1 = (...args) => {
-      counter++;
-    };
+    const handler1 = () => counter++;
     m1.on('rdf:type', handler1);
     m1['rdf:type'] = ['owl:Thing'];
     m1['rdf:type'][1] = 'v-s:Thing';

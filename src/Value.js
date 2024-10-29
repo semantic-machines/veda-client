@@ -34,7 +34,7 @@ export default class Value {
   static reg_uri = /^[a-z][a-z-0-9]*:([a-zA-Z0-9-_])*$/;
   static reg_date = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
   static reg_ml_string = /^(.*)\^\^([a-z]{2})$/ims;
-  static reg_round_decimal = /^-?\d+([\.\,])0$/;
+  static reg_round_decimal = /^-?\d+([.,])0$/;
 
   static serialize (value) {
     if (typeof value === 'number' ) {

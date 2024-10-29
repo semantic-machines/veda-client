@@ -4,7 +4,7 @@ import {timeout} from '../src/Util.js';
 
 Subscription.init();
 
-export default ({test, assert}) => {
+export default ({test}) => {
   test('Subscription #01', async () => {
     const m = new Model();
     m.subscribe();
