@@ -40,7 +40,7 @@ export default class Backend {
   static async authenticate (login, password, secret) {
     const params = {
       method: 'POST',
-      url: '/authenticate',
+      url: 'authenticate',
       data: {login, password, secret},
     };
     return Backend.#call_server(params).then(Backend.#handleTicket);
@@ -49,7 +49,7 @@ export default class Backend {
   static async get_ticket_trusted (login) {
     const params = {
       method: 'GET',
-      url: '/get_ticket_trusted',
+      url: 'get_ticket_trusted',
       ticket: Backend.#ticket,
       data: {login},
     };
@@ -60,7 +60,7 @@ export default class Backend {
   static async is_ticket_valid (ticket = Backend.#ticket) {
     const params = {
       method: 'GET',
-      url: '/is_ticket_valid',
+      url: 'is_ticket_valid',
       ticket,
     };
     return Backend.#call_server(params);
@@ -69,7 +69,7 @@ export default class Backend {
   static async logout () {
     const params = {
       method: 'GET',
-      url: '/logout',
+      url: 'logout',
       ticket: Backend.#ticket,
     };
     return Backend.#call_server(params).then(Backend.#removeTicket);
@@ -78,7 +78,7 @@ export default class Backend {
   static async get_rights (uri, user_id) {
     const params = {
       method: 'GET',
-      url: '/get_rights',
+      url: 'get_rights',
       ticket: Backend.#ticket,
       data: {uri, user_id},
     };
@@ -88,7 +88,7 @@ export default class Backend {
   static async get_rights_origin (uri) {
     const params = {
       method: 'GET',
-      url: '/get_rights_origin',
+      url: 'get_rights_origin',
       ticket: Backend.#ticket,
       data: {uri},
     };
@@ -98,7 +98,7 @@ export default class Backend {
   static async get_membership (uri) {
     const params = {
       method: 'GET',
-      url: '/get_membership',
+      url: 'get_membership',
       ticket: Backend.#ticket,
       data: {uri},
     };
@@ -108,7 +108,7 @@ export default class Backend {
   static async get_operation_state (module_id, wait_op_id) {
     const params = {
       method: 'GET',
-      url: '/get_operation_state',
+      url: 'get_operation_state',
       data: {module_id, wait_op_id},
     };
     return Backend.#call_server(params);
@@ -130,7 +130,7 @@ export default class Backend {
     const isObj = typeof arg === 'object';
     const params = {
       method: 'POST',
-      url: '/query',
+      url: 'query',
       ticket: Backend.#ticket,
       data: isObj ? {...queryStr} : {query: queryStr, sort, databases, top, limit, from, sql},
     };
@@ -146,7 +146,7 @@ export default class Backend {
   static async stored_query (data) {
     const params = {
       method: 'POST',
-      url: '/stored_query',
+      url: 'stored_query',
       ticket: Backend.#ticket,
       data,
     };
@@ -156,7 +156,7 @@ export default class Backend {
   static async get_individual (uri, cache = true) {
     const params = {
       method: 'GET',
-      url: '/get_individual',
+      url: 'get_individual',
       ticket: Backend.#ticket,
       data: {uri, ...(!cache && {'vsn': Date.now()})},
     };
@@ -166,7 +166,7 @@ export default class Backend {
   static async get_individuals (uris) {
     const params = {
       method: 'POST',
-      url: '/get_individuals',
+      url: 'get_individuals',
       ticket: Backend.#ticket,
       data: {uris},
     };
@@ -176,7 +176,7 @@ export default class Backend {
   static async remove_individual (uri) {
     const params = {
       method: 'PUT',
-      url: '/remove_individual',
+      url: 'remove_individual',
       ticket: Backend.#ticket,
       data: {uri},
     };
@@ -186,7 +186,7 @@ export default class Backend {
   static async put_individual (individual) {
     const params = {
       method: 'PUT',
-      url: '/put_individual',
+      url: 'put_individual',
       ticket: Backend.#ticket,
       data: {individual},
     };
@@ -196,7 +196,7 @@ export default class Backend {
   static async add_to_individual (individual) {
     const params = {
       method: 'PUT',
-      url: '/add_to_individual',
+      url: 'add_to_individual',
       ticket: Backend.#ticket,
       data: {individual},
     };
@@ -206,7 +206,7 @@ export default class Backend {
   static async set_in_individual (individual) {
     const params = {
       method: 'PUT',
-      url: '/set_in_individual',
+      url: 'set_in_individual',
       ticket: Backend.#ticket,
       data: {individual},
     };
@@ -216,7 +216,7 @@ export default class Backend {
   static async remove_from_individual (individual) {
     const params = {
       method: 'PUT',
-      url: '/remove_from_individual',
+      url: 'remove_from_individual',
       ticket: Backend.#ticket,
       data: {individual},
     };
@@ -226,7 +226,7 @@ export default class Backend {
   static async put_individuals (individuals) {
     const params = {
       method: 'PUT',
-      url: '/put_individuals',
+      url: 'put_individuals',
       ticket: Backend.#ticket,
       data: {individuals},
     };
@@ -294,7 +294,7 @@ export default class Backend {
       form.append('file', file);
     }
 
-    const url = new URL('/files', Backend.base);
+    const url = new URL('files', Backend.base);
     const params = {
       method: 'POST',
       mode: 'same-origin',
