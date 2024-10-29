@@ -1,8 +1,8 @@
 import defaults from './defaults.js';
 
-import WebSocket from 'ws';
+import ImportedWebSocket from 'ws';
 if (!globalThis.WebSocket) {
-  globalThis.WebSocket = WebSocket;
+  globalThis.WebSocket = ImportedWebSocket;
 }
 
 import {timeout} from './Util.js';
