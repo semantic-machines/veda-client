@@ -13,6 +13,8 @@ export function html (strings, ...values) {
 
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
   class Component extends ElementClass {
+    tag;
+
     root;
 
     model;
@@ -26,6 +28,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     post () {}
 
     removed () {}
+
+    toString() {
+      return this.tag;
+    }
 
     async update () {
       const html = await this.render();
@@ -89,7 +95,13 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           node.nodeValue = node.nodeValue.replaceAll(/{{(.*?)}}/gs, evaluate);
         } else {
           for (const attr of node.attributes) {
-            attr.nodeValue = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, evaluate);
+            if (attr.name.startsWith('@')) {
+              const eventName = attr.name.slice(1);
+              const handler = this[attr.value].bind(this);
+              node.addEventListener(eventName, handler);
+            } else {
+              attr.nodeValue = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, evaluate);
+            }
           }
           if (node.hasAttribute('about') && !node.hasAttribute('property') && !node.hasAttribute('rel')) {
             const tag = node.tagName.toLowerCase();
