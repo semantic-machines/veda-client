@@ -29,8 +29,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     removed () {}
 
-    toString() {
-      return this.tag;
+    static toString() {
+      return Component.tag;
     }
 
     async update () {
