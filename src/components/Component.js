@@ -15,6 +15,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
   class Component extends ElementClass {
     static tag = 'veda-component';
 
+    static toString() {
+      return Component.tag;
+    }
+
     root;
 
     model;
@@ -28,10 +32,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     post () {}
 
     removed () {}
-
-    static toString() {
-      return Component.tag;
-    }
 
     async update () {
       const html = await this.render();
