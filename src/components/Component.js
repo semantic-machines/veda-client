@@ -16,7 +16,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     static tag = 'veda-component';
 
     static toString() {
-      return Component.tag;
+      return this.tag;
     }
 
     root;
