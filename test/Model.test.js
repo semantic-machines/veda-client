@@ -211,4 +211,18 @@ export default ({test, assert}) => {
     m1.addValue('rdf:type', 'v-s:Thing');
     assert(counter === 4);
   });
+
+  test('Model #06', async () => {
+    const m = new Model();
+
+    m['rdfs:label'] = [1];
+    assert(m['rdfs:label'][0] === 1);
+  });
+
+  test('Model #07', async () => {
+    const m = new Model();
+
+    m['rdfs:label'] = [0.5];
+    assert(m['rdfs:label'][0] === 0.5);
+  });
 };
