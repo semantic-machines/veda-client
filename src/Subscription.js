@@ -6,7 +6,13 @@ if (!globalThis.WebSocket) {
 import {timeout} from './Util.js';
 
 export default class Subscription {
-  static #address = typeof location !== 'undefined' ? (location.origin.startsWith('https') ? `wss://${location.host}` : `ws://${location.hostname}:8088`) : 'ws://localhost:8088';
+  static #address = typeof location !== 'undefined'
+  ? location.protocol === 'https:'
+    ? `wss://${location.host}`
+    : location.port
+      ? `ws://${location.hostname}:8088`
+      : `ws://${location.host}`
+  : 'ws://localhost:8088';
   static #socket;
   static #buffer = [];
   static #subscriptions = new Map();
