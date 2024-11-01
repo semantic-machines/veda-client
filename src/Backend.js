@@ -1,5 +1,3 @@
-import defaults from './defaults.js';
-
 import BackendError from './BackendError.js';
 
 import {timeout} from './Util.js';
@@ -10,9 +8,9 @@ export default class Backend {
   static #ticket;
   static user;
   static expires;
-  static base = defaults.base;
+  static base = typeof location !== 'undefined' ? location.origin : 'http://localhost:8080';
 
-  static init (base = defaults.base) {
+  static init (base = this.base) {
     const {ticket, user, expires} = storage;
     Backend.#ticket = ticket;
     Backend.user = user;

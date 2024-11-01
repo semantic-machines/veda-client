@@ -1,5 +1,3 @@
-import defaults from './defaults.js';
-
 import ImportedWebSocket from 'ws';
 if (!globalThis.WebSocket) {
   globalThis.WebSocket = ImportedWebSocket;
@@ -8,7 +6,7 @@ if (!globalThis.WebSocket) {
 import {timeout} from './Util.js';
 
 export default class Subscription {
-  static #address = defaults.ccus;
+  static #address = typeof location !== 'undefined' ? (location.origin.startsWith('https') ? `wss://${location.host}` : `ws://${location.host}`) : 'ws://localhost:8088';
   static #socket;
   static #buffer = [];
   static #subscriptions = new Map();
@@ -16,7 +14,7 @@ export default class Subscription {
     Subscription.unsubscribe(id);
   });
 
-  static init (address = defaults.ccus) {
+  static init (address = this.#address) {
     Subscription.#address = address;
     Subscription.#connect();
   }
