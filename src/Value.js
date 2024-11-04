@@ -23,7 +23,7 @@ export default class Value {
     } else if (value.type === 'Datetime') {
       return new Date(Date.parse(value.data));
     } else if (value.type === 'Decimal') {
-      return parseFloat(value.data);
+      return value.data;
     } else if (value.type === 'Integer') {
       return parseInt(value.data);
     } else if (value.type === 'Boolean') {
@@ -38,7 +38,9 @@ export default class Value {
 
   static serialize (value) {
     if (typeof value === 'number' ) {
-      return new Value(value, Number.isInteger(value) ? 'Integer' : 'Decimal');
+      return Number.isInteger(value)
+        ? new Value(value, 'Integer')
+        : new Value(value.toString(), 'Decimal');
     } else if (typeof value === 'boolean') {
       return new Value(value, 'Boolean');
     } else if (value instanceof Date) {
@@ -53,7 +55,7 @@ export default class Value {
       } else if ( Value.reg_ml_string.test(value) ) {
         return new Value(value.replace(Value.reg_ml_string, '$1'), 'String', value.replace(Value.reg_ml_string, '$2').toUpperCase());
       } else if ( Value.reg_round_decimal.test(value) ) {
-        return new Value(parseFloat(value), 'Decimal');
+        return new Value(value, 'Decimal');
       } else if (value.length) {
         return new Value(value.valueOf(), 'String', value.language);
       }

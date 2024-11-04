@@ -17,8 +17,8 @@ export default ({test, assert}) => {
     assert(1 === parse(value));
 
     value = new Value(1.1);
-    assert(value.data === 1.1 && value.type === 'Decimal');
-    assert(1.1 === parse(value));
+    assert(value.data === '1.1' && value.type === 'Decimal');
+    assert('1.1' === parse(value));
 
     value = new Value('test');
     assert(value.data == 'test' && value.type === 'String');
@@ -56,7 +56,8 @@ export default ({test, assert}) => {
     assert(value.data === '2023-03-10T06:34:26Z' && value.type === 'Datetime');
 
     value = new Value('10.0');
-    assert(value.data === 10 && value.type === 'Decimal');
+    console.log(value.data, typeof value.data);
+    assert(value.data === '10.0' && value.type === 'Decimal');
 
     const value1 = new Value('test^ru');
     const value2 = new Value('test^ru');
