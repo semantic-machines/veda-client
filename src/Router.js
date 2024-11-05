@@ -24,10 +24,22 @@ export default class Router {
   }
 
   route (to) {
-    this.#routes.forEach(([p, fn, re]) => {
-      const [match, ...vars] = to.match(re) ?? [];
-      if (match) fn(...vars);
-    });
+    try {
+      let matched = false;
+      this.#routes.forEach(([p, fn, re]) => {
+        const [match, ...vars] = to.match(re) ?? [];
+        if (match) {
+          matched = true;
+          fn(...vars);
+        }
+      });
+      
+      if (!matched) {
+        this.#lostHandler(to);
+      }
+    } catch (err) {
+      this.#errorHandler(err);
+    }
   }
 
   add (pattern, fn) {
@@ -52,16 +64,32 @@ export default class Router {
     this.#routes = [];
   }
 
-  #token_re = /^(#|:?\w+)$/;
+  #token_re = /^(#|:?\w+|\*|\*\*)$/;
 
   #parse (pattern) {
     const tokens = decodeURIComponent(pattern).split('/').filter(Boolean);
     const re = new RegExp(
       '^' + tokens.map((token) => {
         if (!this.#token_re.test(token)) throw Error('invalid token: ' + token);
-        return token.indexOf(':') === 0 ? `(?<${token.slice(1)}>[^/]+)` : token;
-      }).join('/'),
+        
+        if (token === '*') return '[^/]+';
+        if (token === '**') return '.*';
+        if (token.startsWith(':')) return `(?<${token.slice(1)}>[^/]+)`;
+        
+        return token;
+      }).join('/') + '$',
     );
     return re;
+  }
+
+  #lostHandler = () => {};
+  #errorHandler = (err) => console.error(err);
+
+  onLost (handler) {
+    this.#lostHandler = handler;
+  }
+
+  onError (handler) {
+    this.#errorHandler = handler;
   }
 }
