@@ -24,22 +24,12 @@ export default class Router {
   }
 
   route (to) {
-    try {
-      let matched = false;
-      this.#routes.forEach(([p, fn, re]) => {
-        const [match, ...vars] = to.match(re) ?? [];
-        if (match) {
-          matched = true;
-          fn(...vars);
-        }
-      });
-      
-      if (!matched) {
-        this.#lostHandler(to);
+    this.#routes.forEach(([p, fn, re]) => {
+      const [match, ...vars] = to.match(re) ?? [];
+      if (match) {
+        fn(...vars);
       }
-    } catch (err) {
-      this.#errorHandler(err);
-    }
+    });
   }
 
   add (pattern, fn) {
@@ -80,16 +70,5 @@ export default class Router {
       }).join('/') + '$',
     );
     return re;
-  }
-
-  #lostHandler = () => {};
-  #errorHandler = (err) => console.error(err);
-
-  onLost (handler) {
-    this.#lostHandler = handler;
-  }
-
-  onError (handler) {
-    this.#errorHandler = handler;
   }
 }
