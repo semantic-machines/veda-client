@@ -23,11 +23,11 @@
   },
   "homepage": "https://github.com/semantic-machines/veda-client#readme",
   "devDependencies": {
-    "@eslint/js": "^9.13.0",
+    "@eslint/js": "^9.14.0",
     "baretest": "^2.0.0",
     "c8": "^10.1.2",
     "esbuild": "^0.24.0",
-    "eslint": "^9.13.0",
+    "eslint": "^9.14.0",
     "globals": "^15.11.0"
   },
   "dependencies": {

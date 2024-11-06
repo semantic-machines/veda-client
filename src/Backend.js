@@ -231,54 +231,38 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
-  static #pending = {};
-
   /**
    * Common server call function
    * @param {Object} params
    * @return {Promise<Object>}
    */
   static async #call_server (params) {
-    const key = JSON.stringify(params);
-    if (Backend.#pending[key]) return Backend.#pending[key];
-
-    return Backend.#pending[key] = new Promise(async (resolve, reject) => {
-      try {
-        const url = new URL(params.url, Backend.base);
-        if (params.method === 'GET' && params.data) {
-          for (const prop in params.data) {
-            if (typeof params.data[prop] === 'undefined') {
-              delete params.data[prop];
-            }
-          }
-          url.search = new URLSearchParams(params.data).toString();
+    const url = new URL(params.url, Backend.base);
+    if (params.method === 'GET' && params.data) {
+      for (const prop in params.data) {
+        if (typeof params.data[prop] === 'undefined') {
+          delete params.data[prop];
         }
-        if (params.ticket) {
-          url.searchParams.append('ticket', params.ticket);
-        }
-        const response = await fetch(url, {
-          method: params.method,
-          mode: 'same-origin',
-          cache: 'no-cache',
-          credentials: 'same-origin',
-          ...(params.method !== 'GET' && {
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            ...(params.data && {body: JSON.stringify(params.data)}),
-          }),
-        });
-        if (response.ok) {
-          resolve(response.json());
-        } else {
-          reject(new BackendError(response.status, response));
-        }
-      } catch (error) {
-        reject(error);
-      } finally {
-        delete Backend.#pending[key];
       }
+      url.search = new URLSearchParams(params.data).toString();
+    }
+    if (params.ticket) {
+      url.searchParams.append('ticket', params.ticket);
+    }
+    const response = await fetch(url, {
+      method: params.method,
+      mode: 'same-origin',
+      cache: 'no-cache',
+      credentials: 'same-origin',
+      ...(params.method !== 'GET' && {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        ...(params.data && {body: JSON.stringify(params.data)}),
+      }),
     });
+    if (!response.ok) throw new BackendError(response.status, response);
+    return response.json();
   }
 
   static async uploadFile ({path, uri, file}) {

@@ -82,8 +82,12 @@ export default class BaseModel extends Emitter() {
   }
 
   updater (id, updateCounter) {
+    const currentUpdateCounter = this['v-s:updateCounter'][0];
+    if (updateCounter === currentUpdateCounter) return;
     const model = new BaseModel(id);
-    model.reset().catch(() => {});
+    model.reset().catch((error) => {
+      console.error(`Error resetting model ${id}, ${currentUpdateCounter} -> ${updateCounter}`, error);
+    });
   }
 
   unsubscribe () {
@@ -156,38 +160,98 @@ export default class BaseModel extends Emitter() {
     return this.getPropertyChain.apply(Array.isArray(this[prop]) ? this[prop][0] : this[prop], props);
   }
 
-  async load (cache = true) {
-    if (this.isSync() && cache) return this;
-    const data = await Backend.get_individual(this.id, cache);
-    this.apply(data);
+  #loadPromise = null;
 
-    this.isNew(false);
-    this.isSync(true);
-    this.isLoaded(true);
-    return this;
+  async load (cache = true) {
+    if (this.#loadPromise) {
+      return this.#loadPromise;
+    }
+
+    if (this.isSync() && cache) {
+      return this;
+    }
+
+    this.#loadPromise = (async () => {
+      try {
+        const data = await Backend.get_individual(this.id, cache);
+        this.apply(data);
+
+        this.isNew(false);
+        this.isSync(true);
+        this.isLoaded(true);
+        return this;
+      } finally {
+        this.#loadPromise = null;
+      }
+    })();
+
+    return this.#loadPromise;
   }
+
+  #resetPromise = null;
 
   async reset () {
-    await this.load(false);
-    return this;
+    if (this.#resetPromise) {
+      return this.#resetPromise;
+    }
+
+    this.#resetPromise = (async () => {
+      try {
+        await this.load(false);
+        return this;
+      } finally {
+        this.#resetPromise = null;
+      }
+    })();
+
+    return this.#resetPromise;
   }
+
+  #savePromise = null;
 
   async save () {
-    if (this.isSync()) return this;
-    await Backend.put_individual(this.toJSON());
+    if (this.#savePromise) {
+      return this.#savePromise;
+    }
 
-    this.isNew(false);
-    this.isSync(true);
-    this.isLoaded(true);
-    return this;
+    if (this.isSync()) return this;
+
+    this.#savePromise = (async () => {
+      try {
+        await Backend.put_individual(this.toJSON());
+
+        this.isNew(false);
+        this.isSync(true);
+        this.isLoaded(true);
+        return this;
+      } finally {
+        this.#savePromise = null;
+      }
+    })();
+
+    return this.#savePromise;
   }
 
-  async remove () {
-    await Backend.remove_individual(this.id);
+  #removePromise = null;
 
-    this.isNew(true);
-    this.isSync(false);
-    this.isLoaded(false);
-    return this;
+  async remove () {
+    if (this.#removePromise) {
+      return this.#removePromise;
+    }
+
+    this.#removePromise = (async () => {
+      try {
+        await Backend.remove_individual(this.id);
+
+        this.isNew(true);
+        this.isSync(false);
+        this.isLoaded(false);
+        return this;
+      } finally {
+        this.#removePromise = null;
+      }
+    })();
+
+    return this.#removePromise;
   }
 }

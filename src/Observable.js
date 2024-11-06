@@ -71,7 +71,7 @@ export default function Observable (Class, {setters = [], actions = []} = {sette
 
   actions.forEach((name) => {
     if (typeof Class.prototype[name] === 'function') {
-      Observable.prototype[name] = actionDecorator(Observable.prototype.hasOwnProperty(name) ? Observable.prototype[name] : Class.prototype[name]);
+      Observable.prototype[name] = actionDecorator(Object.prototype.hasOwnProperty.call(Observable.prototype, name) ? Observable.prototype[name] : Class.prototype[name]);
     }
   });
 

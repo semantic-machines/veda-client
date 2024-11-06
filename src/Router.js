@@ -24,7 +24,7 @@ export default class Router {
   }
 
   route (to) {
-    this.#routes.forEach(([p, fn, re]) => {
+    this.#routes.forEach(([, fn, re]) => {
       const [match, ...vars] = to.match(re) ?? [];
       if (match) fn(...vars);
     });
@@ -45,7 +45,7 @@ export default class Router {
   }
 
   check (to) {
-    return this.#routes.filter(([p, fn, re]) => re.test(to));
+    return this.#routes.filter(([, , re]) => re.test(to));
   }
 
   clear () {
