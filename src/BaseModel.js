@@ -82,7 +82,7 @@ export default class BaseModel extends Emitter() {
   }
 
   updater (id, updateCounter) {
-    const currentUpdateCounter = this['v-s:updateCounter'][0];
+    const currentUpdateCounter = this['v-s:updateCounter']?.[0] ?? 0;
     if (updateCounter === currentUpdateCounter) return;
     const model = new BaseModel(id);
     model.reset().catch((error) => {
