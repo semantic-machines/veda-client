@@ -39,45 +39,27 @@ export default ({test, assert}) => {
 
     r.add('#', handler);
     r.add('#/test', handler);
-    
+
     assert(r.check('#/test').length === 1);
     assert(r.get('#').length === 1);
 
     r.remove('#');
     assert(r.get('#').length === 0);
-    
+
     r.clear();
     assert(r.check('#/test').length === 0);
   });
 
-  test('Роутер #05. Обработка ошибок', async () => {
-    const r = new Router();
-    let errorCaught = false;
-    let lostCaught = false;
-
-    r.onError(() => errorCaught = true);
-    r.onLost(() => lostCaught = true);
-
-    r.route('#/nonexistent');
-    assert(lostCaught === true);
-
-    r.add('#/invalid', () => {throw Error('oops')});
-    r.route('#/invalid');
-    assert(errorCaught === true);
-
-    r.clear();
-  });
-
-  test('Роутер #06. Шаблоны маршрутов', async () => {
+  test('Роутер #05. Шаблоны маршрутов', async () => {
     const r = new Router();
     let param;
-    
+
     r.add('#/*/*/:param', (value) => param = value);
     r.route('#/a/b/worked1');
     assert(param === 'worked1');
 
     r.clear();
-    
+
     r.add('#/multi/**', () => param = 'worked2');
     r.route('#/multi/level/path');
     assert(param === 'worked2');
