@@ -50,8 +50,6 @@ export function decorator (fn, ...args) {
   return fn.constructor.name === 'AsyncFunction' ? asyncDecorator(fn, ...args) : syncDecorator(fn, ...args);
 }
 
-export function noop () {}
-
 export function timeout (ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
