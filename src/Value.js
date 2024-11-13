@@ -23,7 +23,11 @@ export default class Value {
     } else if (value.type === 'Datetime') {
       return new Date(Date.parse(value.data));
     } else if (value.type === 'Decimal') {
-      return parseFloat(value.data);
+      let number = parseFloat(value.data);
+      if (Number.isInteger(number)) {
+        number = number + '.0';
+      }
+      return number;
     } else if (value.type === 'Integer') {
       return parseInt(value.data);
     } else if (value.type === 'Boolean') {
