@@ -11,8 +11,6 @@ export function html (strings, ...values) {
   return result.replace(/\s+/g, ' ').replace(/\s</g, '<').replace(/<!--.*?-->/g, '').trimEnd();
 }
 
-const noop = () => {};
-
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
   class Component extends ElementClass {
     static tag = 'veda-component';
@@ -25,18 +23,18 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     model;
 
-    added = noop;
+    added() {}
 
-    pre = noop;
+    pre() {}
 
-    render = noop;
+    render() {}
 
-    post = noop;
+    post() {}
 
-    removed = noop;
+    removed() {}
 
     async update () {
-      let html = this.render !== noop ? this.render() : '';
+      let html = this.render();
       if (html instanceof Promise) html = await html;
       const template = document.createElement('template');
       template.innerHTML = html;
@@ -44,10 +42,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       this.root = fragment;
 
-      if (this.pre !== noop && typeof this.pre === 'function') {
-        const pre = this.pre();
-        if (pre instanceof Promise) await pre;
-      }
+      const pre = this.pre();
+      if (pre instanceof Promise) await pre;
 
       this.process();
 
@@ -59,9 +55,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       this.root = container;
 
-      if (this.post !== noop && typeof this.post === 'function') {
-        this.post();
-      }
+      const post = this.post();
+      if (post instanceof Promise) await post;
     }
 
     async populate () {
@@ -80,16 +75,15 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     async connectedCallback () {
-      if (this.added !== noop && typeof this.added === 'function') {
-        const added = this.added();
-        if (added instanceof Promise) await added;
-      }
+      const added = this.added();
+      if (added instanceof Promise) await added;
       await this.populate();
-      this.update();
+      await this.update();
     }
 
-    disconnectedCallback () {
-      if (this.removed !== noop && typeof this.removed === 'function') this.removed();
+    async disconnectedCallback () {
+      const removed = this.removed();
+      if (removed instanceof Promise) await removed;
     }
 
     process () {
