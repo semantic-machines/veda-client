@@ -81,12 +81,10 @@ export default class BaseModel extends Emitter() {
     Subscription.subscribe(this, [this.id, this.hasValue('v-s:updateCounter') ? this['v-s:updateCounter'][0] : 0, this.updater]);
   }
 
-  updater (id, updateCounter) {
-    const currentUpdateCounter = this['v-s:updateCounter']?.[0] ?? 0;
-    if (updateCounter === currentUpdateCounter) return;
+  updater (id) {
     const model = new BaseModel(id);
     model.reset().catch((error) => {
-      console.error(`Error resetting model ${id}, ${currentUpdateCounter} -> ${updateCounter}`, error);
+      console.error(`Error resetting model ${id}`, error);
     });
   }
 

@@ -18,7 +18,7 @@ export default ({test, assert}) => {
 
     value = new Value(1.1);
     assert(value.data === '1.1' && value.type === 'Decimal');
-    assert('1.1' === parse(value));
+    assert(1.1 === parse(value));
 
     value = new Value('test');
     assert(value.data == 'test' && value.type === 'String');

@@ -22,7 +22,7 @@ export function asyncDecorator (fn, pre, post, err) {
       post && typeof post === 'function' && await post.call(this, ...args);
       return result;
     } catch (error) {
-      err && typeof err === 'function' && await err(error);
+      err && typeof err === 'function' && await err.call(this, error);
       throw error;
     }
   }
@@ -38,7 +38,7 @@ export function syncDecorator (fn, pre, post, err) {
       post && typeof post === 'function' && post.call(this, ...args);
       return result;
     } catch (error) {
-      err && typeof err === 'function' && err(error);
+      err && typeof err === 'function' && err.call(this, error);
       throw error;
     }
   }
