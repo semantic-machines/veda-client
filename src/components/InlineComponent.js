@@ -5,7 +5,7 @@ export default function InlineComponent (Class = HTMLElement) {
     template;
 
     async connectedCallback () {
-      this.populate();
+      await this.populate();
       this.innerHTML = '';
       if (!this.template) return;
       const template = document.createElement('template');

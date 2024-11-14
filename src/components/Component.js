@@ -11,6 +11,8 @@ export function html (strings, ...values) {
   return result.replace(/\s+/g, ' ').replace(/\s</g, '<').replace(/<!--.*?-->/g, '').trimEnd();
 }
 
+const noop = () => {};
+
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
   class Component extends ElementClass {
     static tag = 'veda-component';
@@ -23,25 +25,29 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     model;
 
-    added () {}
+    added = noop;
 
-    pre () {}
+    pre = noop;
 
-    render () {}
+    render = noop;
 
-    post () {}
+    post = noop;
 
-    removed () {}
+    removed = noop;
 
     async update () {
-      const html = await this.render();
+      let html = this.render !== noop ? this.render() : '';
+      if (html instanceof Promise) html = await html;
       const template = document.createElement('template');
       template.innerHTML = html;
       const fragment = template.content;
 
       this.root = fragment;
 
-      await this.pre();
+      if (this.pre !== noop && typeof this.pre === 'function') {
+        const pre = this.pre();
+        if (pre instanceof Promise) await pre;
+      }
 
       this.process();
 
@@ -53,7 +59,9 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       this.root = container;
 
-      await this.post();
+      if (this.post !== noop && typeof this.post === 'function') {
+        this.post();
+      }
     }
 
     async populate () {
@@ -72,13 +80,16 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     async connectedCallback () {
-      await this.added();
+      if (this.added !== noop && typeof this.added === 'function') {
+        const added = this.added();
+        if (added instanceof Promise) await added;
+      }
       await this.populate();
-      await this.update();
+      this.update();
     }
 
-    async disconnectedCallback () {
-      await this.removed();
+    disconnectedCallback () {
+      if (this.removed !== noop && typeof this.removed === 'function') this.removed();
     }
 
     process () {
