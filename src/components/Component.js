@@ -81,8 +81,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       await this.removed();
     }
 
-    process () {
-      const fragment = this.root;
+    process (fragment = this.root) {
 
       const evaluate = (_, e) => Function('e', `return ${e}`).call(this, e);
 
@@ -131,7 +130,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               }
               const component = document.createElement(tag, {is});
               [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-              component.template = node.innerHTML;
+              component.template = node.innerHTML.trim();
               if (!component.hasAttribute('about') && this.model) {
                 component.model = this.model;
               }

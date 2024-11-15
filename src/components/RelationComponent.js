@@ -5,7 +5,7 @@ export default function RelationComponent (Class = HTMLElement) {
   class RelationComponent extends ValueComponent(Class) {
     template;
 
-    renderValue (value, container) {
+    async renderValue (value, container) {
       if (!this.template) {
         return super.renderValue(value, container);
       }
@@ -15,12 +15,15 @@ export default function RelationComponent (Class = HTMLElement) {
         Class = InlineComponent(HTMLSlotElement);
         customElements.define(is, Class, {extends: 'slot'});
       }
-      const slot = document.createElement('slot', {is});
+      let slot = document.createElement('slot', {is});
       slot.template = this.template;
       slot.model = value;
-      container.appendChild(slot);
+      await slot.connectedCallback();
+      container.append(...slot.childNodes);
+      slot = null;
     }
   };
 
   return RelationComponent;
 }
+
