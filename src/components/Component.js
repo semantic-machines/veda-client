@@ -23,25 +23,27 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     model;
 
-    added () {}
+    added() {}
 
-    pre () {}
+    pre() {}
 
-    render () {}
+    render() {}
 
-    post () {}
+    post() {}
 
-    removed () {}
+    removed() {}
 
     async update () {
-      const html = await this.render();
+      let html = this.render();
+      if (html instanceof Promise) html = await html;
       const template = document.createElement('template');
       template.innerHTML = html;
       const fragment = template.content;
 
       this.root = fragment;
 
-      await this.pre();
+      const pre = this.pre();
+      if (pre instanceof Promise) await pre;
 
       this.process();
 
@@ -53,7 +55,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       this.root = container;
 
-      await this.post();
+      const post = this.post();
+      if (post instanceof Promise) await post;
     }
 
     async populate () {
@@ -72,13 +75,15 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     async connectedCallback () {
-      await this.added();
+      const added = this.added();
+      if (added instanceof Promise) await added;
       await this.populate();
       await this.update();
     }
 
     async disconnectedCallback () {
-      await this.removed();
+      const removed = this.removed();
+      if (removed instanceof Promise) await removed;
     }
 
     process (fragment = this.root) {
