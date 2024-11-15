@@ -1,4 +1,4 @@
-import {Model, Router} from '../src/index.js';
+import {Model, Router} from '../../src/index.js';
 import './AppComponent.js';
 import './SettingsComponent.js';
 
@@ -7,7 +7,8 @@ const tagDictionary = {
   settings: 'veda-settings',
 };
 
-const main = document.querySelector('main');
+const main = document.createElement('main');
+document.body.appendChild(main);
 
 const router = new Router();
 

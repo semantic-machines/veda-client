@@ -13,17 +13,6 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; frame-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; connect-src 'self' ws: wss:;" />
   </head>
   <body>
-    <main></main>
-    <script type="module" async>
-      import {Backend, Router} from '../src/index.js';
-      import './routes.js';
-      import './install_sw.js';
-
-      const backend = new Backend();
-      await backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
-
-      const router = new Router();
-      router.go(location.hash || '#/app/d:TestApplication');
-    </script>
+    <script type="module" src="index.js" async></script>
   </body>
 </html>

@@ -1,10 +1,8 @@
-import {Component, html} from '../src/index.js';
-import './SettingsComponent.js';
+import {Component, html} from '../../src/index.js';
+import SettingsComponent from './SettingsComponent.js';
 
 export default class AppComponent extends Component(HTMLElement) {
-  static toString () {
-    return 'veda-app';
-  }
+  static tag = 'veda-app';
 
   render () {
     return html`
@@ -21,7 +19,7 @@ export default class AppComponent extends Component(HTMLElement) {
         <ul property="rdfs:label"><li><span><slot></slot></span></li></ul>
         <hr>
         <div rel="v-s:hasSettings">
-          <veda-settings about="{{this.model.id}}"></veda-settings>
+          <${SettingsComponent} about="{{this.model.id}}"></${SettingsComponent}>
         </div>
         <hr>
         <div rel="v-s:hasSettings" data-shadow="true">
@@ -39,4 +37,4 @@ export default class AppComponent extends Component(HTMLElement) {
   }
 }
 
-customElements.define(AppComponent.toString(), AppComponent);
+customElements.define(AppComponent.tag, AppComponent);
