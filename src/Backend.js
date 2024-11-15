@@ -2,7 +2,7 @@ import BackendError from './BackendError.js';
 
 import {timeout} from './Util.js';
 
-const storage = typeof sessionStorage !== 'undefined' ? sessionStorage : {};
+const storage = typeof localStorage !== 'undefined' ? localStorage : {};
 
 export default class Backend {
   static #ticket;
