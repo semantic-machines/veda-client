@@ -75,9 +75,9 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     async connectedCallback () {
+      await this.populate();
       const added = this.added();
       if (added instanceof Promise) await added;
-      await this.populate();
       await this.update();
     }
 
