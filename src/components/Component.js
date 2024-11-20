@@ -22,11 +22,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     root;
 
     model;
-    
+
     parent;
 
     template;
-    
+
     added() {}
 
     pre() {}
@@ -88,10 +88,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     async disconnectedCallback () {
       const removed = this.removed();
       if (removed instanceof Promise) await removed;
-      this.model = null;
-      this.template = null;
-      this.parent = null;
-      this.root = null;
     }
 
     process () {
