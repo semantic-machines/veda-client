@@ -3,7 +3,6 @@ import InlineComponent from './InlineComponent.js';
 
 export default function RelationComponent (Class = HTMLElement) {
   class RelationComponent extends ValueComponent(Class) {
-    template;
 
     async renderValue (value, container) {
       if (!this.template) {
@@ -18,9 +17,9 @@ export default function RelationComponent (Class = HTMLElement) {
       let slot = document.createElement('slot', {is});
       slot.template = this.template;
       slot.model = value;
+      slot.parent = this.parent;
       await slot.connectedCallback();
       container.append(...slot.childNodes);
-      slot = null;
     }
   };
 

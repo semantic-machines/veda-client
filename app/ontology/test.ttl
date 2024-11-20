@@ -16,15 +16,8 @@ v-s:Application
   rdf:type owl:Class ;
   rdfs:label "Приложение"@ru ;
   rdfs:label "Application"@en ;
-  v-s:defaultComponent "TestApp";
-.
-
-v-s:defaultComponent
-  rdf:type owl:DatatypeProperty ;
-  rdfs:label "Компонент по умолчанию"@ru ;
-  rdfs:label "Default component"@en ;
-  rdfs:range xsd:string ;
-  rdfs:domain rdfs:Resource ;
+  rdfs:comment "Тестовое приложение"@ru ;
+  rdfs:comment "Test application"@en ;
 .
 
 v-s:hasSettings
@@ -33,6 +26,15 @@ v-s:hasSettings
   rdfs:label "Settings"@en ;
   rdfs:domain v-s:Application ;
   rdfs:range v-s:Settings ;
+.
+
+v-s:Settings
+  rdf:type owl:Class ;
+  rdfs:label "Настройки"@ru ;
+  rdfs:label "Settings"@en ;
+  rdfs:comment "Тестовые настройки"@ru ;
+  rdfs:comment "Test settings"@en ;
+  v-s:defaultComponent "TestSettings";
 .
 
 v-s:hasApplication
@@ -44,31 +46,30 @@ v-s:hasApplication
   rdfs:range v-s:Application ;
 .
 
-v-s:Settings
-  rdf:type owl:Class ;
-  rdfs:label "Настройки"@ru ;
-  rdfs:label "Settings"@en ;
-  v-s:defaultComponent "TestSettings";
-.
-
 d:TestApplication
   rdf:type v-s:Application ;
-  rdfs:label "Тестовое приложение"@ru ;
-  rdfs:label "Test application"@en ;
+  rdfs:label "Приложение"@ru ;
+  rdfs:label "Application"@en ;
+  rdfs:comment "Тестовое приложение"@ru ;
+  rdfs:comment "Test application"@en ;
   v-s:hasSettings d:TestSettings1 ;
   v-s:hasSettings d:TestSettings2 ;
 .
 
 d:TestSettings1
   rdf:type v-s:Settings ;
-  rdfs:label "Тестовые настройки 1"@ru ;
-  rdfs:label "Test settings 1"@en ;
+  rdfs:label "Настройки 1"@ru ;
+  rdfs:label "Settings 1"@en ;
+  rdfs:comment "Тестовые настройки 1"@ru ;
+  rdfs:comment "Test settings 1"@en ;
   v-s:hasApplication d:TestApplication ;
 .
 
 d:TestSettings2
   rdf:type v-s:Settings ;
-  rdfs:label "Тестовые настройки 2"@ru ;
-  rdfs:label "Test settings 2"@en ;
+  rdfs:label "Настройки 2"@ru ;
+  rdfs:label "Settings 2"@en ;
+  rdfs:comment "Тестовые настройки 2"@ru ;
+  rdfs:comment "Test settings 2"@en ;
   v-s:hasApplication d:TestApplication ;
 .

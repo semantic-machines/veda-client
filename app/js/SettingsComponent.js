@@ -3,44 +3,33 @@ import {Component, html} from '../../src/index.js';
 export default class SettingsComponent extends Component(HTMLElement) {
   static tag = 'veda-settings';
 
-  pre () {
-    this.root.append('!!!');
+  testMethod3 (e) {
+    alert('testMethod3');
   }
 
-  render () {
+  render() {
     return html`
-      <h5>
+      Separate component
+      <h2>
         <a href="#/settings/{{this.model.id}}">
           <span property="id"></span>
         </a>
-      </h5>
-
+      </h2>
       <ul property="rdfs:label"><li></li></ul>
-      <div rel="v-s:hasApplication">
-        <span>
-          {{this.model.id}}
-          <span property="rdfs:label"></span>
-          <a property="id" href="#/app/{{this.model.id}}"></a>
-        </span>
-      </div>
-
-      <br>
-      <i rel="v-s:hasApplication">
-        {{this.model.id}}
-        <a property="id" href="#/app/{{this.model.id}}"></a>
-      </i>
-
       <hr>
-
-      <div about="rdfs:label">
+      <div rel="v-s:hasApplication">
+        <div style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;">
+          id = {{this.model.id}}
+          <p property="rdfs:label"></p>
+          <a property="id" href="#/app/{{this.model.id}}"></a>
+        </div>
+      </div>
+      <div about="rdfs:label" style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;">
         <div rel="rdf:type"></div>
         <div property="rdfs:label"></div>
+        <button @click="${() => this.parent.testMethod3(e)}">Test button 3</button>
       </div>
     `;
-  }
-
-  post () {
-    this.root.append('>>>');
   }
 }
 

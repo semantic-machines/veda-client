@@ -2,7 +2,6 @@ import Component from './Component.js';
 
 export default function InlineComponent (Class = HTMLElement) {
   class InlineComponent extends Component(Class) {
-    template;
 
     async connectedCallback () {
       await this.populate();
@@ -14,7 +13,7 @@ export default function InlineComponent (Class = HTMLElement) {
 
       this.root = fragment;
 
-      this.process(fragment);
+      this.process();
 
       const container = this.dataset.shadow ?
         this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot) :

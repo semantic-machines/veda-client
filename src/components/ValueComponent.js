@@ -2,8 +2,6 @@ import Component from './Component.js';
 
 export default function ValueComponent (Class = HTMLElement) {
   return class ValueComponent extends Component(Class) {
-    template;
-
     static get observedAttributes () {
       return ['lang'];
     }

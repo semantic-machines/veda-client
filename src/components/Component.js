@@ -22,7 +22,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     root;
 
     model;
+    
+    parent;
 
+    template;
+    
     added() {}
 
     pre() {}
@@ -84,9 +88,14 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     async disconnectedCallback () {
       const removed = this.removed();
       if (removed instanceof Promise) await removed;
+      this.model = null;
+      this.template = null;
+      this.parent = null;
+      this.root = null;
     }
 
-    process (fragment = this.root) {
+    process () {
+      const fragment = this.root;
 
       const evaluate = (_, e) => Function('e', `return ${e}`).call(this, e);
 
@@ -101,7 +110,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           for (const attr of node.attributes) {
             if (attr.name.startsWith('@')) {
               const eventName = attr.name.slice(1);
-              const handler = this[attr.value].bind(this);
+              const handler = evaluate(null, attr.value);
               node.addEventListener(eventName, handler);
             } else {
               attr.nodeValue = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, evaluate);
@@ -119,6 +128,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               const component = document.createElement(tag, {is});
               [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
               component.template = node.innerHTML;
+              component.parent = this;
               node.parentNode.replaceChild(component, node);
               walker.currentNode = component;
             }
@@ -139,6 +149,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               if (!component.hasAttribute('about') && this.model) {
                 component.model = this.model;
               }
+              component.parent = this;
               node.parentNode.replaceChild(component, node);
               walker.currentNode = component;
             }
