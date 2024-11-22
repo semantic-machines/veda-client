@@ -14,9 +14,9 @@ export default function ValueComponent (Class = HTMLElement) {
     }
 
     async connectedCallback () {
-      await super.populate();
       this.prop = this.getAttribute('property') ?? this.getAttribute('rel');
       this.handler = this.render.bind(this);
+      await super.populate();
       this.model.on(this.prop, this.handler);
       this.render();
     }
