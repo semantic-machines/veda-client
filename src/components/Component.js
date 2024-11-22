@@ -117,7 +117,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           if (node.hasAttribute('about') && !node.hasAttribute('property') && !node.hasAttribute('rel')) {
             const tag = node.tagName.toLowerCase();
             if (!node.hasAttribute('is') && !~tag.indexOf('-')) {
-              const is = `${tag}-${InlineComponent.name.toLowerCase()}`;
+              const is = `${tag}-inline-component`;
               const Class = customElements.get(is);
               if (!Class) {
                 const Class = InlineComponent(node.constructor);
@@ -133,9 +133,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           }
           if (node.hasAttribute('property') || node.hasAttribute('rel')) {
             const ClassFactory = node.hasAttribute('property') ? PropertyComponent : RelationComponent;
+            const suffix = ClassFactory === PropertyComponent ? 'property-component' : 'relation-component';
             const tag = node.tagName.toLowerCase();
             if (!node.hasAttribute('is') && !~tag.indexOf('-')) {
-              const is = `${tag}-${ClassFactory.name.toLowerCase()}`;
+              const is = `${tag}-${suffix}`;
               const Class = customElements.get(is);
               if (!Class) {
                 const Class = ClassFactory(node.constructor);
