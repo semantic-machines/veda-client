@@ -3,6 +3,7 @@ import InlineComponent from './InlineComponent.js';
 
 export default function RelationComponent (Class = HTMLElement) {
   class RelationComponent extends ValueComponent(Class) {
+    static name = 'RelationComponent';
 
     async renderValue (value, container) {
       if (!this.template) {

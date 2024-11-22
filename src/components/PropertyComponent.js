@@ -2,6 +2,7 @@ import ValueComponent from './ValueComponent.js';
 
 export default function PropertyComponent (Class = HTMLElement) {
   class PropertyComponent extends ValueComponent(Class) {
+    static name = 'PropertyComponent';
 
     renderValue (value, container) {
       if (!this.template) {

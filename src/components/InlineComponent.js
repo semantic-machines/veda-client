@@ -2,6 +2,7 @@ import Component from './Component.js';
 
 export default function InlineComponent (Class = HTMLElement) {
   class InlineComponent extends Component(Class) {
+    static name = 'InlineComponent';
 
     async connectedCallback () {
       await this.populate();

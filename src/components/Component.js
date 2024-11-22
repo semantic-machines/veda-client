@@ -13,6 +13,8 @@ export function html (strings, ...values) {
 
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
   class Component extends ElementClass {
+    static name = 'Component';
+
     static tag = 'veda-component';
 
     static toString() {

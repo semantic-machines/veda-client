@@ -2,6 +2,8 @@ import Component from './Component.js';
 
 export default function ValueComponent (Class = HTMLElement) {
   return class ValueComponent extends Component(Class) {
+    static name = 'ValueComponent';
+
     static get observedAttributes () {
       return ['lang'];
     }
