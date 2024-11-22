@@ -54,3 +54,5 @@ export default function ValueComponent (Class = HTMLElement) {
     }
   };
 }
+
+ValueComponent.name = 'ValueComponentFn';

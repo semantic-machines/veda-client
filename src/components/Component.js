@@ -160,3 +160,5 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
   return Component;
 }
+
+Component.name = 'ComponentFn';

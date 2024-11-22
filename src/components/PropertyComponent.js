@@ -37,3 +37,5 @@ export default function PropertyComponent (Class = HTMLElement) {
 
   return PropertyComponent;
 }
+
+PropertyComponent.name = 'PropertyComponentFn';
