@@ -8,3 +8,4 @@ const Model = Observable(BaseModel, {
 });
 
 export default Model;
+

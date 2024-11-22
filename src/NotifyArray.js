@@ -21,6 +21,8 @@ const handler = {
 };
 
 export default class NotifyArray extends Array {
+  static name = 'NotifyArray';
+
   #observable;
   #prop;
 

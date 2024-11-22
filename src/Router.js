@@ -1,4 +1,6 @@
 export default class Router {
+  static name = 'Router';
+
   static #instance;
 
   constructor () {
@@ -61,11 +63,11 @@ export default class Router {
     const re = new RegExp(
       '^' + tokens.map((token) => {
         if (!this.#token_re.test(token)) throw Error('invalid token: ' + token);
-        
+
         if (token === '*') return '[^/]+';
         if (token === '**') return '.*';
         if (token.startsWith(':')) return `(?<${token.slice(1)}>[^/]+)`;
-        
+
         return token;
       }).join('/') + '$',
     );

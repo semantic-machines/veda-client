@@ -1,5 +1,7 @@
-export default function (Class = Object) {
+export default function Emitter(Class = Object) {
   class Emitter extends Class {
+    static name = `Emitter(${Class.name})`;
+
     #callbacks = {};
 
     on (events, fn) {

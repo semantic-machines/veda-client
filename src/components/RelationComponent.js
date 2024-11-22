@@ -26,5 +26,3 @@ export default function RelationComponent (Class = HTMLElement) {
 
   return RelationComponent;
 }
-
-RelationComponent.name = 'RelationComponentFn';

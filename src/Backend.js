@@ -5,6 +5,8 @@ import {timeout} from './Util.js';
 const storage = typeof localStorage !== 'undefined' ? localStorage : {};
 
 export default class Backend {
+  static name = 'Backend';
+
   static #ticket;
   static user;
   static expires;

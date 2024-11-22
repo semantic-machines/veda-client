@@ -6,6 +6,8 @@ if (!globalThis.WebSocket) {
 import {timeout} from './Util.js';
 
 export default class Subscription {
+  static name = 'Subscription';
+
   static #address = typeof location !== 'undefined'
   ? location.protocol === 'https:'
     ? `wss://${location.host}`

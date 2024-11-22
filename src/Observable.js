@@ -29,6 +29,8 @@ const handler = {
 
 export default function Observable (Class, {setters = [], actions = []} = {setters: [], actions: []}) {
   class Observable extends Class {
+    static name = `Observable(${Class.name})`;
+
     constructor (...args) {
       super(...args);
       return new Proxy(this, handler);

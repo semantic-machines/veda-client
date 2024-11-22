@@ -27,5 +27,3 @@ export default function InlineComponent (Class = HTMLElement) {
 
   return InlineComponent;
 }
-
-InlineComponent.name = 'InlineComponentFn';

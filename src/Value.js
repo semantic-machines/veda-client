@@ -1,6 +1,8 @@
 import Model from './Model.js';
 
 export default class Value {
+  static name = 'Value';
+
   constructor (data, type = null, lang = null) {
     if (typeof data !== 'undefined' && type !== null) {
       this.data = data;
