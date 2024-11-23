@@ -12,6 +12,7 @@ export function html (strings, ...values) {
 }
 
 export function safe (value) {
+  if (Array.iasArray(value) return value.map(safe);
   const map = {
     '&': '&amp;',
     '<': '&lt;',
