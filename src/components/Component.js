@@ -12,7 +12,7 @@ export function html (strings, ...values) {
 }
 
 export function safe (value) {
-  if (Array.iasArray(value) return value.map(safe);
+  if (Array.isArray(value)) return value.map(safe);
   const map = {
     '&': '&amp;',
     '<': '&lt;',
@@ -23,7 +23,7 @@ export function safe (value) {
     '\\': '&#x5C;',
     '`': '&#x60;'
   };
-  return value.replace(/[&<>"'\/\\`]/g, char => map[char]);
+  return value.replace(/[&<>"'/\\`]/g, char => map[char]);
 }
 
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
