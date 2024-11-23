@@ -11,6 +11,20 @@ export function html (strings, ...values) {
   return result.replace(/\s+/g, ' ').replace(/\s</g, '<').replace(/<!--.*?-->/g, '').trimEnd();
 }
 
+export function safe (value) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+    '/': '&#x2F;',
+    '\\': '&#x5C;',
+    '`': '&#x60;'
+  };
+  return value.replace(/[&<>"'\/\\`]/g, char => map[char]);
+}
+
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
   class Component extends ElementClass {
     static name = 'Component';
