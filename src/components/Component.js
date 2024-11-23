@@ -21,9 +21,11 @@ export function safe (value) {
     "'": '&#39;',
     '/': '&#x2F;',
     '\\': '&#x5C;',
-    '`': '&#x60;'
+    '`': '&#x60;',
+    '{': '&#123;',
+    '}': '&#125;'
   };
-  return value.replace(/[&<>"'/\\`]/g, char => map[char]);
+  return value.replace(/[&<>"'/\\`{}]/g, char => map[char]);
 }
 
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
