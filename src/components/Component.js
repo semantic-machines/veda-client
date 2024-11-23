@@ -12,7 +12,7 @@ export function html (strings, ...values) {
 }
 
 export function safe (value) {
-  if (typeof value !== 'string' || !(value instanceof String)) return value;
+  if (typeof value !== 'string' && !(value instanceof String)) return value;
   const map = {
     '&': '&amp;',
     '<': '&lt;',
