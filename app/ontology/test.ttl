@@ -16,8 +16,6 @@ v-s:Application
   rdf:type owl:Class ;
   rdfs:label "Приложение"@ru ;
   rdfs:label "Application"@en ;
-  rdfs:comment "Тестовое приложение"@ru ;
-  rdfs:comment "Test application"@en ;
 .
 
 v-s:hasSettings
@@ -50,8 +48,7 @@ d:TestApplication
   rdf:type v-s:Application ;
   rdfs:label "Приложение"@ru ;
   rdfs:label "Application"@en ;
-  rdfs:comment "Тестовое приложение"@ru ;
-  rdfs:comment "Test application"@en ;
+  rdfs:comment "{{alert('test XSS 1')}} <a href='javascript: alert('test XSS 2')'>Тестовое приложение</a>" ;
   v-s:hasSettings d:TestSettings1 ;
   v-s:hasSettings d:TestSettings2 ;
 .

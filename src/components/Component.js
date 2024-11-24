@@ -3,15 +3,21 @@ import PropertyComponent from './PropertyComponent.js';
 import RelationComponent from './RelationComponent.js';
 import InlineComponent from './InlineComponent.js';
 
+const marker = Date.now();
+const re = new RegExp(`^${marker}`);
+
 export function html (strings, ...values) {
   let result = '';
   for (let i = 0; i < strings.length; i++) {
-    result += strings[i] + (values[i] ?? '');
+    let value = values[i] ?? '';
+    result += strings[i] + (re.test(value) ? value : safe(value));
   }
-  return result.replace(/\s+/g, ' ').replace(/\s</g, '<').replace(/<!--.*?-->/g, '').trimEnd();
+  console.log(result);
+  return marker + result.trimEnd();
 }
 
 export function safe (value) {
+  if (Array.isArray(value)) return value.map(safe);
   if (typeof value !== 'string' && !(value instanceof String)) return value;
   const map = {
     '&': '&amp;',
@@ -22,10 +28,8 @@ export function safe (value) {
     '/': '&#x2F;',
     '\\': '&#x5C;',
     '`': '&#x60;',
-    '{': '&#123;',
-    '}': '&#125;'
   };
-  return value.replace(/[&<>"'/\\`{}]/g, char => map[char]);
+  return value.replace(/[&<>"'/\\`]/g, char => map[char]).replace(/{{.*?}}/g, '');
 }
 
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
@@ -60,7 +64,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       let html = this.render();
       if (html instanceof Promise) html = await html;
       const template = document.createElement('template');
-      template.innerHTML = html;
+      template.innerHTML = html.replaceAll(marker, '');
       const fragment = template.content;
 
       this.root = fragment;

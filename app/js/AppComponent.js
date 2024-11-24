@@ -1,4 +1,4 @@
-import {Component, html} from '../../src/index.js';
+import {Component, html, safe} from '../../src/index.js';
 import SettingsComponent from './SettingsComponent.js';
 
 export default class AppComponent extends Component(HTMLElement) {
@@ -16,9 +16,15 @@ export default class AppComponent extends Component(HTMLElement) {
       </style>
       <div>
         <h1 property="rdfs:label"></h1>
-        <a href="#/app/{{this.model.id}}">
-          {{this.model.id}}
-        </a>
+        <ul>
+          <li property="rdfs:comment"></li>
+          <li>{{ this.model['rdfs:comment'][0] }}</li>
+          <li>${ this.model['rdfs:comment'][0] }</li>
+          <li>${true
+            ? html`111 <span>true</span>`
+            : html`<span>false</span>`
+          }</li>
+        </ul>
         <p about="rdfs:label" property="rdfs:label"></p>
         <ul property="rdfs:label"><li><span><slot></slot></span></li></ul>
         <button @click="${(e) => this.testMethod(e)}">Test button 1</button>

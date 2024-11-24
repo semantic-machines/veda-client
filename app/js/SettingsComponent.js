@@ -27,7 +27,7 @@ export default class SettingsComponent extends Component(HTMLElement) {
       <div about="rdfs:label" style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;">
         <div rel="rdf:type"></div>
         <div property="rdfs:label"></div>
-        <button @click="${() => this.parent.testMethod3(e)}">Test button 3</button>
+        <button @click="${(e) => this.parent.testMethod3(e)}">Test button 3</button>
       </div>
     `;
   }
