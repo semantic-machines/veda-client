@@ -64,7 +64,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       let html = this.render();
       if (html instanceof Promise) html = await html;
       const template = document.createElement('template');
-      template.innerHTML = html.replaceAll(marker, '');
+      template.innerHTML = html?.replaceAll(marker, '') ?? '';
       const fragment = template.content;
 
       this.root = fragment;
