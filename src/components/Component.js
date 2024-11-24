@@ -12,7 +12,6 @@ export function html (strings, ...values) {
     let value = values[i] ?? '';
     result += strings[i] + (re.test(value) ? value : safe(value));
   }
-  console.log(result);
   return marker + result.trimEnd();
 }
 
@@ -63,8 +62,9 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     async update () {
       let html = this.render();
       if (html instanceof Promise) html = await html;
+      html = typeof html === 'string' ? html.replaceAll(marker, '') : html;
       const template = document.createElement('template');
-      template.innerHTML = html?.replaceAll(marker, '') ?? '';
+      template.innerHTML = html;
       const fragment = template.content;
 
       this.root = fragment;
