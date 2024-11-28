@@ -52,16 +52,8 @@ customElements.define(SettingsComponent.tag, SettingsComponent);
 class ParagraphComponent extends Component(HTMLParagraphElement) {
   static tag = 'veda-paragraph';
 
-  added() {
-    console.log('ADDED', this, this.parent);
-  }
-
   post() {
-    console.log('POST', this, this.parent);
-  }
-
-  removed() {
-    console.log('REMOVED', this, this.parent);
+    console.log('POST', this);
   }
 }
 
