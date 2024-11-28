@@ -1,5 +1,5 @@
+import Component from './Component.js';
 import ValueComponent from './ValueComponent.js';
-import InlineComponent from './InlineComponent.js';
 
 export default function RelationComponent (Class = HTMLElement) {
   class RelationComponent extends ValueComponent(Class) {
@@ -12,11 +12,11 @@ export default function RelationComponent (Class = HTMLElement) {
       const is = 'slot-inline-component';
       let Class = customElements.get(is);
       if (!Class) {
-        Class = InlineComponent(HTMLSlotElement);
+        Class = Component(HTMLSlotElement);
         customElements.define(is, Class, {extends: 'slot'});
       }
       let slot = document.createElement('slot', {is});
-      slot.template = this.template;
+      slot.innerHTML = this.template;
       slot.model = value;
       slot.parent = this.parent;
       await slot.connectedCallback();

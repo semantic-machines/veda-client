@@ -1,7 +1,6 @@
 import Model from '../Model.js';
 import PropertyComponent from './PropertyComponent.js';
 import RelationComponent from './RelationComponent.js';
-import InlineComponent from './InlineComponent.js';
 
 const marker = Date.now();
 const re = new RegExp(`^${marker}`);
@@ -32,7 +31,7 @@ export function safe (value) {
 }
 
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
-  class Component extends ElementClass {
+  class ComponentClass extends ElementClass {
     static name = 'Component';
 
     static tag = 'veda-component';
@@ -53,7 +52,9 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     pre() {}
 
-    render() {}
+    render() {
+      return this.innerHTML;
+    }
 
     post() {}
 
@@ -125,6 +126,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       while (node) {
         if (node.nodeType === Node.TEXT_NODE) {
           node.nodeValue = node.nodeValue.replaceAll(/{{(.*?)}}/gs, evaluate);
+          node = walker.nextNode();
         } else {
           for (const attr of node.attributes) {
             if (attr.name.startsWith('@')) {
@@ -135,50 +137,96 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               attr.nodeValue = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, evaluate);
             }
           }
-          if (node.hasAttribute('about') && !node.hasAttribute('property') && !node.hasAttribute('rel')) {
-            const tag = node.tagName.toLowerCase();
-            if (!node.hasAttribute('is') && !~tag.indexOf('-')) {
-              const is = `${tag}-inline-component`;
-              const Class = customElements.get(is);
-              if (!Class) {
-                const Class = InlineComponent(node.constructor);
-                customElements.define(is, Class, {extends: tag});
-              }
-              const component = document.createElement(tag, {is});
-              [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-              component.template = node.innerHTML;
-              component.parent = this;
-              node.parentNode.replaceChild(component, node);
-              walker.currentNode = component;
-            }
+
+          if (!node.tagName.includes('-') && !node.hasAttribute('is') && !node.hasAttribute('about') && !node.hasAttribute('property') && !node.hasAttribute('rel')) {
+            node = walker.nextNode();
+            continue;
           }
-          if (node.hasAttribute('property') || node.hasAttribute('rel')) {
-            const ClassFactory = node.hasAttribute('property') ? PropertyComponent : RelationComponent;
-            const suffix = ClassFactory === PropertyComponent ? 'property-component' : 'relation-component';
-            const tag = node.tagName.toLowerCase();
-            if (!node.hasAttribute('is') && !~tag.indexOf('-')) {
-              const is = `${tag}-${suffix}`;
-              const Class = customElements.get(is);
-              if (!Class) {
-                const Class = ClassFactory(node.constructor);
-                customElements.define(is, Class, {extends: tag});
-              }
-              const component = document.createElement(tag, {is});
-              [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-              component.template = node.innerHTML.trim();
-              if (!component.hasAttribute('about') && this.model) {
-                component.model = this.model;
-              }
-              component.parent = this;
-              node.parentNode.replaceChild(component, node);
-              walker.currentNode = component;
+
+          const tag = node.tagName.toLowerCase();
+          const isCustom = tag.includes('-') || node.hasAttribute('is');
+
+          let component;
+
+          // Inline component
+          if (!isCustom && node.hasAttribute('about') && !node.hasAttribute('property') && !node.hasAttribute('rel')) {
+            const is = `${tag}-inline-component`;
+            const Class = customElements.get(is);
+            if (!Class) {
+              const Class = Component(node.constructor);
+              customElements.define(is, Class, {extends: tag});
             }
+            component = document.createElement(tag, {is});
+            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
+            [...node.childNodes].forEach((node) => component.appendChild(node));
+          }
+
+          // Property component
+          if (!isCustom && node.hasAttribute('property')) {
+            const is = `${tag}-property-component`
+            const Class = customElements.get(is);
+            if (!Class) {
+              const Class = PropertyComponent(node.constructor);
+              customElements.define(is, Class, {extends: tag});
+            }
+            component = document.createElement(tag, {is});
+            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
+            if (!component.hasAttribute('about') && this.model) {
+              component.model = this.model;
+            }
+            component.template = node.innerHTML.trim();
+          }
+
+          // Relation component
+          if (!isCustom && node.hasAttribute('rel')) {
+            const is = `${tag}-relation-component`
+            const Class = customElements.get(is);
+            if (!Class) {
+              const Class = RelationComponent(node.constructor);
+              customElements.define(is, Class, {extends: tag});
+            }
+            component = document.createElement(tag, {is});
+            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
+            if (!component.hasAttribute('about') && this.model) {
+              component.model = this.model;
+            }
+            component.template = node.innerHTML.trim();
+          }
+
+          // Custom component
+          if (tag.includes('-')) {
+            const Class = customElements.get(tag);
+            if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
+            component = document.createElement(tag);
+            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
+            [...node.childNodes].forEach((node) => component.appendChild(node));
+          }
+
+          // Customized standard component
+          if (node.hasAttribute('is')) {
+            const is = node.getAttribute('is');
+            const Class = customElements.get(is);
+            if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
+            component = document.createElement(tag, {is});
+            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
+            [...node.childNodes].forEach((node) => component.appendChild(node));
+          }
+
+          node.parentNode.replaceChild(component, node);
+          component.parent = this;
+
+          walker.currentNode = component;
+          if (component.nextSibling) {
+            node = walker.nextSibling();
+          } else if (component.parentNode.nodeType !== 11) {
+            node = walker.parentNode();
+          } else {
+            break;
           }
         }
-        node = walker.nextNode();
       }
     }
   }
 
-  return Component;
+  return ComponentClass;
 }
