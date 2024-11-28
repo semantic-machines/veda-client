@@ -128,11 +128,13 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           node.nodeValue = node.nodeValue.replaceAll(/{{(.*?)}}/gs, evaluate);
           node = walker.nextNode();
         } else {
-          for (const attr of node.attributes) {
+          for (const attr of [...node.attributes]) {
             if (attr.name.startsWith('@')) {
               const eventName = attr.name.slice(1);
               const handler = evaluate(null, attr.value);
               node.addEventListener(eventName, handler);
+              node.removeAttribute(attr.name);
+              node.setAttribute(`at-${eventName}`, handler);
             } else {
               attr.nodeValue = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, evaluate);
             }
