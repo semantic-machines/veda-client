@@ -5,8 +5,12 @@ export default class AppComponent extends Component(HTMLElement) {
   static tag = 'veda-app';
 
 
-  testMethod (e) {
-    alert('testMethod');
+  testMethod1 (e) {
+    alert('testMethod1');
+  }
+
+  testMethod2 (e) {
+    alert('testMethod2');
   }
 
   render () {
@@ -27,7 +31,7 @@ export default class AppComponent extends Component(HTMLElement) {
         </ul>
         <p about="rdfs:label" property="rdfs:label"></p>
         <ul property="rdfs:label"><li><span><slot></slot></span></li></ul>
-        <button @click="${(e) => this.testMethod(e)}">Test button 1</button>
+        <button @click="${(e) => this.testMethod1(e)}">Test button 1</button>
         <p about="v-s:hasSettings" property="rdfs:label"></p>
         <div rel="v-s:hasSettings">
           <${SettingsComponent} about="{{this.model.id}}" style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;"></${SettingsComponent}>
@@ -45,7 +49,7 @@ export default class AppComponent extends Component(HTMLElement) {
             <ul rel="v-s:hasApplication">
               <li property="rdfs:label"></li>
             </ul>
-            <button @click="${(e) => this.parent.testMethod(e)}">Test button 2</button>
+            <button @click="${(e) => this.parent.testMethod2(e)}">Test button 2</button>
           </div>
         </div>
       </div>
