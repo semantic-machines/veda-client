@@ -218,13 +218,27 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           component.parent = this;
 
           walker.currentNode = component;
+
+          // Find next node to process
+          let nextNode = null;
+
+          // First check next sibling node
           if (component.nextSibling) {
-            node = walker.nextSibling();
-          } else if (component.parentNode.nodeType !== 11) {
-            node = walker.parentNode();
+            walker.currentNode = component.nextSibling;
+            nextNode = component.nextSibling;
           } else {
-            break;
+            // If no next sibling, traverse up the tree
+            let parent = component.parentNode;
+            while (parent && parent.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
+              if (parent.nextSibling) {
+                walker.currentNode = parent.nextSibling;
+                nextNode = parent.nextSibling;
+                break;
+              }
+              parent = parent.parentNode;
+            }
           }
+          node = nextNode;
         }
       }
     }
