@@ -4,20 +4,28 @@ export default function PropertyComponent (Class = HTMLElement) {
   class PropertyComponent extends ValueComponent(Class) {
     static name = 'PropertyComponent';
 
-    renderValue (value, container) {
-      if (!this.template) {
-        return super.renderValue(value, container);
-      }
+    static get observedAttributes () {
+      return ['lang'];
+    }
 
+    attributeChangedCallback (name, oldValue, newValue) {
+      if (!oldValue || oldValue === newValue) return;
+      super.render();
+    }
+
+    renderValue (value, container) {
       if (typeof value === 'string') {
         const lang = document.documentElement.lang;
         this.setAttribute('lang', lang);
-        if (value.indexOf(`^^${lang.toUpperCase()}`) > 0) {
-          // Cut language suffix
+        if (value.endsWith(`^^${lang.toUpperCase()}`)) {
           value = value.substring(0, value.indexOf('^^'));
-        } else if (value.indexOf('^^') < 0) {
-          // Keep value untouched
-        } else return;
+        } else if (value.indexOf('^^') === value.length - 4) {
+          return;
+        }
+      }
+
+      if (!this.template) {
+        return super.renderValue(value, container);
       }
 
       const template = document.createElement('template');

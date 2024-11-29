@@ -9,20 +9,21 @@ export default function RelationComponent (Class = HTMLElement) {
       if (!this.template) {
         return super.renderValue(value, container);
       }
-      const is = 'slot-inline-component';
-      let Class = customElements.get(is);
-      if (!Class) {
-        Class = Component(HTMLSlotElement);
-        customElements.define(is, Class, {extends: 'slot'});
-      }
-      let slot = document.createElement('slot', {is});
-      slot.innerHTML = this.template;
+      const slot = document.createElement('slot', {is: `${RelationValueComponent}`});
       slot.model = value;
       slot.parent = this.parent;
+      slot.template = this.template;
       await slot.connectedCallback();
       container.append(...slot.childNodes);
+      container.append(slot);
+      slot.remove();
     }
   };
 
   return RelationComponent;
 }
+
+class RelationValueComponent extends Component(HTMLSlotElement) {
+  static tag = 'relation-value-component';
+}
+customElements.define(RelationValueComponent.tag, RelationValueComponent, {extends: 'slot'});

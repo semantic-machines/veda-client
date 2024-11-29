@@ -53,7 +53,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     pre() {}
 
     render() {
-      return this.innerHTML;
+      return this.template ?? this.innerHTML ?? '';
     }
 
     post() {}
@@ -165,7 +165,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
           // Property component
           if (!isCustom && node.hasAttribute('property')) {
-            const is = `${tag}-property-component`
+            const is = `${tag}-property-component`;
             const Class = customElements.get(is);
             if (!Class) {
               const Class = PropertyComponent(node.constructor);
@@ -173,10 +173,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             }
             component = document.createElement(tag, {is});
             [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
+            component.template = node.innerHTML.trim();
             if (!component.hasAttribute('about') && this.model) {
               component.model = this.model;
             }
-            component.template = node.innerHTML.trim();
           }
 
           // Relation component
@@ -189,10 +189,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             }
             component = document.createElement(tag, {is});
             [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
+            component.template = node.innerHTML.trim();
             if (!component.hasAttribute('about') && this.model) {
               component.model = this.model;
             }
-            component.template = node.innerHTML.trim();
           }
 
           // Custom component

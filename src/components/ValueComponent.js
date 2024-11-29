@@ -4,15 +4,6 @@ export default function ValueComponent (Class = HTMLElement) {
   return class ValueComponent extends Component(Class) {
     static name = 'ValueComponent';
 
-    static get observedAttributes () {
-      return ['lang'];
-    }
-
-    attributeChangedCallback (name, oldValue, newValue) {
-      if (!oldValue || oldValue === newValue) return;
-      this.render();
-    }
-
     async connectedCallback () {
       this.prop = this.getAttribute('property') ?? this.getAttribute('rel');
       this.handler = this.render.bind(this);
@@ -35,16 +26,6 @@ export default function ValueComponent (Class = HTMLElement) {
     }
 
     renderValue (value, container) {
-      if (typeof value === 'string') {
-        const lang = document.documentElement.lang;
-        this.setAttribute('lang', lang);
-        if (value.indexOf(`^^${lang.toUpperCase()}`) > 0) {
-          // Cut language suffix
-          value = value.substring(0, value.indexOf('^^'));
-        } else if (value.indexOf('^^') < 0) {
-          // Keep value untouched
-        } else return;
-      }
       const node = document.createTextNode(value.toString());
       container.appendChild(node);
     }

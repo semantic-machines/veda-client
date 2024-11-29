@@ -53,6 +53,22 @@ export default class AppComponent extends Component(HTMLElement) {
           </div>
         </div>
       </div>
+
+      <table>
+        <caption>Settings table</cation>
+        <thead>
+          <tr>
+            <th>id</th>
+            <th about="rdfs:label" property="rdfs:label"></th>
+          </tr>
+        </thead>
+        <tbody rel="v-s:hasSettings">
+          <tr about="{{this.model.id}}">
+            <td>{{this.model.id}}</td>
+            <td property="rdfs:label"></td>
+          </tr>
+        </tbody>
+      </table>
     `;
   }
 }
