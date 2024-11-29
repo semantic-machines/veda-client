@@ -160,7 +160,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             }
             component = document.createElement(tag, {is});
             [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-            [...node.childNodes].forEach((node) => component.appendChild(node));
+            // [...node.childNodes].forEach((node) => component.appendChild(node));
+            component.innerHTML = node.innerHTML.trim();
           }
 
           // Property component
@@ -201,7 +202,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
             component = document.createElement(tag);
             [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-            [...node.childNodes].forEach((node) => component.appendChild(node));
+            // [...node.childNodes].forEach((node) => component.appendChild(node));
+            component.innerHTML = node.innerHTML.trim();
           }
 
           // Customized standard component
@@ -211,7 +213,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
             component = document.createElement(tag, {is});
             [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-            [...node.childNodes].forEach((node) => component.appendChild(node));
+            // [...node.childNodes].forEach((node) => component.appendChild(node));
+            component.innerHTML = node.innerHTML.trim();
           }
 
           node.parentNode.replaceChild(component, node);
