@@ -1,9 +1,11 @@
 import {Model, Router} from '../../src/index.js';
 import './AppComponent.js';
 import './SettingsComponent.js';
+import './AppSimple.js';
 
 const tagDictionary = {
-  app: 'veda-app',
+  app: 'veda-app-simple',
+  app1: 'veda-app',
   settings: 'veda-settings',
 };
 

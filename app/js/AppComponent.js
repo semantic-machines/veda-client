@@ -1,9 +1,9 @@
 import {Component, html, safe} from '../../src/index.js';
 import SettingsComponent from './SettingsComponent.js';
+import Literal from './Literal.js';
 
 export default class AppComponent extends Component(HTMLElement) {
   static tag = 'veda-app';
-
 
   testMethod1 (e) {
     alert('testMethod1');
@@ -37,20 +37,23 @@ export default class AppComponent extends Component(HTMLElement) {
           <${SettingsComponent} about="{{this.model.id}}" style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;"></${SettingsComponent}>
         </div>
         <div rel="v-s:hasSettings" data-shadow="true">
-          <style>
-            * {font-style: italic;}
-          </style>
-          <div style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;">
-            Inline component
-            <h2 property="rdfs:label"></h2>
-            <a href="#/settings/{{this.model.id}}">
-              {{this.model.id}}
-            </a>
-            <ul rel="v-s:hasApplication">
-              <li property="rdfs:label"></li>
-            </ul>
-            <button @click="${(e) => this.parent.testMethod2(e)}">Test button 2</button>
-          </div>
+          <span about="{{this.model.id}}">
+            <style>
+              * {font-style: italic;}
+            </style>
+            <div style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;">
+              Inline component
+              <h2 property="rdfs:label"></h2>
+              <a href="#/settings/{{this.model.id}}">
+                {{this.model.id}}
+              </a>
+              <ul rel="v-s:hasApplication">
+                <li property="rdfs:label"></li>
+              </ul>
+              <${Literal} about="{{this.model.id}}" property="rdfs:label"></${Literal}>
+              <button @click="${(e) => this.parent.parent.testMethod2(e)}">Test button 2</button>
+            </div>
+          </span>
         </div>
       </div>
 
