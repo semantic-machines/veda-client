@@ -1,6 +1,7 @@
 import Model from '../Model.js';
 import PropertyComponent from './PropertyComponent.js';
 import RelationComponent from './RelationComponent.js';
+import dashToCamel from '../Util.js';
 
 const marker = Date.now();
 const re = new RegExp(`^${marker}`);
@@ -43,7 +44,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     static observedAttributes = ['about', 'shadow'];
 
     attributeChangedCallback (name, oldValue, newValue) {
-      if (oldValue !== newValue) this[name] = newValue;
+      if (oldValue !== newValue) this[dashToCamel(name)] = newValue;
     }
 
     async connectedCallback () {

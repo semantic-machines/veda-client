@@ -80,3 +80,7 @@ export function eq (first, second) {
     props(first).every((prop) => eq(first[prop], second[prop]))
   ) : (first === second);
 }
+
+export function dashToCamel (str) {
+  return str.replace(/-([a-z])/g, (_, char) => char.toUpperCase());
+}
