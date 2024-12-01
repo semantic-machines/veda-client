@@ -125,22 +125,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       while (node) {
         if (node.nodeType === Node.TEXT_NODE) {
-          node.nodeValue = node.nodeValue.replaceAll(/{{(.*?)}}/gs, evaluate);
+          node.nodeValue = node.nodeValue.replaceAll(/{{(.*?)}}/gs, (_, e) => this.#evaluate(e));
           node = walker.nextNode();
         } else {
-          for (const attr of [...node.attributes]) {
-            if (attr.name.startsWith('@')) {
-              const eventName = attr.name.slice(1);
-              const handler = evaluate(null, attr.value);
-              node.addEventListener(eventName, handler);
-              node.removeAttribute(attr.name);
-              node.setAttribute(`at-${eventName}`, handler);
-            } else {
-              attr.nodeValue = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, evaluate);
-            }
-          }
-
           if (!node.tagName.includes('-') && !node.hasAttribute('is') && !node.hasAttribute('about') && !node.hasAttribute('property') && !node.hasAttribute('rel')) {
+            this.#processAttributes(node);
             node = walker.nextNode();
             continue;
           }
@@ -214,6 +203,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             component.template = node.innerHTML.trim();
           }
 
+          this.#processAttributes(component);
+
           node.parentNode.replaceChild(component, node);
           component.parent = this;
 
@@ -242,6 +233,25 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         }
       }
     }
+
+    #evaluate(e) {
+      return Function('e', `return ${e}`).call(this, e);
+    }
+
+    #processAttributes(node) {
+      for (const attr of [...node.attributes]) {
+        if (attr.name.startsWith('@')) {
+          const eventName = attr.name.slice(1);
+          const handler = this.#evaluate(attr.value);
+          node.addEventListener(eventName, handler);
+          node.removeAttribute(attr.name);
+          node.setAttribute(`at-${eventName}`, handler);
+        } else {
+          attr.nodeValue = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, (_, e) => this.#evaluate(e));
+        }
+      }
+    }
+
   }
 
   return ComponentClass;
