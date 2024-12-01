@@ -117,8 +117,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     process () {
       const fragment = this.root;
 
-      const evaluate = (_, e) => Function('e', `return ${e}`).call(this, e);
-
       const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
 
       let node = walker.nextNode();
@@ -240,12 +238,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     #processAttributes(node) {
       for (const attr of [...node.attributes]) {
-        if (attr.name.startsWith('@')) {
-          const eventName = attr.name.slice(1);
+        if (attr.name.startsWith('on:')) {
+          const eventName = attr.name.slice(3);
           const handler = this.#evaluate(attr.value);
           node.addEventListener(eventName, handler);
-          node.removeAttribute(attr.name);
-          node.setAttribute(`at-${eventName}`, handler);
+          node.setAttribute(`on:${eventName}`, handler);
         } else {
           attr.nodeValue = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, (_, e) => this.#evaluate(e));
         }
