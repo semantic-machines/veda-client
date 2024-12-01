@@ -36,7 +36,7 @@ export default class AppComponent extends Component(HTMLElement) {
         <div rel="v-s:hasSettings">
           <${SettingsComponent} about="{{this.model.id}}" style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;"></${SettingsComponent}>
         </div>
-        <div rel="v-s:hasSettings" data-shadow="true">
+        <div rel="v-s:hasSettings" shadow="true">
           <span about="{{this.model.id}}">
             <style>
               * {font-style: italic;}

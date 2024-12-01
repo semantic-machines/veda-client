@@ -4,8 +4,10 @@ export default function ValueComponent (Class = HTMLElement) {
   return class ValueComponent extends Component(Class) {
     static name = 'ValueComponent';
 
+    static observedAttributes = [...super.observedAttributes, 'property', 'rel'];
+
     async connectedCallback () {
-      this.prop = this.getAttribute('property') ?? this.getAttribute('rel');
+      this.prop = this.property ?? this.rel;
       this.handler = this.render.bind(this);
       await super.populate();
       this.model.on(this.prop, this.handler);
@@ -13,7 +15,7 @@ export default function ValueComponent (Class = HTMLElement) {
     }
 
     render () {
-      const container = this.dataset.shadow ?
+      const container = this.shadow ?
         this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot) :
         this;
       container.innerHTML = '';

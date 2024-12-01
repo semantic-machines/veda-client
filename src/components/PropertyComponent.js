@@ -4,11 +4,10 @@ export default function PropertyComponent (Class = HTMLElement) {
   class PropertyComponent extends ValueComponent(Class) {
     static name = 'PropertyComponent';
 
-    static get observedAttributes () {
-      return ['lang'];
-    }
+    static observedAttributes = [...super.observedAttributes, 'lang'];
 
     attributeChangedCallback (name, oldValue, newValue) {
+      super.attributeChangedCallback(name, oldValue, newValue);
       if (!oldValue || oldValue === newValue) return;
       super.render();
     }

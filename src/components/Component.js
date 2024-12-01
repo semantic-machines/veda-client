@@ -36,8 +36,25 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     static tag = 'veda-component';
 
-    static toString() {
+    static toString () {
       return this.tag;
+    }
+
+    static observedAttributes = ['about', 'shadow'];
+
+    attributeChangedCallback (name, oldValue, newValue) {
+      if (oldValue !== newValue) this[name] = newValue;
+    }
+
+    async connectedCallback () {
+      await this.populate();
+      const added = this.added();
+      if (added instanceof Promise) await added;
+      await this.update();
+    }
+
+    disconnectedCallback () {
+      return this.removed();
     }
 
     root;
@@ -48,17 +65,17 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     template;
 
-    added() {}
+    added () {}
 
-    pre() {}
+    pre () {}
 
-    render() {
+    render () {
       return this.template ?? this.innerHTML ?? '';
     }
 
-    post() {}
+    post () {}
 
-    removed() {}
+    removed () {}
 
     async update () {
       let html = this.render();
@@ -75,7 +92,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       this.process();
 
-      const container = this.dataset.shadow ?
+      const container = this.shadow ?
         this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot) :
         this;
       container.innerHTML = '';
@@ -89,29 +106,14 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     async populate () {
       if (!this.model) {
-        const about = this.getAttribute('about');
-        if (about) {
-          this.model = new ModelClass(about);
-          if (!this.model.isNew() && !this.model.isLoaded()) await this.model.load();
-          this.model.subscribe();
-        }
+        if (this.about) this.model = new ModelClass(this.about);
       } else {
         this.setAttribute('about', this.model.id);
-        if (!this.model.isNew() && !this.model.isLoaded()) await this.model.load();
+      }
+      if (this.model && !this.model.isNew() && !this.model.isLoaded()) {
+        await this.model.load();
         this.model.subscribe();
       }
-    }
-
-    async connectedCallback () {
-      await this.populate();
-      const added = this.added();
-      if (added instanceof Promise) await added;
-      await this.update();
-    }
-
-    async disconnectedCallback () {
-      const removed = this.removed();
-      if (removed instanceof Promise) await removed;
     }
 
     process () {
@@ -232,11 +234,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       }
     }
 
-    #evaluate(e) {
+    #evaluate (e) {
       return Function('e', `return ${e}`).call(this, e);
     }
 
-    #processAttributes(node) {
+    #processAttributes (node) {
       for (const attr of [...node.attributes]) {
         if (attr.name.startsWith('on:')) {
           const eventName = attr.name.slice(3);

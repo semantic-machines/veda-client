@@ -14,26 +14,13 @@ function getLiteralValue (model, property) {
 export default class Literal extends Component(HTMLElement) {
   static tag = 'veda-literal';
 
-  static get observedAttributes() {
-    return ['property', 'max-chars'];
-  }
-
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (name === 'property') {
-      this.property = newValue;
-    } else if (name === 'max-chars') {
-      this.maxChars = Number(newValue) || Infinity;
-    }
-  }
-
-  populate() {
-    return super.populate();
-  }
+  static observedAttributes = [...super.observedAttributes, 'property', 'max-chars'];
 
   render () {
+    const maxChars = Number(this.maxChars) || Infinity;
     const value = safe(getLiteralValue(this.model, this.property));
-    const truncated = value.slice(0, this.maxChars);
-    return value.length > this.maxChars ? `${truncated}...` : truncated;
+    const truncated = value.slice(0, maxChars);
+    return value.length > maxChars ? `${truncated}...` : truncated;
   }
 
   up = () => {
