@@ -8,13 +8,14 @@ export default class AppSimple extends Component(HTMLElement) {
     return html`
       Hello, world!
       <div rel="v-s:hasSettings">
+        <${Literal} property="rdfs:label"></${Literal}>
         <span about="{{this.model.id}}">
-          <${Literal} about="{{this.model.id}}" property="rdfs:label"></${Literal}>
+          <${Literal} property="rdfs:comment"></${Literal}>
         </span>
       </div>
       <hr>
       <div about="d:TestSettings1">
-        <${Literal} about="{{this.model.id}}" property="rdfs:label"></${Literal}>
+        <${Literal} property="rdfs:label"></${Literal}>
       </div>
     `;
   }

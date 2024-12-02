@@ -149,8 +149,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               customElements.define(is, Class, {extends: tag});
             }
             component = document.createElement(tag, {is});
-            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-            component.template = node.innerHTML.trim();
           }
 
           // Property component
@@ -162,11 +160,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               customElements.define(is, Class, {extends: tag});
             }
             component = document.createElement(tag, {is});
-            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-            component.template = node.innerHTML.trim();
-            if (!component.hasAttribute('about') && this.model) {
-              component.model = this.model;
-            }
           }
 
           // Relation component
@@ -178,11 +171,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               customElements.define(is, Class, {extends: tag});
             }
             component = document.createElement(tag, {is});
-            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-            component.template = node.innerHTML.trim();
-            if (!component.hasAttribute('about') && this.model) {
-              component.model = this.model;
-            }
           }
 
           // Custom component
@@ -190,18 +178,20 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             const Class = customElements.get(tag);
             if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
             component = document.createElement(tag);
-            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-            component.template = node.innerHTML.trim();
           }
 
-          // Customized standard component
+          // Customized built-in component
           if (node.hasAttribute('is')) {
             const is = node.getAttribute('is');
             const Class = customElements.get(is);
             if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
             component = document.createElement(tag, {is});
-            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-            component.template = node.innerHTML.trim();
+          }
+
+          [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
+          component.template = node.innerHTML.trim();
+          if (!component.hasAttribute('about') && this.model) {
+            component.model = this.model;
           }
 
           this.#processAttributes(component);
