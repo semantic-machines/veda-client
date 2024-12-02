@@ -4,7 +4,7 @@ export default function ValueComponent (Class = HTMLElement) {
   return class ValueComponent extends Component(Class) {
     static name = 'ValueComponent';
 
-    static observedAttributes = [...super.observedAttributes, 'property', 'rel'];
+    static observedAttributes = ['property', 'rel'];
 
     async connectedCallback () {
       this.prop = this.property ?? this.rel;
@@ -15,7 +15,7 @@ export default function ValueComponent (Class = HTMLElement) {
     }
 
     render () {
-      const container = this.shadow ?
+      const container = this.hasAttribute('shadow') ?
         this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot) :
         this;
       container.innerHTML = '';

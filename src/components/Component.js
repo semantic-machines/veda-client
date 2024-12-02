@@ -41,8 +41,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       return this.tag;
     }
 
-    static observedAttributes = ['about', 'shadow'];
-
     attributeChangedCallback (name, oldValue, newValue) {
       if (oldValue !== newValue) this[dashToCamel(name)] = newValue;
     }
@@ -93,7 +91,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       this.process();
 
-      const container = this.shadow ?
+      const container = this.hasAttribute('shadow') ?
         this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot) :
         this;
       container.innerHTML = '';
@@ -107,7 +105,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     async populate () {
       if (!this.model) {
-        if (this.about) this.model = new ModelClass(this.about);
+        if (this.hasAttribute('about')) this.model = new ModelClass(this.getAttribute('about'));
       } else {
         this.setAttribute('about', this.model.id);
       }

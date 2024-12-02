@@ -14,7 +14,7 @@ function getLiteralValue (model, property) {
 export default class Literal extends Component(HTMLElement) {
   static tag = 'veda-literal';
 
-  static observedAttributes = [...super.observedAttributes, 'property', 'max-chars'];
+  static observedAttributes = ['property', 'max-chars'];
 
   render () {
     const maxChars = Number(this.maxChars) || Infinity;
