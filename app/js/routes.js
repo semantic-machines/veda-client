@@ -19,6 +19,5 @@ router.add('#/:comp/:id', (comp, id) => {
   const tag = tagDictionary[comp];
   const component = document.createElement(tag);
   component.model = model;
-  main.innerHTML = '';
-  main.append(component);
+  main.replaceChildren(component);
 });

@@ -36,7 +36,7 @@ export default class AppComponent extends Component(HTMLElement) {
         <div rel="v-s:hasSettings">
           <${SettingsComponent} about="{{this.model.id}}" style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;"></${SettingsComponent}>
         </div>
-        <div rel="v-s:hasSettings" shadow="true">
+        <div rel="v-s:hasSettings" shadow>
           <span about="{{this.model.id}}">
             <style>
               * {font-style: italic;}
@@ -51,7 +51,7 @@ export default class AppComponent extends Component(HTMLElement) {
                 <li property="rdfs:label"></li>
               </ul>
               <${Literal} about="{{this.model.id}}" property="rdfs:label"></${Literal}>
-              <button on:click="${(e) => this.parent.parent.testMethod2(e)}">Test button 2</button>
+              <button on:click="${(e) => this.parentNode.parentNode.parentNode.testMethod2(e)}">Test button 2</button>
             </div>
           </span>
         </div>

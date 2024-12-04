@@ -15,10 +15,10 @@ export default function ValueComponent (Class = HTMLElement) {
     }
 
     render () {
-      const container = this.hasAttribute('shadow') ?
-        this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot) :
-        this;
-      container.innerHTML = '';
+      const container = this.hasAttribute('shadow')
+        ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
+        : this;
+      container.replaceChildren();
       if (!this.model.hasValue(this.prop)) return;
       if (Array.isArray(this.model[this.prop])) {
         this.model[this.prop].forEach((value) => this.renderValue(value, container));

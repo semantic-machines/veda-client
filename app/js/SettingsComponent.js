@@ -25,7 +25,7 @@ export default class SettingsComponent extends Component(HTMLElement) {
       </h2>
       <p about="{{this.model['v-s:hasApplication']?.[0].id}}" is="${ParagraphComponent}">
         <span property="rdfs:label"></span>
-        <button on:click="${(e) => this.parent.testMethod4(e)}">Test button 4</button>
+        <button on:click="${(e) => this.parentNode.testMethod4(e)}">Test button 4</button>
       </p>
       <ul property="rdfs:label"><li></li></ul>
       <hr>
@@ -33,8 +33,8 @@ export default class SettingsComponent extends Component(HTMLElement) {
         <div style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;">
           id = {{this.model.id}}
           <p property="rdfs:label"></p>
-          <a property="id" href="#/app/{{this.model.id}}"></a>
-          <button on:click="${(e) => this.parent.testMethod5(e)}">Test button 5</button>
+          <a property="id" href="#/app1/{{this.model.id}}"></a>
+          <button on:click="${(e) => this.parentNode.parentNode.testMethod5(e)}">Test button 5</button>
         </div>
       </div>
       <div about="rdfs:label" style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;">
@@ -51,10 +51,6 @@ customElements.define(SettingsComponent.tag, SettingsComponent);
 
 class ParagraphComponent extends Component(HTMLParagraphElement) {
   static tag = 'veda-paragraph';
-
-  post() {
-    console.log('POST', this);
-  }
 }
 
 customElements.define(ParagraphComponent.tag, ParagraphComponent, {extends: 'p'});

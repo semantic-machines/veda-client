@@ -41,6 +41,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       return this.tag;
     }
 
+    constructor() {
+      super();
+      this._eventHandlers = new Map();
+    }
+
     attributeChangedCallback (name, oldValue, newValue) {
       if (oldValue !== newValue) this[dashToCamel(name)] = newValue;
     }
@@ -52,11 +57,23 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       await this.update();
     }
 
-    disconnectedCallback () {
-      return this.removed();
-    }
+    async disconnectedCallback () {
+      for (const [node, handlers] of this._eventHandlers) {
+        for (const [eventName, handler] of handlers) {
+          node.removeEventListener(eventName, handler);
+        }
+      }
+      this._eventHandlers.clear();
 
-    root;
+      const removed = this.removed();
+      if (removed instanceof Promise) await removed;
+
+      for (const prop in this) {
+        if (Object.prototype.hasOwnProperty.call(this, prop)) {
+          this[prop] = null;
+        }
+      }
+    }
 
     model;
 
@@ -80,24 +97,23 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       let html = this.render();
       if (html instanceof Promise) html = await html;
       html = typeof html === 'string' ? html.replaceAll(marker, '') : html;
-      const template = document.createElement('template');
+      let template = document.createElement('template');
       template.innerHTML = html;
-      const fragment = template.content;
-
-      this.root = fragment;
+      let fragment = template.content;
 
       const pre = this.pre();
       if (pre instanceof Promise) await pre;
 
-      this.process();
+      this.process(fragment);
 
-      const container = this.hasAttribute('shadow') ?
-        this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot) :
-        this;
-      container.innerHTML = '';
-      container.appendChild(fragment);
+      const container = this.hasAttribute('shadow')
+        ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
+        : this;
+      container.replaceChildren(fragment, template);
+      template.remove();
 
-      this.root = container;
+      template = null;
+      fragment = null;
 
       const post = this.post();
       if (post instanceof Promise) await post;
@@ -115,9 +131,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       }
     }
 
-    process () {
-      const fragment = this.root;
-
+    process (fragment) {
       const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
 
       let node = walker.nextNode();
@@ -195,7 +209,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           this.#processAttributes(component);
 
           node.parentNode.replaceChild(component, node);
-          component.parent = this;
+          node.remove();
 
           walker.currentNode = component;
 
@@ -224,7 +238,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     #evaluate (e) {
-      return Function('e', `return ${e}`).call(this, e);
+      const fn = Function('e', `return ${e}`);
+      const result = fn.call(this, e);
+      fn.prototype = null;
+      return result;
     }
 
     #processAttributes (node) {
@@ -233,7 +250,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           const eventName = attr.name.slice(3);
           const handler = this.#evaluate(attr.value);
           node.addEventListener(eventName, handler);
-          node.setAttribute(`on:${eventName}`, handler);
+
+          if (!this._eventHandlers.has(node)) {
+            this._eventHandlers.set(node, new Map());
+          }
+          this._eventHandlers.get(node).set(eventName, handler);
         } else {
           attr.nodeValue = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, (_, e) => this.#evaluate(e));
         }

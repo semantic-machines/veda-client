@@ -38,7 +38,8 @@ export default function PropertyComponent (Class = HTMLElement) {
         const node = fragment.firstElementChild;
         node.textContent = value.toString();
       }
-      container.appendChild(fragment);
+      container.appendChild(fragment, template);
+      template.remove();
     }
   };
 

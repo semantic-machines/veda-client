@@ -11,11 +11,9 @@ export default function RelationComponent (Class = HTMLElement) {
       }
       const slot = document.createElement('slot', {is: `${RelationValueComponent}`});
       slot.model = value;
-      slot.parent = this.parent;
       slot.template = this.template;
       await slot.connectedCallback();
-      container.append(...slot.childNodes);
-      container.append(slot);
+      container.append(...slot.childNodes, slot);
       slot.remove();
     }
   };
