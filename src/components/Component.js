@@ -127,8 +127,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       }
       if (this.model) {
         if (!this.model.isNew() && !this.model.isLoaded()) await this.model.load();
+        this.model.subscribe();
       }
-      this.model?.subscribe();
     }
 
     process (fragment) {
@@ -209,7 +209,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           this.#processAttributes(component);
 
           node.parentNode.replaceChild(component, node);
-          node.remove();
 
           walker.currentNode = component;
 
