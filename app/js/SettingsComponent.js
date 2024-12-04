@@ -45,12 +45,9 @@ export default class SettingsComponent extends Component(HTMLElement) {
     `;
   }
 }
-
 customElements.define(SettingsComponent.tag, SettingsComponent);
-
 
 class ParagraphComponent extends Component(HTMLParagraphElement) {
   static tag = 'veda-paragraph';
 }
-
 customElements.define(ParagraphComponent.tag, ParagraphComponent, {extends: 'p'});

@@ -4,10 +4,8 @@ export default function ValueComponent (Class = HTMLElement) {
   return class ValueComponent extends Component(Class) {
     static name = 'ValueComponent';
 
-    static observedAttributes = ['property', 'rel'];
-
     async connectedCallback () {
-      this.prop = this.property ?? this.rel;
+      this.prop = this.getAttribute('property') ?? this.getAttribute('rel');
       this.handler = this.render.bind(this);
       await super.populate();
       this.model.on(this.prop, this.handler);

@@ -83,13 +83,13 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     added () {}
 
-    pre () {}
+    pre (fragment) {}
 
     render () {
       return this.template ?? this.innerHTML ?? '';
     }
 
-    post () {}
+    post (fragment) {}
 
     removed () {}
 
@@ -101,7 +101,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       template.innerHTML = html;
       let fragment = template.content;
 
-      const pre = this.pre();
+      const pre = this.pre(fragment);
       if (pre instanceof Promise) await pre;
 
       this.process(fragment);
@@ -112,11 +112,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       container.replaceChildren(fragment, template);
       template.remove();
 
+      const post = this.post(fragment);
+      if (post instanceof Promise) await post;
+
       template = null;
       fragment = null;
-
-      const post = this.post();
-      if (post instanceof Promise) await post;
     }
 
     async populate () {
@@ -185,30 +185,19 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             component = document.createElement(tag, {is});
           }
 
-          // Custom component
-          if (tag.includes('-')) {
-            const Class = customElements.get(tag);
-            if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
-            component = document.createElement(tag);
-          }
+          if (isCustom) component = node;
 
-          // Customized built-in component
-          if (node.hasAttribute('is')) {
-            const is = node.getAttribute('is');
-            const Class = customElements.get(is);
-            if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
-            component = document.createElement(tag, {is});
-          }
+          if (!isCustom) [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
 
-          [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
           component.template = node.innerHTML.trim();
+
           if (!component.hasAttribute('about') && this.model) {
             component.model = this.model;
           }
 
           this.#processAttributes(component);
 
-          node.parentNode.replaceChild(component, node);
+          if (!isCustom) node.parentNode.replaceChild(component, node);
 
           walker.currentNode = component;
 

@@ -6,19 +6,19 @@ export default class AppSimple extends Component(HTMLElement) {
 
   render () {
     return html`
-      Hello, world!
-      <div rel="v-s:hasSettings">
-        <${Literal} property="rdfs:label"></${Literal}>
-        <span about="{{this.model.id}}">
-          <${Literal} property="rdfs:comment"></${Literal}>
-        </span>
-      </div>
-      <hr>
       <div about="d:TestSettings1">
-        <${Literal} property="rdfs:label"></${Literal}>
+        <p about="{{this.model.id}}" is="${ParagraphComponent}">
+          <span property="rdfs:label"></span>
+        </p>
       </div>
     `;
   }
 }
 
 customElements.define(AppSimple.tag, AppSimple);
+
+class ParagraphComponent extends Component(HTMLParagraphElement) {
+  static tag = 'veda-paragraph';
+}
+
+//customElements.define(ParagraphComponent.tag, ParagraphComponent, {extends: 'p'});
