@@ -28,6 +28,8 @@ export default class Literal extends Component(HTMLElement) {
   }
 
   added () {
+    this.property = this.getAttribute('property');
+    this.maxChars = this.getAttribute('max-chars');
     this.model.on(this.property, this.up);
   }
 

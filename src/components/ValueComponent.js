@@ -13,7 +13,7 @@ export default function ValueComponent (Class = HTMLElement) {
     }
 
     render () {
-      const container = this.hasAttribute('shadow')
+      const container = this.hasAttribute('shadow') 
         ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
         : this;
       container.replaceChildren();

@@ -1,7 +1,6 @@
 import Model from '../Model.js';
 import PropertyComponent from './PropertyComponent.js';
 import RelationComponent from './RelationComponent.js';
-import { dashToCamel } from '../Util.js';
 
 const marker = Date.now();
 const re = new RegExp(`^${marker}`);
@@ -46,10 +45,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       this._eventHandlers = new Map();
     }
 
-    attributeChangedCallback (name, oldValue, newValue) {
-      if (oldValue !== newValue) this[dashToCamel(name)] = newValue;
-    }
-
     async connectedCallback () {
       await this.populate();
       const added = this.added();
@@ -67,17 +62,9 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       const removed = this.removed();
       if (removed instanceof Promise) await removed;
-
-      for (const prop in this) {
-        if (Object.prototype.hasOwnProperty.call(this, prop)) {
-          this[prop] = null;
-        }
-      }
     }
 
     model;
-
-    parent;
 
     template;
 
@@ -109,12 +96,12 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       const container = this.hasAttribute('shadow')
         ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
         : this;
-      container.replaceChildren(fragment, template);
-      template.remove();
+      container.replaceChildren(fragment);
 
       const post = this.post(fragment);
       if (post instanceof Promise) await post;
 
+      template.remove();
       template = null;
       fragment = null;
     }
@@ -185,28 +172,30 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             component = document.createElement(tag, {is});
           }
 
-          if (isCustom) component = node;
+          // Custom component
+          if (tag.includes('-')) {
+            const Class = customElements.get(tag);
+            if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
+            component = document.createElement(tag);
+          }
+          
+          // Customized built-in component
+          if (node.hasAttribute('is')) {
+            const is = node.getAttribute('is');
+            const Class = customElements.get(is);
+            if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
+            component = document.createElement(tag, {is});
+          }
 
-          if (!isCustom) [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-
+          [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
           component.template = node.innerHTML.trim();
-
           if (!component.hasAttribute('about') && this.model) {
             component.model = this.model;
           }
 
           this.#processAttributes(component);
 
-          if (!isCustom) {
-            const nodeSibling = node.nextSibling;
-            const nodeParent = node.parentNode;
-            node.remove();
-            if (nodeSibling) {
-              nodeParent.insertBefore(component, nodeSibling);
-            } else {
-              nodeParent.appendChild(component);
-            }
-          }
+          node.parentNode.replaceChild(component, node);
 
           walker.currentNode = component;
 
@@ -235,10 +224,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     #evaluate (e) {
-      const fn = Function('e', `return ${e}`);
-      const result = fn.call(this, e);
-      fn.prototype = null;
-      return result;
+      return Function('e', `return ${e}`).call(this, e);
     }
 
     #processAttributes (node) {

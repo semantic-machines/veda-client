@@ -1,15 +1,15 @@
-import {Component, html, safe} from '../../src/index.js';
+import {Component, html} from '../../src/index.js';
 import SettingsComponent from './SettingsComponent.js';
 import Literal from './Literal.js';
 
 export default class AppComponent extends Component(HTMLElement) {
   static tag = 'veda-app';
 
-  testMethod1 (e) {
+  testMethod1 () {
     alert('testMethod1');
   }
 
-  testMethod2 (e) {
+  testMethod2 () {
     alert('testMethod2');
   }
 
@@ -24,7 +24,7 @@ export default class AppComponent extends Component(HTMLElement) {
           <li property="rdfs:comment"></li>
           <li>{{ this.model['rdfs:comment'][0] }}</li>
           <li>${ this.model['rdfs:comment'][0] }</li>
-          <li>${true
+          <li>${this
             ? html`111 <span>true</span>`
             : html`<span>false</span>`
           }</li>

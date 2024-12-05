@@ -26,9 +26,9 @@ export default function PropertyComponent (Class = HTMLElement) {
         return super.renderValue(value, container);
       }
 
-      const template = document.createElement('template');
+      let template = document.createElement('template');
       template.innerHTML = this.template;
-      const fragment = template.content;
+      let fragment = template.content;
       const slot = fragment.querySelector('slot');
       if (slot) {
         const valueNode = document.createTextNode(value.toString());
@@ -37,8 +37,11 @@ export default function PropertyComponent (Class = HTMLElement) {
         const node = fragment.firstElementChild;
         node.textContent = value.toString();
       }
-      container.appendChild(fragment, template);
+      container.appendChild(fragment);
+
       template.remove();
+      template = null;
+      fragment = null;
     }
   };
 
