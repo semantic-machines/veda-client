@@ -83,13 +83,13 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     added () {}
 
-    pre (fragment) {}
+    pre () {}
 
     render () {
       return this.template ?? this.innerHTML ?? '';
     }
 
-    post (fragment) {}
+    post () {}
 
     removed () {}
 
@@ -197,7 +197,16 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
           this.#processAttributes(component);
 
-          if (!isCustom) node.parentNode.replaceChild(component, node);
+          if (!isCustom) {
+            const nodeSibling = node.nextSibling;
+            const nodeParent = node.parentNode;
+            node.remove();
+            if (nodeSibling) {
+              nodeParent.insertBefore(component, nodeSibling);
+            } else {
+              nodeParent.appendChild(component);
+            }
+          }
 
           walker.currentNode = component;
 
