@@ -40,11 +40,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       return this.tag;
     }
 
-    constructor() {
-      super();
-      this._eventHandlers = new Map();
-    }
-
     async connectedCallback () {
       await this.populate();
       const added = this.added();
@@ -53,15 +48,14 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     async disconnectedCallback () {
-      for (const [node, handlers] of this._eventHandlers) {
-        for (const [eventName, handler] of handlers) {
-          node.removeEventListener(eventName, handler);
-        }
-      }
-      this._eventHandlers.clear();
-
       const removed = this.removed();
       if (removed instanceof Promise) await removed;
+
+      for (const key in this) {
+        if (Object.prototype.hasOwnProperty.call(this, key)) {
+          delete this[key];
+        }
+      }
     }
 
     model;
@@ -178,7 +172,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
             component = document.createElement(tag);
           }
-          
+
           // Customized built-in component
           if (node.hasAttribute('is')) {
             const is = node.getAttribute('is');
@@ -224,7 +218,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     #evaluate (e) {
-      return Function('e', `return ${e}`).call(this, e);
+      return Function(`return ${e}`).call(this);
     }
 
     #processAttributes (node) {
@@ -233,11 +227,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           const eventName = attr.name.slice(3);
           const handler = this.#evaluate(attr.value);
           node.addEventListener(eventName, handler);
-
-          if (!this._eventHandlers.has(node)) {
-            this._eventHandlers.set(node, new Map());
-          }
-          this._eventHandlers.get(node).set(eventName, handler);
         } else {
           attr.nodeValue = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, (_, e) => this.#evaluate(e));
         }
