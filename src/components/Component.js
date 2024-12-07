@@ -50,12 +50,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     async disconnectedCallback () {
       const removed = this.removed();
       if (removed instanceof Promise) await removed;
-
-      for (const key in this) {
-        if (Object.prototype.hasOwnProperty.call(this, key)) {
-          delete this[key];
-        }
-      }
     }
 
     model;
