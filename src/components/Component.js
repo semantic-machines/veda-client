@@ -147,6 +147,9 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               customElements.define(is, Class, {extends: tag});
             }
             component = document.createElement(tag, {is});
+            if (!component.hasAttribute('about') && this.model) {
+              component.model = this.model;
+            }
           }
 
           // Relation component
@@ -158,6 +161,9 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               customElements.define(is, Class, {extends: tag});
             }
             component = document.createElement(tag, {is});
+            if (!component.hasAttribute('about') && this.model) {
+              component.model = this.model;
+            }
           }
 
           // Custom component
@@ -177,9 +183,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
           [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
           component.template = node.innerHTML.trim();
-          if (!component.hasAttribute('about') && this.model) {
-            component.model = this.model;
-          }
 
           this.#processAttributes(component);
 
