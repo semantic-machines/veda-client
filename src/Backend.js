@@ -279,15 +279,14 @@ export default class Backend {
     }
 
     const url = new URL('files', Backend.base);
+    url.searchParams.append('ticket', Backend.#ticket);
+
     const params = {
       method: 'POST',
       mode: 'same-origin',
       cache: 'no-cache',
       credentials: 'same-origin',
       body: form,
-      headers: {
-        'Cookie': `ticket=${Backend.#ticket}`,
-      },
     };
     const response = await fetch(url, params);
     if (!response.ok) throw new BackendError(response.status, response);
