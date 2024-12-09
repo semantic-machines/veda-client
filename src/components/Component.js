@@ -138,29 +138,17 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             component = document.createElement(tag, {is});
           }
 
-          // Property component
-          if (!isCustom && node.hasAttribute('property')) {
-            const is = `${tag}-property-component`;
+          // Property/Relation component
+          if (!isCustom && (node.hasAttribute('property') || node.hasAttribute('rel'))) {
+            const type = node.hasAttribute('property') ? 'property' : 'rel';
+            const is = `${tag}-${type}-component`;
             const Class = customElements.get(is);
             if (!Class) {
-              const Class = PropertyComponent(node.constructor);
+              const Class = (type === 'property' ? PropertyComponent : RelationComponent)(node.constructor);
               customElements.define(is, Class, {extends: tag});
             }
             component = document.createElement(tag, {is});
-            if (!component.hasAttribute('about') && this.model) {
-              component.model = this.model;
-            }
-          }
-
-          // Relation component
-          if (!isCustom && node.hasAttribute('rel')) {
-            const is = `${tag}-relation-component`
-            const Class = customElements.get(is);
-            if (!Class) {
-              const Class = RelationComponent(node.constructor);
-              customElements.define(is, Class, {extends: tag});
-            }
-            component = document.createElement(tag, {is});
+            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
             if (!component.hasAttribute('about') && this.model) {
               component.model = this.model;
             }
@@ -171,6 +159,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             const Class = customElements.get(tag);
             if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
             component = document.createElement(tag);
+            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
           }
 
           // Customized built-in component
@@ -179,9 +168,9 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             const Class = customElements.get(is);
             if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
             component = document.createElement(tag, {is});
+            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
           }
 
-          [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
           component.template = node.innerHTML.trim();
 
           this.#processAttributes(component);
