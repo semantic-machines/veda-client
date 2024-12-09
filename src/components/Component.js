@@ -136,6 +136,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               customElements.define(is, Class, {extends: tag});
             }
             component = document.createElement(tag, {is});
+            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
           }
 
           // Property/Relation component
