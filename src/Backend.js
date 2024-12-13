@@ -53,7 +53,6 @@ export default class Backend {
       ticket: Backend.#ticket,
       data: {login},
     };
-    console.log(params);
     return Backend.#call_server(params).then(Backend.#handleTicket);
   }
 
