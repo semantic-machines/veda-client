@@ -17,7 +17,7 @@ export default function PropertyComponent (Class = HTMLElement) {
         this.setAttribute('lang', lang);
         if (value.endsWith(`^^${lang.toUpperCase()}`)) {
           value = value.substring(0, value.indexOf('^^'));
-        } else if (value.indexOf('^^') === value.length - 4) {
+        } else if (value.indexOf('^^') > 0 && value.indexOf('^^') === value.length - 4) {
           return;
         }
       }
