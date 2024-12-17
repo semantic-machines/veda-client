@@ -34,9 +34,12 @@ export default class Router {
     });
   }
 
-  add (pattern, fn) {
-    const re = this.#parse(pattern);
-    this.#routes.push([pattern, fn, re]);
+  add (...args) {
+    const fn = args.pop();
+    args.forEach((pattern) => {
+      const re = this.#parse(pattern);
+      this.#routes.push([pattern, fn, re]);
+    });
     return this;
   }
 
@@ -56,17 +59,23 @@ export default class Router {
     this.#routes = [];
   }
 
-  #token_re = /^(#|:?\w+|\*|\*\*)$/;
+  #token_re = /^(#|:?\w+|\*|\*\*|\([^()]+\))$/;
 
   #parse (pattern) {
+    if (pattern.length > 2000) throw Error('Pattern too long');
+
     const tokens = decodeURIComponent(pattern).split('/').filter(Boolean);
+    if (tokens.length > 10) throw Error('Too many tokens');
+
     const re = new RegExp(
       '^' + tokens.map((token) => {
-        if (!this.#token_re.test(token)) throw Error('invalid token: ' + token);
+        if (!this.#token_re.test(token)) throw Error(`Invalid token: ${token}`);
+        if (token.length > 100) throw Error(`Token too long: ${token}`);
 
         if (token === '*') return '[^/]+';
         if (token === '**') return '.*';
-        if (token.startsWith(':')) return `(?<${token.slice(1)}>[^/]+)`;
+        if (token.startsWith(':')) return `([^/]+)`;
+        if (token.startsWith('(')) return token;
 
         return token;
       }).join('/') + '$',
