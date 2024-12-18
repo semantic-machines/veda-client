@@ -187,4 +187,25 @@ export default ({test, assert}) => {
 
     r.clear();
   });
+
+  test('Роутер #12. Проверка пустых токенов', async () => {
+    const r = new Router();
+    let param1;
+    let param2;
+
+    r.add('#/users/:name/:value', (name, value) => {
+      param1 = name;
+      param2 = value;
+    });
+
+    r.route('#/users/Иван/123');
+    assert(param1 === 'Иван');
+    assert(param2 === '123');
+
+    r.route('#/users//456');
+    assert(param1 === '');
+    assert(param2 === '456');
+
+    r.clear();
+  });
 };

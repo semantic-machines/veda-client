@@ -64,17 +64,19 @@ export default class Router {
   #parse (pattern) {
     if (pattern.length > 2000) throw Error('Pattern too long');
 
-    const tokens = decodeURIComponent(pattern).split('/').filter(Boolean);
+    const tokens = decodeURIComponent(pattern).split('/');
     if (tokens.length > 10) throw Error('Too many tokens');
 
     const re = new RegExp(
       '^' + tokens.map((token) => {
+        if (!token) return '';
+
         if (!this.#token_re.test(token)) throw Error(`Invalid token: ${token}`);
         if (token.length > 100) throw Error(`Token too long: ${token}`);
 
         if (token === '*') return '[^/]+';
         if (token === '**') return '.*';
-        if (token.startsWith(':')) return `([^/]+)`;
+        if (token.startsWith(':')) return `([^/]*)`;
         if (token.startsWith('(')) return token;
 
         return token;
