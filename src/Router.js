@@ -43,8 +43,12 @@ export default class Router {
     return this;
   }
 
-  remove (pattern) {
-    this.#routes = this.#routes.filter(([p]) => p !== pattern);
+  remove (...args) {
+    const fn = args.pop();
+    args.forEach((pattern) => {
+      this.#routes = this.#routes.filter(([p, f]) => p !== pattern && f !== fn);
+    });
+    return this;
   }
 
   get (pattern) {

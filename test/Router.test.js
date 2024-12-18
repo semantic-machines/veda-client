@@ -43,7 +43,7 @@ export default ({test, assert}) => {
     assert(r.check('#/test').length === 1);
     assert(r.get('#').length === 1);
 
-    r.remove('#');
+    r.remove('#', handler);
     assert(r.get('#').length === 0);
 
     r.clear();
