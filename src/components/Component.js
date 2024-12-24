@@ -9,7 +9,12 @@ export function html (strings, ...values) {
   let result = '';
   for (let i = 0; i < strings.length; i++) {
     let value = values[i] ?? '';
-    result += strings[i] + ((typeof value === 'string' || value instanceof String) && re.test(value) ? value : (Array.isArray(value) ? safe(value).join(' ') : safe(value)));
+    if (Array.isArray(value)) {
+      value = value.map(v => re.test(v) ? v : safe(v)).join(' ');
+    } else {
+      value = re.test(value) ? value : safe(value);
+    }
+    result += strings[i] + value;
   }
   return marker + result.trimEnd();
 }
