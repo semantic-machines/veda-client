@@ -9,16 +9,7 @@ export function html (strings, ...values) {
   let result = '';
   for (let i = 0; i < strings.length; i++) {
     let value = values[i] ?? '';
-    if (re.test(value)) {
-      result += strings[i] + value;
-    } else if (Array.isArray(value)) {
-      value = safe(value).join(' ');
-      result += strings[i] + value;
-    } else {
-      value = safe(value);
-      result += strings[i] + value;
-    }
-    // result += strings[i] + (re.test(value) ? value : (Array.isArray(value) ? safe(value).join(' ') : safe(value)));
+    result += strings[i] + ((typeof value === 'string' || value instanceof String) && re.test(value) ? value : (Array.isArray(value) ? safe(value).join(' ') : safe(value)));
   }
   return marker + result.trimEnd();
 }
