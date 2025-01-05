@@ -102,12 +102,12 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     async populate () {
       if (!this.model) {
         if (this.hasAttribute('about')) this.model = new ModelClass(this.getAttribute('about'));
-      } else {
+      } else if (this.model.id) {
         this.setAttribute('about', this.model.id);
       }
       if (this.model) {
-        if (!this.model.isNew() && !this.model.isLoaded()) await this.model.load();
-        this.model.subscribe();
+        await this.model.load?.();
+        this.model.subscribe?.();
       }
     }
 
@@ -219,6 +219,13 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           const eventName = attr.name.slice(3);
           const handler = this.#evaluate(attr.value);
           node.addEventListener(eventName, handler);
+        } else if (attr.name === 'about') {
+          const value = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, (_, e) => this.#evaluate(e));
+          if (typeof value === 'string') {
+            attr.nodeValue = value;
+          } else {
+            node.model = value;
+          }
         } else {
           attr.nodeValue = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, (_, e) => this.#evaluate(e));
         }
