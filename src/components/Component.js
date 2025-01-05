@@ -210,7 +210,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     #evaluate (e) {
-      return Function(`return ${e}`).call(this);
+      // return Function(`return ${e}`).call(this);
+      return eval.call(this, e);
     }
 
     #processAttributes (node) {
