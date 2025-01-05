@@ -24,19 +24,16 @@ export default class BaseModel extends Emitter() {
 
       this.isNew(false);
       this.isSync(false);
-      this.isLoaded(false);
     } else if (typeof data === 'undefined') {
       this.id = genUri();
 
       this.isNew(true);
       this.isSync(false);
-      this.isLoaded(false);
     } else if (typeof data === 'object') {
       this.apply(data);
 
       this.isNew(false);
       this.isSync(true);
-      this.isLoaded(true);
     }
     this.on('modified', () => this.isSync(false));
     return BaseModel.cache.get(this.id) ?? (BaseModel.cache.set(this.id, this), this);
@@ -104,11 +101,6 @@ export default class BaseModel extends Emitter() {
     return typeof value === 'undefined' ? this.#isSync : this.#isSync = !!value;
   }
 
-  #isLoaded;
-  isLoaded (value) {
-    return typeof value === 'undefined' ? this.#isLoaded : this.#isLoaded = !!value;
-  }
-
   hasValue (prop, value) {
     if (!prop && typeof value !== 'undefined') {
       return Object.getOwnPropertyNames(this).reduce((prev, prop) => prev || this.hasValue(prop, value), false);
@@ -167,7 +159,7 @@ export default class BaseModel extends Emitter() {
       return this.#loadPromise;
     }
 
-    if (this.isSync() && cache) {
+    if (this.isNew() || this.isSync() && cache) {
       return this;
     }
 
@@ -178,7 +170,6 @@ export default class BaseModel extends Emitter() {
 
         this.isNew(false);
         this.isSync(true);
-        this.isLoaded(true);
         return this;
       } finally {
         this.#loadPromise = null;
@@ -222,7 +213,6 @@ export default class BaseModel extends Emitter() {
 
         this.isNew(false);
         this.isSync(true);
-        this.isLoaded(true);
         return this;
       } finally {
         this.#savePromise = null;
@@ -245,7 +235,6 @@ export default class BaseModel extends Emitter() {
 
         this.isNew(true);
         this.isSync(false);
-        this.isLoaded(false);
         return this;
       } finally {
         this.#removePromise = null;
