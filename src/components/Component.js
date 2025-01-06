@@ -210,8 +210,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     #evaluate (e) {
-      // return Function(`return ${e}`).call(this);
-      return eval.call(this, e);
+      return Function(`return ${e}`).call(this);
     }
 
     #processAttributes (node) {
@@ -220,13 +219,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           const eventName = attr.name.slice(3);
           const handler = this.#evaluate(attr.value);
           node.addEventListener(eventName, handler);
-        } else if (attr.name === 'about') {
-          const value = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, (_, e) => this.#evaluate(e));
-          if (typeof value === 'string') {
-            attr.nodeValue = value;
-          } else {
-            node.model = value;
-          }
         } else {
           attr.nodeValue = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, (_, e) => this.#evaluate(e));
         }
