@@ -45,6 +45,13 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       return this.tag;
     }
 
+    #resolveRender;
+
+    constructor() {
+      super();
+      this.rendered = null;
+    }
+
     async connectedCallback () {
       await this.populate();
       const added = this.added();
@@ -74,6 +81,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     removed () {}
 
     async update () {
+      this.rendered = new Promise((resolve) => {
+        this.#resolveRender = resolve;
+      });
+
       let html = this.render();
       if (html instanceof Promise) html = await html;
       html = typeof html === 'string' ? html.replaceAll(marker, '') : html;
@@ -84,7 +95,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       const pre = this.pre(fragment);
       if (pre instanceof Promise) await pre;
 
-      this.process(fragment);
+      this.#process(fragment);
 
       const container = this.hasAttribute('shadow')
         ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
@@ -93,6 +104,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       const post = this.post(fragment);
       if (post instanceof Promise) await post;
+
+      this.#onUpdated();
 
       template.remove();
       template = null;
@@ -110,8 +123,14 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         this.model.subscribe?.();
       }
     }
+    
+    #onUpdated() {
+      if (this.#resolveRender) {
+        this.#resolveRender();
+      }
+    }
 
-    process (fragment) {
+    #process (fragment) {
       const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
 
       let node = walker.nextNode();
@@ -210,7 +229,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     #evaluate (e) {
-      return Function(`return ${e}`).call(this);
+      return Function(`return (${e})`).call(this);
     }
 
     #processAttributes (node) {
