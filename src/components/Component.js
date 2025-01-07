@@ -2,21 +2,42 @@ import Model from '../Model.js';
 import PropertyComponent from './PropertyComponent.js';
 import RelationComponent from './RelationComponent.js';
 
-const marker = Date.now();
-const re = new RegExp(`^${marker}`);
+const marker = Date.now().toString();
 
 export function html (strings, ...values) {
-  let result = '';
-  for (let i = 0; i < strings.length; i++) {
-    let value = values[i] ?? '';
+  const result = [marker];
+  let i;
+  for (i = 0; i < values.length; i++) {
+    result.push(strings[i]);
+    const value = values[i];
+    if (typeof value === 'undefined' || value === '') continue;
     if (Array.isArray(value)) {
-      value = value.map(v => re.test(v) ? v : safe(v)).join(' ');
+      result.push(...value.flat(Infinity));
+    } else if (typeof value === 'function' && value.prototype && value.prototype.constructor === value) {
+      result.push(value.toString());
+    } else if (typeof value === 'function' || typeof value === 'object') {
+      result.push(value);
     } else {
-      value = re.test(value) ? value : safe(value);
+      result.push(safe(value.toString()));
     }
-    result += strings[i] + value;
   }
-  return marker + result.trimEnd();
+  result.push(strings[i]);
+  return result;
+}
+
+function joinHtml (htmlArray) {
+  const values = new Map();
+  let html = '';
+  for (let i = 0; i < htmlArray.length; i++) {
+    const part = htmlArray[i];
+    if (typeof part === 'string') {
+      if (part !== marker) html += part;
+    } else {
+      html += `$${i}`;
+      values.set(`$${i}`, part);
+    }
+  }
+  return { html, values };
 }
 
 export function safe (value) {
@@ -74,9 +95,12 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     removed () {}
 
     async update () {
+      let values;
       let html = this.render();
       if (html instanceof Promise) html = await html;
-      html = typeof html === 'string' ? html.replaceAll(marker, '') : html;
+
+      if (Array.isArray(html)) ({html, values} = joinHtml(html));
+
       let template = document.createElement('template');
       template.innerHTML = html;
       let fragment = template.content;
@@ -84,7 +108,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       const pre = this.pre(fragment);
       if (pre instanceof Promise) await pre;
 
-      this.process(fragment);
+      this.process(fragment, values);
 
       const container = this.hasAttribute('shadow')
         ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
@@ -111,7 +135,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       }
     }
 
-    process (fragment) {
+    process (fragment, values) {
       const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
 
       let node = walker.nextNode();
@@ -122,7 +146,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           node = walker.nextNode();
         } else {
           if (!node.tagName.includes('-') && !node.hasAttribute('is') && !node.hasAttribute('about') && !node.hasAttribute('property') && !node.hasAttribute('rel')) {
-            this.#processAttributes(node);
+            this.#processAttributes(node, values);
             node = walker.nextNode();
             continue;
           }
@@ -179,7 +203,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
           component.template = node.innerHTML.trim();
 
-          this.#processAttributes(component);
+          this.#processAttributes(component, values);
 
           node.parentNode.replaceChild(component, node);
 
@@ -210,15 +234,17 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     #evaluate (e) {
-      return Function(`return ${e}`).call(this);
+      return Function(`return (${e})`).call(this);
     }
 
-    #processAttributes (node) {
+    #processAttributes (node, values) {
       for (const attr of [...node.attributes]) {
         if (attr.name.startsWith('on:')) {
           const eventName = attr.name.slice(3);
-          const handler = this.#evaluate(attr.value);
+          const handler = attr.nodeValue.startsWith('$') ? values?.get(attr.nodeValue) : this.#evaluate(attr.nodeValue);
           node.addEventListener(eventName, handler);
+        } else if (attr.name === 'about' && attr.nodeValue.startsWith('$')) {
+          node.model = values.get(attr.nodeValue);
         } else {
           attr.nodeValue = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, (_, e) => this.#evaluate(e));
         }

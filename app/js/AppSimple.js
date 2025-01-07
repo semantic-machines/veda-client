@@ -5,7 +5,7 @@ export default class AppSimple extends Component(HTMLElement) {
 
 
   testMethod6 (e) {
-    alert('testMethod6');
+    alert(`testMethod6 ${e.target.id}`);
   }
 
   render () {
@@ -13,7 +13,7 @@ export default class AppSimple extends Component(HTMLElement) {
       <div rel="v-s:hasSettings">
         <p about="{{this.model.id}}" is="${ParagraphComponent}">
           <span property="rdfs:label"></span>
-          <button on:click="${(e) => this.parentNode.parentNode.testMethod6(e)}">Test button 6</button>
+          <button id="testButton6" onclick="this.parentNode.parentNode.parentNode.testMethod6(event)">Test button 6</button>
         </p>
       </div>
     `;
