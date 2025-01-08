@@ -49,7 +49,9 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     constructor() {
       super();
-      this.rendered = null;
+      this.rendered = new Promise((resolve) => {
+        this.#resolveRender = resolve;
+      });
     }
 
     async connectedCallback () {
@@ -81,10 +83,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     removed () {}
 
     async update () {
-      this.rendered = new Promise((resolve) => {
-        this.#resolveRender = resolve;
-      });
-
       let html = this.render();
       if (html instanceof Promise) html = await html;
       html = typeof html === 'string' ? html.replaceAll(marker, '') : html;
@@ -123,7 +121,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         this.model.subscribe?.();
       }
     }
-    
+
     #onUpdated() {
       if (this.#resolveRender) {
         this.#resolveRender();
