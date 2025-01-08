@@ -45,12 +45,12 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       return this.tag;
     }
 
-    #resolveRender;
+    #resolveRendered;
 
     constructor() {
       super();
       this.rendered = new Promise((resolve) => {
-        this.#resolveRender = resolve;
+        this.#resolveRendered = resolve;
       });
     }
 
@@ -103,11 +103,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       const post = this.post(fragment);
       if (post instanceof Promise) await post;
 
-      this.#onUpdated();
-
       template.remove();
       template = null;
       fragment = null;
+
+      this.#resolveRendered?.();
     }
 
     async populate () {
@@ -119,12 +119,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       if (this.model) {
         await this.model.load?.();
         this.model.subscribe?.();
-      }
-    }
-
-    #onUpdated() {
-      if (this.#resolveRender) {
-        this.#resolveRender();
       }
     }
 
