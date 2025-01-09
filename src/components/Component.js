@@ -55,15 +55,27 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     async connectedCallback () {
-      await this.populate();
-      const added = this.added();
-      if (added instanceof Promise) await added;
-      await this.update();
+      try {
+        await this.populate();
+        const added = this.added();
+        if (added instanceof Promise) await added;
+        await this.update();
+      } catch (error) {
+        console.log(this, 'Component render error', error);
+      } finally {
+        this.#resolveRendered?.();
+      }
     }
 
     async disconnectedCallback () {
-      const removed = this.removed();
-      if (removed instanceof Promise) await removed;
+      try {
+        const removed = this.removed();
+        if (removed instanceof Promise) await removed;
+      } catch (error) {
+        console.log(this, 'Component remove error', error);
+      } finally {
+        this.#resolveRendered?.();
+      }
     }
 
     model;
@@ -106,8 +118,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       template.remove();
       template = null;
       fragment = null;
-
-      this.#resolveRendered?.();
     }
 
     async populate () {
