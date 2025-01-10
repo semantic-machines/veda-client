@@ -11,7 +11,9 @@ export default function ValueComponent (Class = HTMLElement) {
     }
 
     removed () {
-      this.model.off(this.prop, this.handler);
+      if (this.prop && this.handler) {
+        this.model.off(this.prop, this.handler);
+      }
     }
 
     render () {
