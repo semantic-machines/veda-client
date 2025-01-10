@@ -5,11 +5,16 @@ export default function RelationComponent (Class = HTMLElement) {
   class RelationComponent extends ValueComponent(Class) {
     static name = 'RelationComponent';
 
+    #childrenRendered = [];
+
     async renderValue (value, container) {
       if (!this.template) {
         return super.renderValue(value, container);
       }
       const slot = document.createElement('slot', {is: `${RelationValueComponent}`});
+
+      this.#childrenRendered.push(slot);
+
       slot.model = value;
       slot.template = this.template;
       await slot.connectedCallback();

@@ -4,16 +4,18 @@ export default function ValueComponent (Class = HTMLElement) {
   return class ValueComponent extends Component(Class) {
     static name = 'ValueComponent';
 
-    async connectedCallback () {
+    added () {
       this.prop = this.getAttribute('property') ?? this.getAttribute('rel');
-      this.handler = this.render.bind(this);
-      await super.populate();
+      this.handler = this.update.bind(this);
       this.model.on(this.prop, this.handler);
-      this.render();
+    }
+
+    removed () {
+      this.model.off(this.prop, this.handler);
     }
 
     render () {
-      const container = this.hasAttribute('shadow') 
+      const container = this.hasAttribute('shadow')
         ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
         : this;
       container.replaceChildren();
@@ -28,10 +30,6 @@ export default function ValueComponent (Class = HTMLElement) {
     renderValue (value, container) {
       const node = document.createTextNode(value.toString());
       container.appendChild(node);
-    }
-
-    removed () {
-      this.model.off(this.prop, this.handler);
     }
   };
 }

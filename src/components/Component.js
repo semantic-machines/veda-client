@@ -46,6 +46,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     #resolveRendered;
+    #childrenRendered = [];
+    async #setRendered() {
+      await Promise.all(this.#childrenRendered);
+      this.#resolveRendered?.();
+    }
 
     constructor() {
       super();
@@ -63,7 +68,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       } catch (error) {
         console.log(this, 'Component render error', error);
       } finally {
-        this.#resolveRendered?.();
+        this.#setRendered();
       }
     }
 
@@ -74,7 +79,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       } catch (error) {
         console.log(this, 'Component remove error', error);
       } finally {
-        this.#resolveRendered?.();
+        this.#setRendered();
       }
     }
 
@@ -87,7 +92,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     pre () {}
 
     render () {
-      return this.template ?? this.innerHTML ?? '';
+      return this.template ?? this.innerHTML;
     }
 
     post () {}
@@ -97,6 +102,15 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     async update () {
       let html = this.render();
       if (html instanceof Promise) html = await html;
+
+      if (typeof html === 'undefined') {
+        const pre = this.pre();
+        if (pre instanceof Promise) await pre;
+        const post = this.post();
+        if (post instanceof Promise) await post;
+        return;
+      }
+
       html = typeof html === 'string' ? html.replaceAll(marker, '') : html;
       let template = document.createElement('template');
       template.innerHTML = html;
@@ -203,6 +217,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           this.#processAttributes(component);
 
           node.parentNode.replaceChild(component, node);
+
+          this.#childrenRendered.push(component.rendered);
 
           walker.currentNode = component;
 
