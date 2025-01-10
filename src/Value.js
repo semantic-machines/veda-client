@@ -18,7 +18,7 @@ export default class Value {
   }
 
   static parse (value) {
-    if (value.type === 'String' && value.data) {
+    if (value.type === 'String') {
       return `${value.data}${value.lang && value.lang !== 'NONE' ? `^^${value.lang}` : ''}`;
     } else if (value.type === 'Uri') {
       return new Model(value.data);
