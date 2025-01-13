@@ -5,6 +5,18 @@ import RelationComponent from './RelationComponent.js';
 const marker = Date.now();
 const re = new RegExp(`^${marker}`);
 
+export function raw (strings, ...values) {
+  let result = '';
+  for (let i = 0; i < strings.length; i++) {
+    let value = values[i] ?? '';
+    if (Array.isArray(value)) {
+      value = value.join(' ');
+    }
+    result += strings[i] + value;
+  }
+  return marker + result.trimEnd();
+}
+
 export function html (strings, ...values) {
   let result = '';
   for (let i = 0; i < strings.length; i++) {
