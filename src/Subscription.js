@@ -1,4 +1,5 @@
 import ImportedWebSocket from 'ws';
+
 if (!globalThis.WebSocket) {
   globalThis.WebSocket = ImportedWebSocket;
 }

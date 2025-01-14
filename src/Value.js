@@ -4,6 +4,7 @@ export default class Value {
   static name = 'Value';
 
   constructor (data, type = null, lang = null) {
+    if (data === null) return;
     if (typeof data !== 'undefined' && type !== null) {
       this.data = data;
       this.type = type;
@@ -65,12 +66,13 @@ export default class Value {
       } else if (value.length) {
         return new Value(value.valueOf(), 'String', value.language);
       }
-    } else if (typeof value === 'object') {
-      return new Value(value);
     }
   }
 
   static areEqual (first, second) {
+    if (!(first instanceof Value) || !(second instanceof Value)) {
+      return false;
+    }
     return first.data === second.data && first.type === second.type && first.lang === second.lang;
   }
 
