@@ -8,24 +8,24 @@ export default class Backend {
   static name = 'Backend';
 
   static #ticket;
-  static user;
+  static user_uri;
   static expires;
   static base = typeof location !== 'undefined' ? location.origin : 'http://localhost:8080';
 
   static init (base = this.base) {
-    const {ticket, user, expires} = storage;
+    const {ticket, user_uri, expires} = storage;
     Backend.#ticket = ticket;
-    Backend.user = user;
+    Backend.user_uri = user_uri;
     Backend.expires = expires;
     Backend.base = base;
   }
 
   static #handleTicket (result) {
     Backend.#ticket = storage.ticket = result.id;
-    Backend.user = storage.user = result.user_uri;
+    Backend.user_uri = storage.user_uri = result.user_uri;
     Backend.expires = storage.expires = Math.floor((result.end_time - 621355968000000000) / 10000);
     return {
-      user: Backend.user,
+      user_uri: Backend.user_uri,
       ticket: Backend.#ticket,
       expires: Backend.expires,
     };
@@ -33,11 +33,11 @@ export default class Backend {
 
   static #removeTicket () {
     Backend.#ticket = undefined;
-    delete Backend.user;
+    delete Backend.user_uri;
     delete Backend.expires;
   }
 
-  static async authenticate (login, password, secret) {
+  static authenticate (login, password, secret) {
     const params = {
       method: 'POST',
       url: 'authenticate',
@@ -46,7 +46,7 @@ export default class Backend {
     return Backend.#call_server(params).then(Backend.#handleTicket);
   }
 
-  static async get_ticket_trusted (login) {
+  static get_ticket_trusted (login) {
     const params = {
       method: 'GET',
       url: 'get_ticket_trusted',
@@ -56,7 +56,7 @@ export default class Backend {
     return Backend.#call_server(params).then(Backend.#handleTicket);
   }
 
-  static async is_ticket_valid (ticket = Backend.#ticket) {
+  static is_ticket_valid (ticket = Backend.#ticket) {
     const params = {
       method: 'GET',
       url: 'is_ticket_valid',
@@ -65,7 +65,7 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
-  static async logout () {
+  static logout () {
     const params = {
       method: 'GET',
       url: 'logout',
@@ -74,7 +74,7 @@ export default class Backend {
     return Backend.#call_server(params).then(Backend.#removeTicket);
   }
 
-  static async get_rights (uri, user_id) {
+  static get_rights (uri, user_id) {
     const params = {
       method: 'GET',
       url: 'get_rights',
@@ -84,7 +84,7 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
-  static async get_rights_origin (uri) {
+  static get_rights_origin (uri) {
     const params = {
       method: 'GET',
       url: 'get_rights_origin',
@@ -94,7 +94,7 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
-  static async get_membership (uri) {
+  static get_membership (uri) {
     const params = {
       method: 'GET',
       url: 'get_membership',
@@ -104,7 +104,7 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
-  static async get_operation_state (module_id, wait_op_id) {
+  static get_operation_state (module_id, wait_op_id) {
     const params = {
       method: 'GET',
       url: 'get_operation_state',
@@ -123,7 +123,7 @@ export default class Backend {
     return true;
   }
 
-  static async query (queryStr, sort, databases, top, limit, from, sql, tries = 10) {
+  static query (queryStr, sort, databases, top, limit, from, sql, tries = 10) {
     if (!tries) throw new BackendError(429);
     const arg = queryStr;
     const isObj = typeof arg === 'object';
@@ -142,7 +142,7 @@ export default class Backend {
     });
   }
 
-  static async stored_query (data) {
+  static stored_query (data) {
     const params = {
       method: 'POST',
       url: 'stored_query',
@@ -152,7 +152,7 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
-  static async get_individual (uri, cache = true) {
+  static get_individual (uri, cache = true) {
     const params = {
       method: 'GET',
       url: 'get_individual',
@@ -162,7 +162,7 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
-  static async get_individuals (uris) {
+  static get_individuals (uris) {
     const params = {
       method: 'POST',
       url: 'get_individuals',
@@ -182,7 +182,7 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
-  static async put_individual (individual) {
+  static put_individual (individual) {
     const params = {
       method: 'PUT',
       url: 'put_individual',
@@ -192,7 +192,7 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
-  static async add_to_individual (individual) {
+  static add_to_individual (individual) {
     const params = {
       method: 'PUT',
       url: 'add_to_individual',
@@ -202,7 +202,7 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
-  static async set_in_individual (individual) {
+  static set_in_individual (individual) {
     const params = {
       method: 'PUT',
       url: 'set_in_individual',
@@ -212,7 +212,7 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
-  static async remove_from_individual (individual) {
+  static remove_from_individual (individual) {
     const params = {
       method: 'PUT',
       url: 'remove_from_individual',
@@ -222,7 +222,7 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
-  static async put_individuals (individuals) {
+  static put_individuals (individuals) {
     const params = {
       method: 'PUT',
       url: 'put_individuals',
