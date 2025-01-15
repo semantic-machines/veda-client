@@ -1,5 +1,3 @@
-import {diff, decorator} from './Util.js';
-
 const handler = {
   'get': function (target, prop, receiver) {
     const value = Reflect.get(target, prop, receiver);
@@ -7,7 +5,7 @@ const handler = {
   },
   'set': function (target, prop, value, receiver) {
     Reflect.set(target, prop, value, receiver);
-    if (!prop.startsWith?.('_')) {
+    if (typeof prop !== 'symbol') {
       target.emit?.(prop, value);
       target.emit?.('modified', prop, value);
     }
@@ -16,7 +14,7 @@ const handler = {
   'deleteProperty': function (target, prop) {
     if (prop in target) {
       delete target[prop];
-      if (!prop.startsWith?.('_')) {
+      if (typeof prop !== 'symbol') {
         target.emit?.(prop);
         target.emit?.('modified', prop);
       }

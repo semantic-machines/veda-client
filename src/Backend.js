@@ -1,5 +1,4 @@
 import BackendError from './BackendError.js';
-
 import {timeout} from './Util.js';
 
 const storage = typeof localStorage !== 'undefined' ? localStorage : {};

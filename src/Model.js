@@ -1,16 +1,17 @@
 import Emitter from './Emitter.js';
-
 import Observable from './Observable.js';
-
 import Backend from './Backend.js';
-
 import WeakCache from './WeakCache.js';
-
 import Subscription from './Subscription.js';
-
 import Value from './Value.js';
-
 import {genUri, decorator} from './Util.js';
+
+const IS_NEW = Symbol('isNew');
+const IS_SYNC = Symbol('isSync');
+const LOAD_PROMISE = Symbol('loadPromise');
+const SAVE_PROMISE = Symbol('savePromise');
+const RESET_PROMISE = Symbol('resetPromise');
+const REMOVE_PROMISE = Symbol('removePromise');
 
 export default class Model extends Observable(Emitter(Object)) {
   static name = 'Model';
@@ -94,14 +95,12 @@ export default class Model extends Observable(Emitter(Object)) {
     Subscription.unsubscribe(this.id);
   }
 
-  _isNew;
   isNew (value) {
-    return typeof value === 'undefined' ? this._isNew : this._isNew = !!value;
+    return typeof value === 'undefined' ? this[IS_NEW] : this[IS_NEW] = !!value;
   }
 
-  _isSync;
   isSync (value) {
-    return typeof value === 'undefined' ? this._isSync : this._isSync = !!value;
+    return typeof value === 'undefined' ? this[IS_SYNC] : this[IS_SYNC] = !!value;
   }
 
   hasValue (prop, value) {
@@ -156,97 +155,86 @@ export default class Model extends Observable(Emitter(Object)) {
     return next.getPropertyChain(...props);
   }
 
-  _loadPromise = null;
-
   async load (cache = true) {
-    if (this._loadPromise) {
-      return this._loadPromise;
+    if (this[LOAD_PROMISE]) {
+      return this[LOAD_PROMISE];
     }
 
     if (this.isNew() || this.isSync() && cache) {
       return this;
     }
 
-    this._loadPromise = (async () => {
+    this[LOAD_PROMISE] = (async () => {
       try {
         const data = await Backend.get_individual(this.id, cache);
         this.apply(data);
-
         this.isNew(false);
         this.isSync(true);
         return this;
       } finally {
-        this._loadPromise = null;
+        this[LOAD_PROMISE] = null;
       }
     })();
 
-    return this._loadPromise;
+    return this[LOAD_PROMISE];
   }
 
-  _resetPromise = null;
-
   async reset () {
-    if (this._resetPromise) {
-      return this._resetPromise;
+    if (this[RESET_PROMISE]) {
+      return this[RESET_PROMISE];
     }
 
-    this._resetPromise = (async () => {
+    this[RESET_PROMISE] = (async () => {
       try {
         await this.load(false);
         return this;
       } finally {
-        this._resetPromise = null;
+        this[RESET_PROMISE] = null;
       }
     })();
 
-    return this._resetPromise;
+    return this[RESET_PROMISE];
   }
 
-  _savePromise = null;
-
   async save () {
-    if (this._savePromise) {
-      return this._savePromise;
+    if (this[SAVE_PROMISE]) {
+      return this[SAVE_PROMISE];
     }
 
     if (this.isSync()) return this;
 
-    this._savePromise = (async () => {
+    this[SAVE_PROMISE] = (async () => {
       try {
         const json = this.toJSON();
         await Backend.put_individual(json);
-
         this.isNew(false);
         this.isSync(true);
         return this;
       } finally {
-        this._savePromise = null;
+        this[SAVE_PROMISE] = null;
       }
     })();
 
-    return this._savePromise;
+    return this[SAVE_PROMISE];
   }
 
-  _removePromise = null;
-
   async remove () {
-    if (this._removePromise) {
-      return this._removePromise;
+    if (this[REMOVE_PROMISE]) {
+      return this[REMOVE_PROMISE];
     }
 
-    this._removePromise = (async () => {
+    this[REMOVE_PROMISE] = (async () => {
       try {
         await Backend.remove_individual(this.id);
-
         this.isNew(true);
         this.isSync(false);
         return this;
       } finally {
-        this._removePromise = null;
+        this[REMOVE_PROMISE] = null;
       }
     })();
 
-    return this._removePromise;
+    return this[REMOVE_PROMISE];
   }
 }
 
