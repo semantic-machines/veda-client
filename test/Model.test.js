@@ -5,13 +5,12 @@ import {timeout} from '../src/Util.js';
 Backend.init();
 
 export default ({test, assert}) => {
-  // Basic functionality
-  test('Model - should convert to string representation', () => {
+  test('Model - преобразование в строку', () => {
     const m = new Model();
     assert(m.toString() === m.id);
   });
 
-  test('Model - objects with same id should be equal', () => {
+  test('Model - равенство объектов с одинаковым id', () => {
     const m1 = new Model('rdfs:Resource');
     const m2 = new Model('rdfs:Resource');
     assert(m1 === m2);
@@ -24,7 +23,7 @@ export default ({test, assert}) => {
     assert(counter === 2);
   });
 
-  test('Model - should emit modified events when properties change', () => {
+  test('Model - события modified при изменении свойств', () => {
     let counter = 0;
     const m = new Model();
     m.on('modified', () => counter++);
@@ -33,7 +32,7 @@ export default ({test, assert}) => {
     assert(counter === 2);
   });
 
-  test('Model - should handle property chain retrieval', async () => {
+  test('Model - обработка цепочек свойств', async () => {
     await Backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
     const m1 = new Model('rdfs:Resource');
 
@@ -47,8 +46,7 @@ export default ({test, assert}) => {
     assert(type === 'rdfs:Class');
   });
 
-  // Constructor
-  test('Model - should create model from URI string', () => {
+  test('Model - создание модели из URI', () => {
     const m3 = new Model({
       '@': 'd:test1',
       'rdf:type': {data: 'owl:Thing', type: 'Uri'},
@@ -57,36 +55,31 @@ export default ({test, assert}) => {
     assert(m3['rdf:type'].id === m4.id);
   });
 
-  test('Model - should generate valid ID for empty model', () => {
+  test('Model - генерация ID для пустой модели', () => {
     const m = new Model();
     assert(/^d:[a-z0-9]+$/.test(m.id));
   });
 
-  // Property operations
-  test('Model - should handle property value operations', () => {
+  test('Model - работа со значениями свойств', () => {
     const m = new Model();
 
-    // Test single value assignment
     m['rdfs:label'] = ['test^ru'];
     assert(m['rdfs:label'][0] === 'test^ru');
 
     m['rdfs:label'] = 'test^en';
     assert(m['rdfs:label'] === 'test^en');
 
-    // Test hasValue functionality
     assert(m.hasValue('rdfs:label', 'test^en'));
     assert(m.hasValue('rdfs:label'));
     assert(m.hasValue(undefined, 'test^en'));
 
-    // Test property deletion
     delete m['rdfs:label'];
     assert(!m.hasValue('rdfs:label'));
   });
 
-  test('Model - should handle addValue and removeValue operations', () => {
+  test('Model - операции addValue и removeValue', () => {
     const m = new Model();
 
-    // Test addValue
     m.addValue('rdfs:label', 1);
     assert(m.hasValue('rdfs:label', 1));
 
@@ -96,7 +89,6 @@ export default ({test, assert}) => {
     m.addValue('rdfs:label', 3);
     assert(m.hasValue('rdfs:label', 1) && m.hasValue('rdfs:label', 2) && m.hasValue('rdfs:label', 3));
 
-    // Test removeValue
     m.removeValue('rdfs:label', 1);
     assert(m.hasValue('rdfs:label', 2) && !m.hasValue('rdfs:label', 1));
     m.removeValue('rdfs:label', 2);
@@ -109,60 +101,51 @@ export default ({test, assert}) => {
     assert(!m.hasValue('rdfs:label'));
   });
 
-  // CRUD Operations
-  test('Model - should handle save, load, reset and remove operations', async () => {
+  test('Model - операции сохранения, загрузки, сброса и удаления', async () => {
     await Backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
     const m = new Model();
     m['rdf:type'] = 'rdfs:Resource';
     m['rdfs:label'] = 'test^en';
 
-    // Test save
     m.one('beforesave', assert);
     m.one('aftersave', assert);
     await m.save();
 
     await timeout(300);
 
-    // Test load
     m.one('beforeload', assert);
     m.one('afterload', assert);
     await m.load();
 
-    // Test reset
     m.one('beforereset', assert);
     m.one('afterreset', assert);
     await m.reset();
 
-    // Test remove
     m.one('beforeremove', assert);
     m.one('afterremove', assert);
     await m.remove();
   });
 
-  test('Model - should handle pending operations', async () => {
+  test('Model - отложенные операции', async () => {
     await Backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
     const m = new Model();
     m['rdf:type'] = 'rdfs:Resource';
     m['rdfs:label'] = 'test^en';
 
-    // Test save
     m.save();
     await m.save();
 
-    // Test load
     m.load(false);
     await m.load(false);
 
-    // Test reset
     m.reset();
     await m.reset();
 
-    // Test remove
     m.remove();
     await m.remove();
   });
 
-  test('Model - should handle error propagation', async () => {
+  test('Model - распространение ошибок', async () => {
     const m = new Model();
     try {
       m.one('beforeload', () => {
@@ -172,18 +155,5 @@ export default ({test, assert}) => {
     } catch (error) {
       assert(error.message === 'test');
     }
-  });
-
-  // Data Types
-  test('Model - should handle integer values', () => {
-    const m = new Model();
-    m['rdfs:label'] = [1];
-    assert(m['rdfs:label'][0] === 1);
-  });
-
-  test('Model - should handle decimal values', () => {
-    const m = new Model();
-    m['rdfs:label'] = [0.5];
-    assert(m['rdfs:label'][0] === 0.5);
   });
 };

@@ -1,13 +1,13 @@
 import Router from '../src/Router.js';
 
 export default ({test, assert}) => {
-  test('Роутер #01. Синглтон', async () => {
+  test('Роутер - синглтон', async () => {
     const r1 = new Router();
     const r2 = new Router();
     assert(r1 === r2);
   });
 
-  test('Роутер #02. Базовая маршрутизация', async () => {
+  test('Роутер - базовая маршрутизация', async () => {
     const r = new Router();
     let called = false;
     r.add('#/test', () => called = true);
@@ -16,7 +16,7 @@ export default ({test, assert}) => {
     r.clear();
   });
 
-  test('Роутер #03. Параметры маршрута', async () => {
+  test('Роутер - параметры маршрута', async () => {
     const r = new Router();
     let vars = [];
     const handler = (...args) => vars = [...vars, ...args];
@@ -33,7 +33,7 @@ export default ({test, assert}) => {
     r.clear();
   });
 
-  test('Роутер #04. Управление маршрутами', async () => {
+  test('Роутер - управление маршрутами', async () => {
     const r = new Router();
     const handler = () => {};
 
@@ -50,7 +50,7 @@ export default ({test, assert}) => {
     assert(r.check('#/test').length === 0);
   });
 
-  test('Роутер #05. Шаблоны маршрутов', async () => {
+  test('Роутер - шаблоны маршрутов', async () => {
     const r = new Router();
     let param;
 
@@ -65,11 +65,10 @@ export default ({test, assert}) => {
     assert(param === 'worked2');
   });
 
-  test('Роутер #06. Регулярные выражения в маршрутах', async () => {
+  test('Роутер - регулярные выражения в маршрутах', async () => {
     const r = new Router();
     let result;
 
-    // Проверка простых альтернатив
     r.add('#/status/(on|off)', (value) => {
       result = value;
     });
@@ -78,21 +77,19 @@ export default ({test, assert}) => {
     r.route('#/status/off');
     assert(result === 'off');
 
-    // Проверка комбинации с параметрами
     r.add('#/api/:version/(json|xml)', (version) => result = version);
     r.route('#/api/v1/json');
     assert(result === 'v1');
     r.route('#/api/v2/xml');
     assert(result === 'v2');
 
-    // Проверка что не матчится неправильное значение
     let matched = r.check('#/status/invalid').length;
     assert(matched === 0);
 
     r.clear();
   });
 
-  test('Роутер #07. Валидация регулярных выражений', async () => {
+  test('Роутер - валидация регулярных выражений', async () => {
     const r = new Router();
 
     r.add('#/valid/(?:[0-9]+)', (param) => {
@@ -109,10 +106,9 @@ export default ({test, assert}) => {
     r.clear();
   });
 
-  test('Роутер #08. Проверка ограничений', async () => {
+  test('Роутер - проверка ограничений', async () => {
     const r = new Router();
 
-    // Проверка максимальной длины паттерна
     try {
       r.add('#' + '/a'.repeat(2000), () => {});
       assert(false, 'Должна быть ошибка для слишком длинного паттерна');
@@ -120,7 +116,6 @@ export default ({test, assert}) => {
       assert(e.message === 'Pattern too long');
     }
 
-    // Проверка максимального количества токенов
     try {
       r.add('#/' + 'a/'.repeat(11), () => {});
       assert(false, 'Должна быть ошибка для слишком большого количества токенов');
@@ -128,7 +123,6 @@ export default ({test, assert}) => {
       assert(e.message === 'Too many tokens');
     }
 
-    // Проверка длины токена
     try {
       r.add('#/' + 'a'.repeat(101), () => {});
       assert(false, 'Должна быть ошибка для слишком длинного токена');
@@ -139,10 +133,9 @@ export default ({test, assert}) => {
     r.clear();
   });
 
-  test('Роутер #09. Проверка некорректных токенов', async () => {
+  test('Роутер - проверка некорректных токенов', async () => {
     const r = new Router();
 
-    // Проверка некорректных символов в токене
     try {
       r.add('#/test@invalid', () => {});
       assert(false, 'Должна быть ошибка для некорректного токена');
@@ -157,7 +150,6 @@ export default ({test, assert}) => {
     const r = new Router();
     const results = [];
 
-    // Несколько маршрутов с одним обработчиком
     r.add(
       '#/api/v1/users/:id',
       '#/api/v2/users/:id',
@@ -175,7 +167,7 @@ export default ({test, assert}) => {
     r.clear();
   });
 
-  test('Роутер #11. Проверка URL декодирования', async () => {
+  test('Роутер - проверка URL декодирования', async () => {
     const r = new Router();
     let param;
 
@@ -187,7 +179,7 @@ export default ({test, assert}) => {
     r.clear();
   });
 
-  test('Роутер #12. Проверка пустых токенов', async () => {
+  test('Роутер - проверка пустых токенов', async () => {
     const r = new Router();
     let param1;
     let param2;

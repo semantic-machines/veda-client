@@ -3,31 +3,25 @@ import BackendError from '../src/BackendError.js';
 
 export default ({test, assert}) => {
   test('Backend - базовые операции', async () => {
-    // Тест аутентификации
     await Backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
 
-    // Тест get_individual
     const data = await Backend.get_individual('rdfs:Resource');
     assert(data['@'] === 'rdfs:Resource');
 
-    // Тест put_individual
     const testData = {
       '@': 'd:test_individual',
       'rdf:type': [{data: 'rdfs:Resource', type: 'Uri'}]
     };
     await Backend.put_individual(testData);
 
-    // Тест remove_individual
     await Backend.remove_individual('d:test_individual');
 
-    // Тест get_individuals
     const uris = ['rdfs:Resource', 'owl:Thing'];
     const results = await Backend.get_individuals(uris);
     assert(Array.isArray(results) && results.length === 2);
   });
 
   test('Backend - расширенные операции', async () => {
-    // Тест put_individuals
     const individuals = [{
       '@': 'd:test1',
       'rdf:type': [{data: 'rdfs:Resource', type: 'Uri'}]
@@ -37,19 +31,16 @@ export default ({test, assert}) => {
     }];
     await Backend.put_individuals(individuals);
 
-    // Тест add_to_individual
     await Backend.add_to_individual({
       '@': 'd:test1',
       'rdfs:label': [{data: 'Test Label', type: 'String'}]
     });
 
-    // Тест remove_from_individual
     await Backend.remove_from_individual({
       '@': 'd:test1',
       'rdfs:label': [{data: 'Test Label', type: 'String'}]
     });
 
-    // Очистка
     await Backend.remove_individual('d:test1');
     await Backend.remove_individual('d:test2');
   });
@@ -82,29 +73,24 @@ export default ({test, assert}) => {
     const results = await Backend.query(query);
     assert(Array.isArray(results.result));
 
-    // Тест с limit и offset
     const pagedResults = await Backend.query({query, limit: 10, offset: 0});
     assert(Array.isArray(pagedResults.result));
     assert(pagedResults.result.length === 10);
 
-    // Тест с дополнительными параметрами
     const withParams = await Backend.query({query, limit: 10, offset: 0, top: 1});
     assert(Array.isArray(withParams.result));
     assert(withParams.result.length === 1);
   });
 
   test('Backend - специальные операции', async () => {
-    // Тест get_rights
     const rights = await Backend.get_rights('rdfs:Resource');
     assert(typeof rights === 'object');
 
-    // Тест get_membership
     const membership = await Backend.get_membership('rdfs:Resource');
     assert(typeof membership === 'object');
   });
 
   test('Backend - расширенная обработка ошибок', async () => {
-    // Тест ошибки сети
     const originalFetch = globalThis.fetch;
     globalThis.fetch = () => Promise.reject(new Error('Network error'));
 
@@ -116,7 +102,6 @@ export default ({test, assert}) => {
       assert(error.code === 0);
     }
 
-    // Тест ошибки сервера
     globalThis.fetch = () => Promise.resolve({
       ok: false,
       status: 500,
@@ -132,7 +117,6 @@ export default ({test, assert}) => {
       assert(error.code === 500);
     }
 
-    // Тест невалидного JSON
     globalThis.fetch = () => Promise.resolve({
       ok: false,
       json: () => Promise.reject(new Error('Invalid JSON'))
@@ -145,28 +129,23 @@ export default ({test, assert}) => {
       assert(error instanceof Error);
     }
 
-    // Восстановление fetch
     globalThis.fetch = originalFetch;
   });
 
   test('Backend - дополнительные операции с индивидами', async () => {
-    // Тест get_individual с параметрами
-    const withTicket = await Backend.get_individual('rdfs:Resource', true);
-    assert(withTicket['@'] === 'rdfs:Resource');
+    const withCache = await Backend.get_individual('rdfs:Resource', true);
+    assert(withCache['@'] === 'rdfs:Resource');
 
     const withoutCache = await Backend.get_individual('rdfs:Resource', false);
     assert(withoutCache['@'] === 'rdfs:Resource');
 
-    // Тест put_individuals с пустым массивом
     await Backend.put_individuals([]);
 
-    // Тест get_individuals с пустым массивом
     const emptyResults = await Backend.get_individuals([]);
     assert(Array.isArray(emptyResults) && emptyResults.length === 0);
   });
 
   test('Backend - специальные запросы', async () => {
-    // Тест query с различными параметрами
     const queryParams = {
       query: "'rdf:type' === 'owl:Class'",
       sort: 'rdfs:label',
@@ -179,7 +158,6 @@ export default ({test, assert}) => {
     const sortedResults = await Backend.query(queryParams);
     assert(Array.isArray(sortedResults.result));
 
-    // Тест с null параметрами
     const nullParams = {
       query: "'rdf:type' === 'owl:Class'",
       sort: null,
@@ -192,7 +170,6 @@ export default ({test, assert}) => {
   });
 
   test('Backend - права и членство', async () => {
-    // Тест с валидными данными
     const rights = await Backend.get_rights('rdfs:Resource');
     assert(rights !== null);
     assert(typeof rights === 'object');

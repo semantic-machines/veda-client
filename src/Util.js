@@ -5,7 +5,7 @@ export function genUri () {
 export function guid () {
   let d = new Date().getTime();
   if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
-    d += performance.now(); // use high-precision timer if available
+    d += performance.now();
   }
   return 'xxxxxxxxxxxxxxxxxxxxxxxxxx'.replace(/x/g, function () {
     const r = (d + Math.random() * 36) % 36 | 0;

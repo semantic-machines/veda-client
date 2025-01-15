@@ -4,7 +4,7 @@ import {timeout} from '../src/Util.js';
 const cache = new WeakCache();
 
 export default ({test, assert}) => {
-  test('WeakCache', async () => {
+  test('WeakCache - базовый функционал', async () => {
     const obj = {};
 
     cache.set(0, obj);
@@ -22,7 +22,7 @@ export default ({test, assert}) => {
     cache.set(0, obj);
   });
 
-  test('WeakCache', async () => {
+  test('WeakCache - очистка по GC', async () => {
     await timeout();
 
     globalThis.gc();

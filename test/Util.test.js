@@ -46,7 +46,6 @@ export default ({test, assert}) => {
   });
 
   test('Util - функции сравнения', () => {
-    // Тест eq
     const obj1 = {a: 1, b: {c: 2}};
     const obj2 = {a: 1, b: {c: 2}};
     const obj3 = {a: 1, b: {c: 3}, d: 4};
@@ -54,7 +53,6 @@ export default ({test, assert}) => {
     assert(eq(obj1, obj2), 'Одинаковые объекты должны быть равны');
     assert(!eq(obj1, obj3), 'Разные объекты не должны быть равны');
 
-    // Тест diff
     const delta = diff(obj1, obj3);
     assert(delta.includes('b') && delta.includes('d'), 'diff должен найти различающиеся свойства');
   });
