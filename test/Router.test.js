@@ -71,7 +71,6 @@ export default ({test, assert}) => {
 
     // Проверка простых альтернатив
     r.add('#/status/(on|off)', (value) => {
-      console.log(value);
       result = value;
     });
     r.route('#/status/on');

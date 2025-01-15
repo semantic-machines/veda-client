@@ -249,18 +249,23 @@ export default class Backend {
     if (params.ticket) {
       url.searchParams.append('ticket', params.ticket);
     }
-    const response = await fetch(url, {
-      method: params.method,
-      mode: 'same-origin',
-      cache: 'no-cache',
-      credentials: 'same-origin',
-      ...(params.method !== 'GET' && {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        ...(params.data && {body: JSON.stringify(params.data)}),
-      }),
-    });
+    let response;
+    try {
+      response = await fetch(url, {
+        method: params.method,
+        mode: 'same-origin',
+        cache: 'no-cache',
+        credentials: 'same-origin',
+        ...(params.method !== 'GET' && {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          ...(params.data && {body: JSON.stringify(params.data)}),
+        }),
+      });
+    } catch (error) {
+      throw new BackendError(0);
+    }
     if (!response.ok) throw new BackendError(response.status, response);
     return response.json();
   }

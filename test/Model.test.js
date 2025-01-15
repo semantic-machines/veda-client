@@ -11,6 +11,19 @@ export default ({test, assert}) => {
     assert(m.toString() === m.id);
   });
 
+  test('Model - objects with same id should be equal', () => {
+    const m1 = new Model('rdfs:Resource');
+    const m2 = new Model('rdfs:Resource');
+    assert(m1 === m2);
+    let counter = 0;
+    const handler = () => counter++;
+    m1.on('modified', handler);
+    m1.a = 1;
+    m2.a = 2;
+    assert(m1.a === 2);
+    assert(counter === 2);
+  });
+
   test('Model - should emit modified events when properties change', () => {
     let counter = 0;
     const m = new Model();
@@ -80,9 +93,20 @@ export default ({test, assert}) => {
     m.addValue('rdfs:label', 2);
     assert(m.hasValue('rdfs:label', 1) && m.hasValue('rdfs:label', 2));
 
+    m.addValue('rdfs:label', 3);
+    assert(m.hasValue('rdfs:label', 1) && m.hasValue('rdfs:label', 2) && m.hasValue('rdfs:label', 3));
+
     // Test removeValue
     m.removeValue('rdfs:label', 1);
     assert(m.hasValue('rdfs:label', 2) && !m.hasValue('rdfs:label', 1));
+    m.removeValue('rdfs:label', 2);
+    assert(m.hasValue('rdfs:label', 3) && !m.hasValue('rdfs:label', 2));
+    m.removeValue('rdfs:label', 3);
+    assert(!m.hasValue('rdfs:label'));
+
+    m.addValue('rdfs:label', 1);
+    m.removeValue(undefined, 1);
+    assert(!m.hasValue('rdfs:label'));
   });
 
   // CRUD Operations
@@ -112,6 +136,29 @@ export default ({test, assert}) => {
     // Test remove
     m.one('beforeremove', assert);
     m.one('afterremove', assert);
+    await m.remove();
+  });
+
+  test('Model - should handle pending operations', async () => {
+    await Backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
+    const m = new Model();
+    m['rdf:type'] = 'rdfs:Resource';
+    m['rdfs:label'] = 'test^en';
+
+    // Test save
+    m.save();
+    await m.save();
+
+    // Test load
+    m.load(false);
+    await m.load(false);
+
+    // Test reset
+    m.reset();
+    await m.reset();
+
+    // Test remove
+    m.remove();
     await m.remove();
   });
 

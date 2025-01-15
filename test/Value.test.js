@@ -20,6 +20,10 @@ export default ({test, assert}) => {
     assert(value.data === '1.1' && value.type === 'Decimal');
     assert(1.1 === parse(value));
 
+    value = {data: 1, type: 'Decimal'};
+    const parsed = parse(value);
+    assert(parsed === '1.0');
+
     value = new Value('test');
     assert(value.data == 'test' && value.type === 'String');
     assert('test' == parse(value));
@@ -56,11 +60,17 @@ export default ({test, assert}) => {
     assert(value.data === '2023-03-10T06:34:26Z' && value.type === 'Datetime');
 
     value = new Value('10.0');
-    console.log(value.data, typeof value.data);
     assert(value.data === '10.0' && value.type === 'Decimal');
 
     const value1 = new Value('test^ru');
     const value2 = new Value('test^ru');
     assert(value1.isEqual(value2));
+
+    assert(!Value.areEqual(value1, null));
+
+    const empty = new Value(null);
+    assert(empty.data === undefined && empty.type === undefined);
   });
 };
+
+
