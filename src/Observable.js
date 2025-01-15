@@ -23,8 +23,8 @@ const handler = {
   },
 };
 
-export default function Observable(Base) {
-  return class extends Base {
+export default function Observable(Class = Object) {
+  return class extends Class {
     constructor(...args) {
       super(...args);
       return new Proxy(this, handler);
