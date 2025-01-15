@@ -60,9 +60,6 @@ export default class Model extends Observable(Emitter(Object)) {
         acc['@'] = this.id;
         return acc;
       }
-      if (key.startsWith('_')) {
-        return acc;
-      }
       const value = this[key];
       if (Array.isArray(value)) {
         acc[key] = value.map(Value.serialize).filter(Boolean);
