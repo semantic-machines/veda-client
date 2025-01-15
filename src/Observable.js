@@ -23,17 +23,11 @@ const handler = {
   },
 };
 
-export default function Observable (Class) {
-  class Observable extends Class {
-    static name = `Observable(${Class.name})`;
-
-    constructor (...args) {
+export default function Observable(Base) {
+  return class extends Base {
+    constructor(...args) {
       super(...args);
       return new Proxy(this, handler);
     }
-  }
-
-  Object.defineProperty(Observable, 'name', {value: `Observable(${Class.name})`});
-
-  return Observable;
+  };
 }

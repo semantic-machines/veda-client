@@ -1,9 +1,7 @@
 import Component from './Component.js';
 
 export default function ValueComponent (Class = HTMLElement) {
-  return class ValueComponent extends Component(Class) {
-    static name = 'ValueComponent';
-
+  return class ValueComponentClass extends Component(Class) {
     added () {
       this.prop = this.getAttribute('property') ?? this.getAttribute('rel');
       this.handler = this.update.bind(this);

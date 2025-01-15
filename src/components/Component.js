@@ -48,9 +48,7 @@ export function safe (value) {
 }
 
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
-  class ComponentClass extends ElementClass {
-    static name = 'Component';
-
+  return class ComponentClass extends ElementClass {
     static tag = 'veda-component';
 
     static toString () {
@@ -273,8 +271,5 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         }
       }
     }
-
   }
-
-  return ComponentClass;
 }

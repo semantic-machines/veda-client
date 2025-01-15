@@ -2,9 +2,7 @@ import Component from './Component.js';
 import ValueComponent from './ValueComponent.js';
 
 export default function RelationComponent (Class = HTMLElement) {
-  class RelationComponent extends ValueComponent(Class) {
-    static name = 'RelationComponent';
-
+  return class RelationComponentClass extends ValueComponent(Class) {
     #childrenRendered = [];
 
     async renderValue (value, container) {
@@ -22,8 +20,6 @@ export default function RelationComponent (Class = HTMLElement) {
       slot.remove();
     }
   };
-
-  return RelationComponent;
 }
 
 class RelationValueComponent extends Component(HTMLSlotElement) {

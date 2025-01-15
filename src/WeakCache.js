@@ -1,6 +1,4 @@
 export default class WeakCache {
-  static name = 'WeakCache';
-
   #map = new Map();
 
   get (key) {

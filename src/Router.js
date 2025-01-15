@@ -1,6 +1,4 @@
 export default class Router {
-  static name = 'Router';
-
   static #instance;
 
   constructor () {

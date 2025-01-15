@@ -14,8 +14,6 @@ const RESET_PROMISE = Symbol('resetPromise');
 const REMOVE_PROMISE = Symbol('removePromise');
 
 export default class Model extends Observable(Emitter(Object)) {
-  static name = 'Model';
-
   static cache = new WeakCache();
 
   constructor (data) {

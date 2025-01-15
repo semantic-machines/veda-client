@@ -1,8 +1,6 @@
 import Model from './Model.js';
 
 export default class Value {
-  static name = 'Value';
-
   constructor (data, type = null, lang = null) {
     if (data === null) return;
     if (typeof data !== 'undefined' && type !== null) {

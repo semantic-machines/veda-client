@@ -1,9 +1,7 @@
 import ValueComponent from './ValueComponent.js';
 
 export default function PropertyComponent (Class = HTMLElement) {
-  class PropertyComponent extends ValueComponent(Class) {
-    static name = 'PropertyComponent';
-
+  return class PropertyComponentClass extends ValueComponent(Class) {
     static observedAttributes = ['lang'];
 
     attributeChangedCallback (name, oldValue, newValue) {
@@ -44,6 +42,4 @@ export default function PropertyComponent (Class = HTMLElement) {
       fragment = null;
     }
   };
-
-  return PropertyComponent;
 }

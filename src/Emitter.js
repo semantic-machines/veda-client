@@ -2,8 +2,6 @@ const CALLBACKS = Symbol('callbacks');
 
 export default function Emitter(Class = Object) {
   class Emitter extends Class {
-    static name = `Emitter(${Class.name})`;
-
     constructor() {
       super();
       this[CALLBACKS] = {};
