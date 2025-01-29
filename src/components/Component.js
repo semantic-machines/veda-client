@@ -110,12 +110,13 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     removed () {}
 
     async update () {
+      const pre = this.pre();
+      if (pre instanceof Promise) await pre;
+
       let html = this.render();
       if (html instanceof Promise) html = await html;
 
       if (typeof html === 'undefined') {
-        const pre = this.pre();
-        if (pre instanceof Promise) await pre;
         const post = this.post();
         if (post instanceof Promise) await post;
         return;
