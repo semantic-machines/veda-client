@@ -127,9 +127,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       template.innerHTML = html;
       let fragment = template.content;
 
-      const pre = this.pre(fragment);
-      if (pre instanceof Promise) await pre;
-
       this.#process(fragment);
 
       const container = this.hasAttribute('shadow')
