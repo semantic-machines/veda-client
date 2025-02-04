@@ -43,7 +43,11 @@ export default class Model extends Observable(Emitter(Object)) {
   }
 
   apply (data) {
-    Object.getOwnPropertyNames(data).forEach((prop) => {
+    const thisProps = new Set(Object.getOwnPropertyNames(this));
+    const dataProps = new Set(Object.getOwnPropertyNames(data));
+    thisProps.difference(dataProps).forEach(prop => prop !== 'id' && delete this[prop]);
+
+    dataProps.forEach((prop) => {
       if (prop === '@') return this.id = data['@'] ?? genUri();
       let value = data[prop];
       if (Array.isArray(value)) {
