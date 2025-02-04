@@ -8,6 +8,7 @@ import {genUri, decorator} from './Util.js';
 
 const IS_NEW = Symbol('isNew');
 const IS_SYNC = Symbol('isSync');
+const IS_LOADED = Symbol('isLoaded');
 const LOAD_PROMISE = Symbol('loadPromise');
 const SAVE_PROMISE = Symbol('savePromise');
 const RESET_PROMISE = Symbol('resetPromise');
@@ -23,16 +24,19 @@ export default class Model extends Observable(Emitter(Object)) {
 
       this.isNew(false);
       this.isSync(false);
+      this.isLoaded(false);
     } else if (typeof data === 'undefined') {
       this.id = genUri();
 
       this.isNew(true);
       this.isSync(false);
+      this.isLoaded(false);
     } else if (typeof data === 'object') {
       this.apply(data);
 
       this.isNew(false);
       this.isSync(true);
+      this.isLoaded(true);
     }
     this.on('modified', () => this.isSync(false));
     return Model.cache.get(this.id) ?? (Model.cache.set(this.id, this), this);
@@ -98,6 +102,10 @@ export default class Model extends Observable(Emitter(Object)) {
     return typeof value === 'undefined' ? this[IS_SYNC] : this[IS_SYNC] = !!value;
   }
 
+  isLoaded (value) {
+    return typeof value === 'undefined' ? this[IS_LOADED] : this[IS_LOADED] = !!value;
+  }
+
   hasValue (prop, value) {
     if (!prop && typeof value !== 'undefined') {
       return Object.getOwnPropertyNames(this).reduce((prev, prop) => prev || this.hasValue(prop, value), false);
@@ -155,7 +163,7 @@ export default class Model extends Observable(Emitter(Object)) {
       return this[LOAD_PROMISE];
     }
 
-    if (this.isNew() || this.isSync() && cache) {
+    if (this.isNew() || this.isLoaded() && cache) {
       return this;
     }
 
@@ -165,6 +173,7 @@ export default class Model extends Observable(Emitter(Object)) {
         this.apply(data);
         this.isNew(false);
         this.isSync(true);
+        this.isLoaded(true);
         return this;
       } finally {
         this[LOAD_PROMISE] = null;
@@ -204,6 +213,7 @@ export default class Model extends Observable(Emitter(Object)) {
         await Backend.put_individual(json);
         this.isNew(false);
         this.isSync(true);
+        this.isLoaded(true);
         return this;
       } finally {
         this[SAVE_PROMISE] = null;
@@ -223,6 +233,7 @@ export default class Model extends Observable(Emitter(Object)) {
         await Backend.remove_individual(this.id);
         this.isNew(true);
         this.isSync(false);
+        this.isLoaded(false);
         return this;
       } finally {
         this[REMOVE_PROMISE] = null;
