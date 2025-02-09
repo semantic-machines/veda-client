@@ -25,7 +25,7 @@ export default class Model extends Observable(Emitter(Object)) {
       this.isNew(false);
       this.isSync(false);
       this.isLoaded(false);
-    } else if (typeof data === 'undefined') {
+    } else if (typeof data === 'undefined' || data === null) {
       this.id = genUri();
 
       this.isNew(true);
