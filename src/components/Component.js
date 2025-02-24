@@ -60,6 +60,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     async #setRendered() {
       await Promise.all(this.#childrenRendered);
       this.#resolveRendered?.();
+      this.renderedCallback();
     }
 
     constructor() {
@@ -68,6 +69,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         this.#resolveRendered = resolve;
       });
     }
+
+    renderedCallback () {}
 
     async connectedCallback () {
       try {
