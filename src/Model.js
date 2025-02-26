@@ -19,27 +19,30 @@ export default class Model extends Observable(Emitter(Object)) {
 
   constructor (data) {
     super();
+
+    this.on('modified', () => this.isSync(false));
+
     if (typeof data === 'string') {
       this.id = data;
-
       this.isNew(false);
       this.isSync(false);
       this.isLoaded(false);
+      return Model.cache.get(this.id) ?? (Model.cache.set(this.id, this), this);
     } else if (typeof data === 'undefined' || data === null) {
       this.id = genUri();
-
       this.isNew(true);
       this.isSync(false);
       this.isLoaded(false);
+      return (Model.cache.set(this.id, this), this);
     } else if (typeof data === 'object') {
-      this.apply(data);
-
-      this.isNew(false);
-      this.isSync(true);
-      this.isLoaded(true);
+      const id = data['@'];
+      const cached = Model.cache.get(id) ?? (Model.cache.set(id, this), this);
+      cached.apply(data);
+      cached.isNew(false);
+      cached.isSync(true);
+      cached.isLoaded(true);
+      return cached;
     }
-    this.on('modified', () => this.isSync(false));
-    return Model.cache.get(this.id) ?? (Model.cache.set(this.id, this), this);
   }
 
   apply (data) {
