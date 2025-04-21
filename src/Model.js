@@ -13,8 +13,8 @@ const LOAD_PROMISE = Symbol('loadPromise');
 const SAVE_PROMISE = Symbol('savePromise');
 const RESET_PROMISE = Symbol('resetPromise');
 const REMOVE_PROMISE = Symbol('removePromise');
-const MEMBERSHIPS = Symbol('removePromise');
-const RIGHTS = Symbol('removePromise');
+const MEMBERSHIPS = Symbol('memberships');
+const RIGHTS = Symbol('rights');
 
 export default class Model extends Observable(Emitter(Object)) {
   static cache = new WeakCache();
