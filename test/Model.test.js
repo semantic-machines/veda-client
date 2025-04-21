@@ -156,4 +156,52 @@ export default ({test, assert}) => {
       assert(error.message === 'test');
     }
   });
+
+  test('Model - toLabel()', () => {
+    const m = new Model({
+      "@": "mnd-s:PurchasesSalesAspect",
+      "rdf:type": [
+        {
+          "data": "v-s:Aspect",
+          "type": "Uri"
+        }
+      ],
+      "rdfs:label": [
+        {
+          "data": "Закупки и продажи",
+          "lang": "RU",
+          "type": "String"
+        },
+        {
+          "data": "Sales and purchases",
+          "lang": "EN",
+          "type": "String"
+        }
+      ]
+    });
+    assert(m.toLabel() === 'Закупки и продажи');
+    assert(m.toLabel('rdfs:label', ['EN']) === 'Sales and purchases');
+    assert(m.toLabel('rdfs:label', ['RU','EN']) === 'Закупки и продажи Sales and purchases');
+    assert(m.toLabel('v-s:shortLabel') === '');
+  });
+
+  test('Model - isMemberOf()', async () => {
+    await Backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
+    const m = new Model('v-s:Main');
+    assert(typeof await m.isMemberOf('v-s:AllResourcesGroup') === 'boolean');
+    assert(typeof await m.isMemberOf('cfg:TTLResourcesGroup') === 'boolean');
+    assert(typeof await m.isMemberOf('v-s:OutOfObjectGroup') === 'boolean');
+    assert(await m.isMemberOf('v-s:OutOfVedaSystemGroup') === false);
+    assert(!m.memberships && !m.MEMBERSHIPS);
+  });
+
+  test('Model - can CRUD', async () => {
+    await Backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
+    const m = new Model('v-s:Main');
+    assert(typeof await m.canCreate() === 'boolean');
+    assert(typeof await m.canDelete() === 'boolean');
+    assert(typeof await m.canRead() === 'boolean');
+    assert(typeof await m.canUpdate() === 'boolean');
+    assert(!m.rights && !m.RIGHTS);
+  });
 };
