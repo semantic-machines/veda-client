@@ -249,6 +249,29 @@ export default class Model extends Observable(Emitter(Object)) {
 
     return this[REMOVE_PROMISE];
   }
+
+  toLabel (field="rdfs:label", lang = 'RU') {
+    if (!this.hasValue(field)) return "";
+    if (typeof lang == 'string') {
+      const label = this[field].length > 1 
+        ? this[field].find((l) => l.includes("^^" + lang)) 
+        : this[field][0];
+      return label.replace(/\^\^../, "");
+    } else {
+      return this[field].join(' ').replace(/\^\^../g, "")
+    }
+  }
+
+  async loadMemberships () {
+    const membershipJSON = await Backend.get_membership(this.id);
+    this.memberships = new Model(membershipJSON);
+    return this.memberships;
+  }
+
+  async isMemberOf (id) {
+    if (!this.memberships) await this.loadMemberships();
+    return this.memberships.hasValue('v-s:memberOf', id);
+  }
 }
 
 ['load', 'save', 'reset', 'remove'].forEach((action) => Model.prototype[action] = actionDecorator(Model.prototype[action]));

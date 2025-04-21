@@ -156,4 +156,57 @@ export default ({test, assert}) => {
       assert(error.message === 'test');
     }
   });
+
+  test('Model - toLabel()', () => {
+    const m = new Model({
+      "@": "mnd-s:PurchasesSalesAspect",
+      "rdf:type": [
+        {
+          "data": "v-s:Aspect",
+          "type": "Uri"
+        }
+      ],
+      "rdfs:label": [
+        {
+          "data": "Закупки и продажи",
+          "lang": "RU",
+          "type": "String"
+        },
+        {
+          "data": "Sales and purchases",
+          "lang": "EN",
+          "type": "String"
+        }
+      ]
+    });
+    assert(m.toLabel() === 'Закупки и продажи');
+    assert(m.toLabel('rdfs:label', 'EN') === 'Sales and purchases');
+    assert(m.toLabel('v-s:shortLabel') === '');
+  });
+
+  test('Model - isMemberOf()', async () => {
+    const m = new Model();
+    m.memberships = new Model({
+      "@": "_",
+      "rdf:type": [
+        {
+          "data": "v-s:Membership",
+          "type": "Uri"
+        }
+      ],
+      "v-s:memberOf": [
+        {
+          "data": "v-s:AllResourcesGroup",
+          "type": "Uri"
+        },
+        {
+          "data": "cfg:TTLResourcesGroup",
+          "type": "Uri"
+        }
+      ],
+    });
+    assert(await m.isMemberOf('v-s:AllResourcesGroup') === true);
+    assert(await m.isMemberOf('cfg:TTLResourcesGroup') === true);
+    assert(await m.isMemberOf('v-s:OutOfObjectGroup') === false);
+  });
 };
