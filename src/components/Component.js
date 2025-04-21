@@ -31,6 +31,17 @@ export function html (strings, ...values) {
   return marker + result.trimEnd();
 }
 
+export function css (strings, ...values) {
+  let result = '';
+  strings.forEach((str, i) => {
+    result += str;
+    if (values[i] !== undefined) {
+      result += values[i];
+    }
+  });
+  return result;
+}
+
 export function safe (value) {
   if (Array.isArray(value)) return value.map(safe);
   if (typeof value !== 'string' && !(value instanceof String)) return value;
@@ -139,6 +150,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       const post = this.post(fragment);
       if (post instanceof Promise) await post;
+      
+      this.#applyStyles();
 
       template.remove();
       template = null;
@@ -154,6 +167,20 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       if (this.model) {
         await this.model.load?.();
         this.model.subscribe?.();
+      }
+    }
+
+    #applyStyles() {
+      const target = this.shadowRoot || this;
+      
+      const oldStyles = target.querySelector('style[data-component-styles]');
+      if (oldStyles) oldStyles.remove();
+      
+      if (this.constructor.styles && this.constructor.styles !== css``) {
+        const styleTag = document.createElement('style');
+        styleTag.setAttribute('data-component-styles', '');
+        styleTag.textContent = this.constructor.styles.toString();
+        target.prepend(styleTag);
       }
     }
 
