@@ -13,6 +13,8 @@ const LOAD_PROMISE = Symbol('loadPromise');
 const SAVE_PROMISE = Symbol('savePromise');
 const RESET_PROMISE = Symbol('resetPromise');
 const REMOVE_PROMISE = Symbol('removePromise');
+const MEMBERSHIPS = Symbol('removePromise');
+const RIGHTS = Symbol('removePromise');
 
 export default class Model extends Observable(Emitter(Object)) {
   static cache = new WeakCache();
@@ -250,27 +252,67 @@ export default class Model extends Observable(Emitter(Object)) {
     return this[REMOVE_PROMISE];
   }
 
-  toLabel (field="rdfs:label", lang = 'RU') {
-    if (!this.hasValue(field)) return "";
-    if (typeof lang == 'string') {
-      const label = this[field].length > 1 
-        ? this[field].find((l) => l.includes("^^" + lang)) 
-        : this[field][0];
-      return label.replace(/\^\^../, "");
+  toLabel (field="rdfs:label", lang = ['RU']) {
+    if (!this.hasValue(field)) return '';
+    let label = '';
+    if (this[field].length == 1) {
+      label = this[field][0];
     } else {
-      return this[field].join(' ').replace(/\^\^../g, "")
+      label = this[field].filter((l) => {
+        for (const currentLang of lang) {
+          const re = new RegExp('\\^\\^' + currentLang);
+          if (re.test(l)) return true;
+        }
+        return false;
+      }).join(' ');
     }
+    return label.replace(/\^\^../g, "");
   }
 
   async loadMemberships () {
     const membershipJSON = await Backend.get_membership(this.id);
-    this.memberships = new Model(membershipJSON);
-    return this.memberships;
+    this[MEMBERSHIPS] = new Model(membershipJSON);
+    return this[MEMBERSHIPS];
   }
 
   async isMemberOf (id) {
-    if (!this.memberships) await this.loadMemberships();
-    return this.memberships.hasValue('v-s:memberOf', id);
+    if (!this[MEMBERSHIPS]) await this.loadMemberships();
+    return this[MEMBERSHIPS].hasValue('v-s:memberOf', id);
+  }
+
+  async loadRight () {
+    if (this[RIGHTS]) return this[RIGHTS];
+    if (this.isNew()) {
+      this[RIGHTS] = new Model();
+      this[RIGHTS]['v-s:canCreate'] = [true];
+      this[RIGHTS]['v-s:canRead'] = [true];
+      this[RIGHTS]['v-s:canUpdate'] = [true];
+      this[RIGHTS]['v-s:canDelete'] = [true];
+    } else {
+      const rightsJSON = await Backend.get_rights(this.id, Backend.user_uri);
+      this[RIGHTS] = new Model(rightsJSON);
+    }
+    return this[RIGHTS];
+  }
+
+  async canCreate () {
+    await this.loadRight();
+    return this[RIGHTS].hasValue('v-s:canCreate');
+  }
+
+  async canRead () {
+    await this.loadRight();
+    return this[RIGHTS].hasValue('v-s:canRead');
+  }
+
+  async canUpdate () {
+    await this.loadRight();
+    return this[RIGHTS].hasValue('v-s:canUpdate');
+  }
+
+  async canDelete () {
+    await this.loadRight();
+    return this[RIGHTS].hasValue('v-s:canDelete');
   }
 }
 
