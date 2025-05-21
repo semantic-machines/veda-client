@@ -1,4 +1,4 @@
-import {Component, html} from '../../src/index.js';
+import {Component, html} from '../../../src/index.js';
 
 export default class AppSimple extends Component(HTMLElement) {
   static tag = 'veda-app-simple';

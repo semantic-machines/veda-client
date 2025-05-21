@@ -1,4 +1,4 @@
-import {Component, html} from '../../src/index.js';
+import {Component, html} from '../../../src/index.js';
 import SettingsComponent from './SettingsComponent.js';
 import Literal from './Literal.js';
 

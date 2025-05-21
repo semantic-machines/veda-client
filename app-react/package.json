@@ -1,14 +1,11 @@
 {
-  "name": "veda-client",
+  "name": "app-react",
   "version": "1.0.0",
-  "description": "veda platform client framework",
+  "description": "test react app",
   "module": "src/index.js",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "test": "time -p node --expose-gc test",
-    "debug": "node --inspect-brk test",
-    "c8": "time -p c8 node --expose-gc test",
     "build": "node build.mjs",
     "watch": "node watch.mjs"
   },
@@ -23,13 +20,9 @@
   },
   "homepage": "https://github.com/semantic-machines/veda-client#readme",
   "devDependencies": {
-    "@eslint/js": "^9.16.0",
-    "baretest": "^2.0.0",
-    "c8": "^10.1.2",
     "esbuild": "^0.24.0",
     "esbuild-plugin-copy": "^2.1.1",
-    "eslint": "^9.16.0",
-    "globals": "^15.13.0",
-    "ws": "^8.18.0"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   }
 }

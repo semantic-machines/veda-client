@@ -1,4 +1,4 @@
-import {Component, safe} from '../../src/index.js';
+import {Component, safe} from '../../../src/index.js';
 
 function getLiteralValue (model, property) {
   const currentLang = document.documentElement.lang.toUpperCase();
