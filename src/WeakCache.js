@@ -20,4 +20,12 @@ export default class WeakCache {
   delete (key) {
     this.#map.delete(key);
   }
+
+  clear() {
+    this.#map.clear();
+  }
+
+  _getSize() {
+    return this.#map.size;
+  }
 }

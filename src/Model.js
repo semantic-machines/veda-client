@@ -50,7 +50,9 @@ export default class Model extends Observable(Emitter(Object)) {
   apply (data) {
     const thisProps = new Set(Object.getOwnPropertyNames(this));
     const dataProps = new Set(Object.getOwnPropertyNames(data));
-    thisProps.difference(dataProps).forEach(prop => prop !== 'id' && delete this[prop]);
+
+    const propsToDelete = [...thisProps].filter(prop => !dataProps.has(prop));
+    propsToDelete.forEach(prop => prop !== 'id' && delete this[prop]);
 
     dataProps.forEach((prop) => {
       if (prop === '@') return this.id = data['@'] ?? genUri();
@@ -89,14 +91,13 @@ export default class Model extends Observable(Emitter(Object)) {
   }
 
   subscribe () {
-    Subscription.subscribe(this, [this.id, this.hasValue('v-s:updateCounter') ? this['v-s:updateCounter'][0] : 0, this.updater]);
-  }
-
-  updater (id) {
-    const model = new Model(id);
-    model.reset().catch((error) => {
-      console.error(`Error resetting model ${id}`, error);
-    });
+    const updater = (id) => {
+      const model = new Model(id);
+      model.reset().catch((error) => {
+        console.error(`Error resetting model ${id}`, error);
+      });
+    };
+    Subscription.subscribe(this, [this.id, this.hasValue('v-s:updateCounter') ? this['v-s:updateCounter'][0] : 0, updater]);
   }
 
   unsubscribe () {

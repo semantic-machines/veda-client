@@ -82,4 +82,8 @@ export default class Subscription {
     Subscription.#subscriptions.delete(id);
     Subscription.#send(`-${id}`);
   }
+
+  static _getSubscriptionCount() {
+    return Subscription.#subscriptions.size;
+  }
 }
