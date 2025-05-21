@@ -178,4 +178,48 @@ export default ({test, assert}) => {
     assert(membership !== null);
     assert(typeof membership === 'object');
   });
+
+  test('Backend - отмена запросов', async () => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    // Запускаем запрос и сразу отменяем его
+    const queryPromise = Backend.query('test query', null, null, null, null, null, null, 10, signal);
+    controller.abort();
+
+    try {
+      await queryPromise;
+      assert(false, 'Запрос должен быть отменен');
+    } catch (error) {
+      assert(error.name === 'AbortError', 'Должна быть ошибка отмены запроса');
+    }
+
+    // Проверяем отмену запроса get_individual
+    const controller2 = new AbortController();
+    const signal2 = controller2.signal;
+
+    const individualPromise = Backend.get_individual('test:uri', true, signal2);
+    controller2.abort();
+
+    try {
+      await individualPromise;
+      assert(false, 'Запрос должен быть отменен');
+    } catch (error) {
+      assert(error.name === 'AbortError', 'Должна быть ошибка отмены запроса');
+    }
+
+    // Проверяем отмену stored_query
+    const controller3 = new AbortController();
+    const signal3 = controller3.signal;
+
+    const storedQueryPromise = Backend.stored_query({query: 'test'}, signal3);
+    controller3.abort();
+
+    try {
+      await storedQueryPromise;
+      assert(false, 'Запрос должен быть отменен');
+    } catch (error) {
+      assert(error.name === 'AbortError', 'Должна быть ошибка отмены запроса');
+    }
+  });
 };

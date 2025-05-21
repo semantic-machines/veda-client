@@ -9,6 +9,17 @@ export default class Backend {
   static expires;
   static base = typeof location !== 'undefined' ? location.origin : 'http://localhost:8080';
 
+  static errorListeners = new Set();
+
+  static onError(listener) {
+    this.errorListeners.add(listener);
+    return () => this.errorListeners.delete(listener);
+  }
+
+  static emitError(error) {
+    this.errorListeners.forEach(fn => fn(error));
+  }
+
   static init (base = this.base) {
     const {ticket, user_uri, expires} = storage;
     Backend.#ticket = ticket;
@@ -68,7 +79,10 @@ export default class Backend {
       url: 'logout',
       ticket: Backend.#ticket,
     };
-    return Backend.#call_server(params).then(Backend.#removeTicket);
+    return Backend.#call_server(params).then((result) => {
+      Backend.#removeTicket();
+      return result;
+    });
   }
 
   static get_rights (uri, user_id) {
@@ -110,18 +124,20 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
-  static async wait_module (module_id, op_id, __maxCalls = 10) {
-    if (!__maxCalls) return false;
-    await timeout(250 * (10 - __maxCalls));
-    const module_op_id = await Backend.get_operation_state(module_id, op_id);
-    if (module_op_id < op_id) {
-      return Backend.wait_module(module_id, op_id, --__maxCalls);
-    }
-    return true;
+  static wait_module (module_id, op_id, __maxCalls = 10) {
+    if (!__maxCalls) return Promise.resolve(false);
+    return timeout(250 * (10 - __maxCalls)).then(() =>
+      Backend.get_operation_state(module_id, op_id).then((module_op_id) => {
+        if (module_op_id < op_id) {
+          return Backend.wait_module(module_id, op_id, --__maxCalls);
+        }
+        return true;
+      })
+    );
   }
 
-  static query (queryStr, sort, databases, top, limit, from, sql, tries = 10) {
-    if (!tries) throw new BackendError(429);
+  static query (queryStr, sort, databases, top, limit, from, sql, tries = 10, signal) {
+    if (!tries) return Promise.reject(new BackendError(429));
     const arg = queryStr;
     const isObj = typeof arg === 'object';
     const params = {
@@ -129,102 +145,112 @@ export default class Backend {
       url: 'query',
       ticket: Backend.#ticket,
       data: isObj ? {...queryStr} : {query: queryStr, sort, databases, top, limit, from, sql},
+      signal,
     };
     return Backend.#call_server(params).catch(async (backendError) => {
-      if (backendError.code === 999) {
+      if (backendError.code === 999 && tries > 1) {
         await timeout(1000);
-        return Backend.query(queryStr, sort, databases, top, limit, from, sql, --tries);
+        return Backend.query(queryStr, sort, databases, top, limit, from, sql, --tries, signal);
       }
       throw backendError;
     });
   }
 
-  static stored_query (data) {
+  static stored_query (data, signal) {
     const params = {
       method: 'POST',
       url: 'stored_query',
       ticket: Backend.#ticket,
       data,
+      signal,
     };
     return Backend.#call_server(params);
   }
 
-  static get_individual (uri, cache = true) {
+  static get_individual (uri, cache = true, signal) {
     const params = {
       method: 'GET',
       url: 'get_individual',
       ticket: Backend.#ticket,
       data: {uri, ...(!cache && {'vsn': Date.now()})},
+      signal,
     };
     return Backend.#call_server(params);
   }
 
-  static get_individuals (uris) {
+  static get_individuals (uris, signal) {
     const params = {
       method: 'POST',
       url: 'get_individuals',
       ticket: Backend.#ticket,
       data: {uris},
+      signal,
     };
     return Backend.#call_server(params);
   }
 
-  static async remove_individual (uri) {
+  static remove_individual (uri, signal) {
     const params = {
       method: 'PUT',
       url: 'remove_individual',
       ticket: Backend.#ticket,
       data: {uri},
+      signal,
     };
     return Backend.#call_server(params);
   }
 
-  static put_individual (individual) {
+  static put_individual (individual, signal) {
     const params = {
       method: 'PUT',
       url: 'put_individual',
       ticket: Backend.#ticket,
       data: {individual},
+      signal,
     };
     return Backend.#call_server(params);
   }
 
-  static add_to_individual (individual) {
+  static add_to_individual (individual, signal) {
     const params = {
       method: 'PUT',
       url: 'add_to_individual',
       ticket: Backend.#ticket,
       data: {individual},
+      signal,
     };
     return Backend.#call_server(params);
   }
 
-  static set_in_individual (individual) {
+  static set_in_individual (individual, signal) {
     const params = {
       method: 'PUT',
       url: 'set_in_individual',
       ticket: Backend.#ticket,
       data: {individual},
+      signal,
     };
     return Backend.#call_server(params);
   }
 
-  static remove_from_individual (individual) {
+  static remove_from_individual (individual, signal) {
     const params = {
       method: 'PUT',
       url: 'remove_from_individual',
       ticket: Backend.#ticket,
       data: {individual},
+      signal,
     };
     return Backend.#call_server(params);
   }
 
-  static put_individuals (individuals) {
+  static put_individuals (individuals, signal) {
     const params = {
       method: 'PUT',
       url: 'put_individuals',
       ticket: Backend.#ticket,
       data: {individuals},
+      signal,
     };
     return Backend.#call_server(params);
   }
@@ -247,28 +273,33 @@ export default class Backend {
     if (params.ticket) {
       url.searchParams.append('ticket', params.ticket);
     }
+    const fetchOptions = {
+      method: params.method,
+      headers: { 'Content-Type': 'application/json' },
+      body: params.method !== 'GET' ? JSON.stringify(params.data) : undefined,
+      signal: params.signal,
+    };
     let response;
     try {
-      response = await fetch(url, {
-        method: params.method,
-        mode: 'same-origin',
-        cache: 'no-cache',
-        credentials: 'same-origin',
-        ...(params.method !== 'GET' && {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          ...(params.data && {body: JSON.stringify(params.data)}),
-        }),
-      });
+      response = await fetch(url, fetchOptions);
+      if (!response.ok) throw new BackendError(response.status);
+      return await response.json();
     } catch (error) {
-      throw new BackendError(0);
+      if (error.name === 'AbortError') {
+        throw error; // Пробрасываем AbortError дальше без оборачивания в BackendError
+      }
+      // Оборачиваем любые другие ошибки в BackendError
+      if (!(error instanceof BackendError)) {
+        const backendError = new BackendError(0, error);
+        Backend.emitError(backendError);
+        throw backendError;
+      }
+      Backend.emitError(error);
+      throw error;
     }
-    if (!response.ok) throw new BackendError(response.status, response);
-    return response.json();
   }
 
-  static async uploadFile ({path, uri, file}) {
+  static async uploadFile ({path, uri, file, signal}) {
     const form = new FormData();
     form.append('path', path);
     form.append('uri', uri);
@@ -288,8 +319,22 @@ export default class Backend {
       cache: 'no-cache',
       credentials: 'same-origin',
       body: form,
+      signal,
     };
-    const response = await fetch(url, params);
-    if (!response.ok) throw new BackendError(response.status, response);
+    try {
+      const response = await fetch(url, params);
+      if (!response.ok) throw new BackendError(response.status, response);
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw error;
+      }
+      if (!(error instanceof BackendError)) {
+        const backendError = new BackendError(0, error);
+        Backend.emitError(backendError);
+        throw backendError;
+      }
+      Backend.emitError(error);
+      throw error;
+    }
   }
 }
