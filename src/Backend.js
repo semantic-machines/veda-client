@@ -43,6 +43,10 @@ export default class Backend {
     Backend.#ticket = undefined;
     delete Backend.user_uri;
     delete Backend.expires;
+
+    delete storage.ticket;
+    delete storage.user_uri;
+    delete storage.expires;
   }
 
   static authenticate (login, password, secret) {
