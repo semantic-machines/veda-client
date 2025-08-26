@@ -272,6 +272,7 @@ export default class Model extends Observable(Emitter(Object)) {
 
   async loadMemberships () {
     const membershipJSON = await Backend.get_membership(this.id);
+    membershipJSON['@'] = genUri();
     this[MEMBERSHIPS] = new Model(membershipJSON);
     return this[MEMBERSHIPS];
   }
@@ -291,6 +292,7 @@ export default class Model extends Observable(Emitter(Object)) {
       this[RIGHTS]['v-s:canDelete'] = [true];
     } else {
       const rightsJSON = await Backend.get_rights(this.id, Backend.user_uri);
+      rightsJSON['@'] = genUri();
       this[RIGHTS] = new Model(rightsJSON);
     }
     return this[RIGHTS];
@@ -298,22 +300,22 @@ export default class Model extends Observable(Emitter(Object)) {
 
   async canCreate () {
     await this.loadRight();
-    return this[RIGHTS].hasValue('v-s:canCreate');
+    return this[RIGHTS].hasValue('v-s:canCreate', true);
   }
 
   async canRead () {
     await this.loadRight();
-    return this[RIGHTS].hasValue('v-s:canRead');
+    return this[RIGHTS].hasValue('v-s:canRead', true);
   }
 
   async canUpdate () {
     await this.loadRight();
-    return this[RIGHTS].hasValue('v-s:canUpdate');
+    return this[RIGHTS].hasValue('v-s:canUpdate', true);
   }
 
   async canDelete () {
     await this.loadRight();
-    return this[RIGHTS].hasValue('v-s:canDelete');
+    return this[RIGHTS].hasValue('v-s:canDelete', true);
   }
 }
 
