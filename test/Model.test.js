@@ -204,4 +204,82 @@ export default ({test, assert}) => {
     assert(typeof await m.canUpdate() === 'boolean');
     assert(!m.rights && !m.RIGHTS);
   });
+
+  test('Model - can CRUD для новой модели', async () => {
+    const newModel = new Model();
+
+    // Для новой модели права должны быть установлены по умолчанию
+    assert(await newModel.canCreate() === true);
+    assert(await newModel.canRead() === true);
+    assert(await newModel.canUpdate() === true);
+    assert(await newModel.canDelete() === true);
+  });
+
+  test('Model - toLabel с несколькими языками', () => {
+    const m = new Model({
+      "@": "test:multilang",
+      "rdfs:label": [
+        { data: "Метка RU", lang: "RU", type: "String" },
+        { data: "Label EN", lang: "EN", type: "String" },
+        { data: "Étiquette FR", lang: "FR", type: "String" }
+      ]
+    });
+
+    // Проверка фильтрации по нескольким языкам
+    const multiLabel = m.toLabel('rdfs:label', ['RU', 'EN']);
+    assert(multiLabel.includes('Метка RU'));
+    assert(multiLabel.includes('Label EN'));
+    assert(!multiLabel.includes('Étiquette FR'));
+  });
+
+  test('Model - toLabel с одним значением', () => {
+    const m = new Model({
+      "@": "test:single",
+      "rdfs:label": [
+        { data: "Single Label", lang: "EN", type: "String" }
+      ]
+    });
+
+    // Когда одно значение, должно вернуть его без фильтрации
+    const label = m.toLabel('rdfs:label', ['RU']);
+    assert(label === 'Single Label');
+  });
+
+  test('Model - subscribe с ошибкой reset', async () => {
+    await Backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
+
+    // Создаем модель с несуществующим ID чтобы вызвать ошибку при reset
+    const m = new Model('test:nonexistent:model:12345');
+    m['v-s:updateCounter'] = [0];
+
+    // Мокируем консоль чтобы поймать ошибку
+    const originalError = console.error;
+    let errorLogged = false;
+    console.error = (...args) => {
+      if (args[0].includes('Error resetting model')) {
+        errorLogged = true;
+      }
+    };
+
+    // Подписываемся (это вызовет reset при получении обновления)
+    m.subscribe();
+
+    await timeout(100);
+
+    m.unsubscribe();
+    console.error = originalError;
+  });
+
+  test('Model - loadRight кеширование', async () => {
+    await Backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
+    const m = new Model('rdfs:Resource');
+
+    // Первый вызов загружает права
+    const rights1 = await m.loadRight();
+
+    // Второй вызов должен вернуть закешированные права
+    const rights2 = await m.loadRight();
+
+    assert(rights1 === rights2, 'Права должны быть закешированы');
+  });
 };

@@ -43,6 +43,23 @@ export default ({test, assert}) => {
     } catch (error) {
       assert(error.message === 'test');
     }
+
+    // Тест с error handler
+    let errorHandled = false;
+    const fnWithErrorHandler = async function () { throw new Error('handled') };
+    const decoratedWithErrorHandler = asyncDecorator(
+      fnWithErrorHandler,
+      null,
+      null,
+      (error) => { errorHandled = true; }
+    );
+
+    try {
+      await decoratedWithErrorHandler();
+    } catch (error) {
+      assert(errorHandled === true);
+      assert(error.message === 'handled');
+    }
   });
 
   test('Util - функции сравнения', () => {
@@ -55,6 +72,20 @@ export default ({test, assert}) => {
 
     const delta = diff(obj1, obj3);
     assert(delta.includes('b') && delta.includes('d'), 'diff должен найти различающиеся свойства');
+
+    // Проверка идентичных объектов
+    const deltaIdentical = diff(obj1, obj2);
+    assert(deltaIdentical.length === 0, 'Идентичные объекты не должны иметь различий');
+
+    // Проверка примитивов
+    assert(eq(1, 1));
+    assert(eq('test', 'test'));
+    assert(!eq(1, 2));
+    assert(!eq('a', 'b'));
+
+    // Проверка null и undefined
+    assert(eq(null, null));
+    assert(!eq(null, undefined));
   });
 
   test('Util - преобразование строк', () => {

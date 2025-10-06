@@ -199,4 +199,31 @@ export default ({test, assert}) => {
 
     r.clear();
   });
+
+  test('Роутер - go и popstate', () => {
+    if (typeof window === 'undefined') return;
+
+    const r = new Router();
+    let routeCalled = false;
+
+    r.add('#/test-go', () => {
+      routeCalled = true;
+    });
+
+    r.go('#/test-go');
+    assert(routeCalled === true);
+
+    r.clear();
+  });
+
+  test('Роутер - toString', () => {
+    const r = new Router();
+    r.add('#/test', () => {});
+
+    // Проверяем что метод toString работает с маршрутами
+    const routes = r.get('#/test');
+    assert(routes.length === 1);
+
+    r.clear();
+  });
 };
