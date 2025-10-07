@@ -11,8 +11,6 @@ import {Router, Backend, Subscription, Model} from '../../../src/index.js';
 
   const userModel = new Model(Backend.user_uri);
   await userModel.load();
-  console.log(userModel);
   const appointment = userModel['v-s:hasAppointment'][0];
   await appointment.load();
-  console.log(appointment);
 })();

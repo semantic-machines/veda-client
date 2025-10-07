@@ -93,8 +93,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       } catch (error) {
         console.log(this, 'Component remove error', error);
       } finally {
-        // Clear parent reference to prevent memory leaks
-        this._parentComponentForMethodLookup = null;
         this.#setRendered();
       }
     }
@@ -133,7 +131,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       template.innerHTML = html;
       let fragment = template.content;
 
-      this.#process(fragment);
+      this._process(fragment);
 
       const container = this.hasAttribute('shadow')
         ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
@@ -160,7 +158,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       }
     }
 
-    #process (fragment) {
+    _process (fragment) {
       const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
 
       let node = walker.nextNode();
@@ -191,7 +189,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             }
             component = document.createElement(tag, {is});
             component.setAttribute('is', is); // Explicitly set 'is' attribute for findMethod
-            component._parentComponentForMethodLookup = this; // Store parent for method lookup
             [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
           }
 
@@ -206,7 +203,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             }
             component = document.createElement(tag, {is});
             component.setAttribute('is', is); // Explicitly set 'is' attribute for findMethod
-            component._parentComponentForMethodLookup = this; // Store parent for method lookup
             [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
             if (!component.hasAttribute('about') && this.model) {
               component.model = this.model;
@@ -218,7 +214,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             const Class = customElements.get(tag);
             if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
             component = document.createElement(tag);
-            component._parentComponentForMethodLookup = this; // Store parent for method lookup
             [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
           }
 
@@ -229,7 +224,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
             component = document.createElement(tag, {is});
             component.setAttribute('is', is); // Explicitly set 'is' attribute for findMethod
-            component._parentComponentForMethodLookup = this; // Store parent for method lookup
             [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
           }
 
@@ -271,7 +265,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       try {
         return ExpressionParser.evaluate(e, this);
       } catch (error) {
-        // Silent fail - return empty string for invalid expressions
+        console.warn(`Invalid expression '${e}':`, error.message);
         return '';
       }
     }
@@ -283,7 +277,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       }
 
       // Search up the component tree via parentElement and shadow DOM hosts
-      let parent = this.parentElement;
+      // Start with parentElement if available, otherwise try shadow host
+      let parent = this.parentElement || this.getRootNode?.()?.host;
       let depth = 0;
       while (parent && depth < 20) {
         depth++;
@@ -293,28 +288,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         }
 
         // Try to go up: first try parentElement, if null try shadow host
-        parent = parent.parentElement || (parent.getRootNode?.()?.host);
-      }
-
-      // If not found in DOM tree, check stored parent reference
-      // Walk up DOM starting from this element to find nearest element with _parentComponentForMethodLookup
-      let node = this;
-      while (node && depth < 40) {
-        depth++;
-        if (node._parentComponentForMethodLookup) {
-          // Found element with stored reference, follow the chain
-          let component = node._parentComponentForMethodLookup;
-          while (component && depth < 60) {
-            depth++;
-            if (typeof component[name] === 'function') {
-              return component[name];
-            }
-            // Continue up the stored reference chain
-            component = component._parentComponentForMethodLookup;
-          }
-          break; // Stop after following one chain
-        }
-        node = node.parentElement || (node.getRootNode?.()?.host);
+        parent = parent.parentElement || parent.getRootNode?.()?.host;
       }
 
       console.warn(`Method '${name}' not found in component tree`);
