@@ -1,0 +1,95 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix v-s: <http://semantic-machines.com/veda/veda-schema/> .
+@prefix d: <http://semantic-machines.com/veda/veda-data/> .
+
+<http://semantic-machines.com/veda/todomvc>
+  rdf:type owl:Ontology ;
+  rdfs:label "TodoMVC Ontology"@en ;
+  rdfs:label "Онтология TodoMVC"@ru ;
+  v-s:loadPriority 0 ;
+.
+
+# ===== Classes =====
+
+v-s:Todo
+  rdf:type owl:Class ;
+  rdfs:label "Todo"@en ;
+  rdfs:label "Задача"@ru ;
+  rdfs:comment "A todo item"@en ;
+  rdfs:comment "Элемент списка дел"@ru ;
+.
+
+v-s:TodoList
+  rdf:type owl:Class ;
+  rdfs:label "Todo List"@en ;
+  rdfs:label "Список дел"@ru ;
+  rdfs:comment "A collection of todos"@en ;
+  rdfs:comment "Коллекция задач"@ru ;
+.
+
+# ===== Properties =====
+
+v-s:hasTodo
+  rdf:type owl:ObjectProperty ;
+  rdfs:label "has todo"@en ;
+  rdfs:label "имеет задачу"@ru ;
+  rdfs:domain v-s:TodoList ;
+  rdfs:range v-s:Todo ;
+.
+
+v-s:completed
+  rdf:type owl:DatatypeProperty ;
+  rdfs:label "completed"@en ;
+  rdfs:label "выполнена"@ru ;
+  rdfs:domain v-s:Todo ;
+  rdfs:range xsd:boolean ;
+.
+
+v-s:title
+  rdf:type owl:DatatypeProperty ;
+  rdfs:label "title"@en ;
+  rdfs:label "название"@ru ;
+  rdfs:domain v-s:Todo ;
+  rdfs:range xsd:string ;
+.
+
+# ===== Demo Data =====
+
+d:TodoMVC
+  rdf:type v-s:Application ;
+  rdfs:label "TodoMVC"@en ;
+  rdfs:label "TodoMVC"@ru ;
+  rdfs:comment "Classic TodoMVC example built with Veda framework"@en ;
+  rdfs:comment "Классический пример TodoMVC на фреймворке Veda"@ru ;
+.
+
+d:TodoList1
+  rdf:type v-s:TodoList ;
+  rdfs:label "My Todos"@en ;
+  rdfs:label "Мои задачи"@ru ;
+  v-s:hasTodo d:todo1 ;
+  v-s:hasTodo d:todo2 ;
+  v-s:hasTodo d:todo3 ;
+.
+
+d:todo1
+  rdf:type v-s:Todo ;
+  v-s:title "Taste JavaScript" ;
+  v-s:completed true ;
+.
+
+d:todo2
+  rdf:type v-s:Todo ;
+  v-s:title "Buy a unicorn" ;
+  v-s:completed false ;
+.
+
+d:todo3
+  rdf:type v-s:Todo ;
+  v-s:title "Learn Veda framework" ;
+  v-s:completed false ;
+.
+
