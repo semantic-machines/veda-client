@@ -35,7 +35,7 @@ export default class Model implements EmitterInstance {
   save(): Promise<this>;
   remove(): Promise<this>;
 
-  toLabel(field?: string, lang?: string[]): string;
+  toLabel(prop?: string, lang?: string[]): string;
 
   loadMemberships(): Promise<Model>;
   isMemberOf(id: string): Promise<boolean>;

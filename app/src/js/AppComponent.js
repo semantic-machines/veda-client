@@ -17,12 +17,50 @@ export default class AppComponent extends Component(HTMLElement) {
     return html`
       <style>
         a {color: red;}
+
+        /* Стилизация таблицы - должна работать несмотря на slot */
+        .styled-table {
+          border-collapse: collapse;
+          margin: 25px 0;
+          font-size: 0.9em;
+          min-width: 400px;
+          box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .styled-table thead tr {
+          background-color: #009879;
+          color: #ffffff;
+          text-align: left;
+        }
+
+        .styled-table th,
+        .styled-table td {
+          padding: 12px 15px;
+        }
+
+        /* Критично: tbody > tr должен работать */
+        .styled-table tbody > tr {
+          border-bottom: 1px solid #dddddd;
+        }
+
+        .styled-table tbody > tr:nth-of-type(even) {
+          background-color: #f3f3f3;
+        }
+
+        .styled-table tbody > tr:last-of-type {
+          border-bottom: 2px solid #009879;
+        }
+
+        .styled-table tbody > tr:hover {
+          background-color: #ffe6cc;
+          cursor: pointer;
+        }
       </style>
       <div>
         <h1 property="rdfs:label"></h1>
         <ul>
           <li property="rdfs:comment"></li>
-          <li>{{ this.model['rdfs:comment'][0] }}</li>
+          <li>{{ this.model.rdfs:comment.0 }}</li>
           <li>${ this.model['rdfs:comment'][0] }</li>
           <li>${this
             ? html`111 <span>true</span>`
@@ -31,7 +69,7 @@ export default class AppComponent extends Component(HTMLElement) {
         </ul>
         <p about="rdfs:label" property="rdfs:label"></p>
         <ul property="rdfs:label"><li><span><slot></slot></span></li></ul>
-        <button on:click="${(e) => this.testMethod1(e)}">Test button 1</button>
+        <button onclick="{{testMethod1}}">Test button 1</button>
         <p about="v-s:hasSettings" property="rdfs:label"></p>
         <div rel="v-s:hasSettings">
           <${SettingsComponent} about="{{this.model.id}}" style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;"></${SettingsComponent}>
@@ -51,27 +89,41 @@ export default class AppComponent extends Component(HTMLElement) {
                 <li property="rdfs:label"></li>
               </ul>
               <${Literal} about="{{this.model.id}}" property="rdfs:label"></${Literal}>
-              <button on:click="${(e) => this.parentNode.parentNode.parentNode.testMethod2(e)}">Test button 2</button>
+              <button onclick="{{testMethod2}}">Test button 2</button>
             </div>
           </span>
         </div>
       </div>
 
-      <table>
-        <caption>Settings table</cation>
+      <h3>Settings table (проверка CSS с rel внутри tbody)</h3>
+      <table class="styled-table">
+        <caption>Settings table - zebra stripes и hover должны работать</caption>
         <thead>
           <tr>
-            <th>id</th>
-            <th about="rdfs:label" property="rdfs:label"></th>
+            <th>#</th>
+            <th>ID</th>
+            <th>Label</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody rel="v-s:hasSettings">
           <tr about="{{this.model.id}}">
-            <td>{{this.model.id}}</td>
+            <td>1</td>
+            <td style="font-family: monospace;">{{this.model.id}}</td>
             <td property="rdfs:label"></td>
+            <td>
+              <button onclick="{{testMethod2}}" style="padding: 5px 10px;">Edit</button>
+            </td>
           </tr>
         </tbody>
       </table>
+
+      <p style="color: #666; font-style: italic;">
+        ✅ Если видны чередующиеся цвета строк (zebra stripes)<br>
+        ✅ Если строки меняют цвет при наведении (hover)<br>
+        ✅ Если кнопка "Edit" работает<br>
+        → значит display: contents работает правильно!
+      </p>
     `;
   }
 }

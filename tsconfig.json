@@ -15,7 +15,7 @@
   },
   "include": [
     "src/**/*.d.ts",
-    "test-types.ts"
+    "test/test-types.ts"
   ],
   "exclude": [
     "node_modules",

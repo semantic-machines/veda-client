@@ -13,7 +13,7 @@ export default class AppSimple extends Component(HTMLElement) {
       <div rel="v-s:hasSettings">
         <p about="{{this.model.id}}" is="${ParagraphComponent}">
           <span property="rdfs:label"></span>
-          <button on:click="${(e) => this.parentNode.parentNode.testMethod6(e)}">Test button 6</button>
+          <button onclick="{{testMethod6}}">Test button 6</button>
         </p>
       </div>
     `;

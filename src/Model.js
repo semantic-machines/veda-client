@@ -253,13 +253,13 @@ export default class Model extends Observable(Emitter(Object)) {
     return this[REMOVE_PROMISE];
   }
 
-  toLabel (field="rdfs:label", lang = ['RU']) {
-    if (!this.hasValue(field)) return '';
+  toLabel (prop="rdfs:label", lang = ['RU']) {
+    if (!this.hasValue(prop)) return '';
     let label = '';
-    if (this[field].length == 1) {
-      label = this[field][0];
+    if (this[prop].length == 1) {
+      label = this[prop][0];
     } else {
-      label = this[field].filter((l) => {
+      label = this[prop].filter((l) => {
         for (const currentLang of lang) {
           const re = new RegExp('\\^\\^' + currentLang);
           if (re.test(l)) return true;
