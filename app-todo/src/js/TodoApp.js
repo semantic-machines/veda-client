@@ -11,6 +11,8 @@ export default class TodoApp extends Component(HTMLElement) {
     this.filter = 'all';
     this._didInitialFocus = false;
     this._onHashChange = null;
+    this._shouldFocusInput = false;
+    this._isFilterChanging = false;
   }
 
   async connectedCallback() {
@@ -23,9 +25,15 @@ export default class TodoApp extends Component(HTMLElement) {
     }
 
     this._onHashChange = () => {
+      this._isFilterChanging = true;
+
       this.filter = this.getFilterFromHash();
       this.update();
-      requestAnimationFrame(() => this.applyToggleAllState());
+
+      requestAnimationFrame(() => {
+        this.applyToggleAllState();
+        this._isFilterChanging = false;
+      });
     };
     window.addEventListener('hashchange', this._onHashChange);
 
@@ -42,6 +50,7 @@ export default class TodoApp extends Component(HTMLElement) {
     requestAnimationFrame(() => {
       if (!this._didInitialFocus) {
         this._didInitialFocus = true;
+        this._shouldFocusInput = true;
         this.focusNewTodoInput();
       }
     });
@@ -75,10 +84,24 @@ export default class TodoApp extends Component(HTMLElement) {
   get allCompleted() { return this.todos.length > 0 && this.activeTodos.length === 0; }
 
   focusNewTodoInput() {
+    if (!this._shouldFocusInput || this._isFilterChanging) return;
+
     const header = this.querySelector('todo-header');
     if (!header) return;
     const input = header.querySelector('.new-todo');
-    if (input) input.focus();
+    if (input) {
+      // Double check that we're not in the middle of a filter change
+      if (this._isFilterChanging) return;
+
+      // Use requestAnimationFrame for better timing
+      requestAnimationFrame(() => {
+        if (this._isFilterChanging) return;
+        if (document.activeElement !== input) {
+          input.focus();
+        }
+      });
+    }
+    this._shouldFocusInput = false;
   }
 
   applyToggleAllState() {
@@ -96,7 +119,11 @@ export default class TodoApp extends Component(HTMLElement) {
     try {
       await Promise.all([todo.save(), this.model.save()]);
       this.update();
-      requestAnimationFrame(() => { this.applyToggleAllState(); this.focusNewTodoInput(); });
+      requestAnimationFrame(() => {
+        this.applyToggleAllState();
+        this._shouldFocusInput = true;
+        this.focusNewTodoInput();
+      });
     } catch (error) {
       console.error('Failed to create todo:', error);
       this.model.removeValue('v-s:hasTodo', todo);
