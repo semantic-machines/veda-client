@@ -1,4 +1,5 @@
 import Component from './Component.js';
+import ExpressionParser from './ExpressionParser.js';
 import {effect} from '../Effect.js';
 
 /**
@@ -68,9 +69,8 @@ export default function LoopComponent(Class = HTMLElement) {
         // Remove { } if present
         const cleanExpr = expr.replace(/^\{|\}$/g, '').trim();
 
-        // Create getter function
-        const getter = new Function('return ' + cleanExpr);
-        const items = getter.call(this);
+        // Use safe ExpressionParser instead of new Function()
+        const items = ExpressionParser.evaluate(cleanExpr, this);
 
         return Array.isArray(items) ? items : [];
       } catch (error) {

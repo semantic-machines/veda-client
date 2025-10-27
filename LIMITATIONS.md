@@ -170,24 +170,32 @@ get shouldShow() {
 
 ### 3. Expression Evaluation
 
-#### ⚠️ XSS Risk with User Data
+#### ✅ Safe Expression Parser (FIXED)
 
-**Issue:**
-- Uses `new Function()` for expression evaluation
-- Potential code injection if user data in expressions
+**Solution:**
+- All expression evaluation now uses `ExpressionParser`
+- Supports only safe dot notation: `model.property.0.nested`
+- No operators, no function calls, no code execution possible
 
 ```javascript
-// ⚠️ UNSAFE if userInput from user:
-<div class="{userInput}">
-// If userInput = "foo; alert('XSS'); 'bar'"
-// → Code execution!
+// ✅ SAFE - supported:
+<div class="{this.model.id}">
+<veda-if condition="{this.model.items.0}">
+<veda-loop items="{this.model.v-s:hasTodo}">
+
+// ❌ NOT supported (and that's GOOD for security):
+<div onclick="{alert('XSS')}">       // Won't execute
+<veda-if condition="{1 + 1}">         // Won't work
+<veda-loop items="{getItems()}">     // Won't work
+
+// ✅ Workaround - use computed/methods:
+get itemCount() {
+  return this.items.length;
+}
+<div>{this.itemCount}</div>
 ```
 
-**Workaround:**
-- Only use expressions with trusted data
-- Sanitize user input before use
-
-**Status:** Will be fixed in Phase 1.1 (safe parser)
+**Status:** ✅ SECURE - ExpressionParser used everywhere
 
 ---
 

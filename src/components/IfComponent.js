@@ -1,4 +1,5 @@
 import Component from './Component.js';
+import ExpressionParser from './ExpressionParser.js';
 import {effect} from '../Effect.js';
 
 /**
@@ -72,9 +73,9 @@ export default function IfComponent(Class = HTMLElement) {
         // Remove { } if present
         const cleanExpr = expr.replace(/^\{|\}$/g, '').trim();
 
-        // Create getter function
-        const getter = new Function('return ' + cleanExpr);
-        return !!getter.call(this);
+        // Use safe ExpressionParser instead of new Function()
+        const value = ExpressionParser.evaluate(cleanExpr, this);
+        return !!value;
       } catch (error) {
         console.error('If: Failed to evaluate condition expression:', expr, error);
         return false;
