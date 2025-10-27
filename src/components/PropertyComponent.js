@@ -9,7 +9,7 @@ export default function PropertyComponent (Class = HTMLElement) {
       super.render();
     }
 
-    renderValue (value, container) {
+    renderValue (value, container, index) {
       if (typeof value === 'string') {
         const lang = document.documentElement.lang;
         this.setAttribute('lang', lang);
@@ -21,7 +21,7 @@ export default function PropertyComponent (Class = HTMLElement) {
       }
 
       if (!this.template) {
-        return super.renderValue(value, container);
+        return super.renderValue(value, container, index);
       }
 
       let template = document.createElement('template');
@@ -35,6 +35,10 @@ export default function PropertyComponent (Class = HTMLElement) {
         const node = fragment.firstElementChild;
         node.textContent = value.toString();
       }
+
+      // Process fragment for reactive expressions
+      this._process(fragment);
+
       container.appendChild(fragment);
 
       template.remove();

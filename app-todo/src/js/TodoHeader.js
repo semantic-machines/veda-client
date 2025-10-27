@@ -17,7 +17,7 @@ export default class TodoHeader extends Component(HTMLElement) {
     return html`
       <header class="header">
         <h1>todos</h1>
-        <input class="new-todo" id="new-todo" name="new-todo" aria-label="Create a new todo" placeholder="What needs to be done?" onkeydown="{{handleNewTodo}}" />
+        <input class="new-todo" id="new-todo" name="new-todo" aria-label="Create a new todo" placeholder="What needs to be done?" onkeydown="{handleNewTodo}" />
       </header>
     `;
   }

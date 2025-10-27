@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Race Condition Demo - Before & After</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    .demo {
+      display: flex;
+      gap: 20px;
+      margin: 20px 0;
+    }
+    .demo-box {
+      flex: 1;
+      padding: 20px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+    }
+    .demo-box.old {
+      border-color: #f44336;
+      background: #ffebee;
+    }
+    .demo-box.new {
+      border-color: #4CAF50;
+      background: #e8f5e9;
+    }
+    .demo-box h3 {
+      margin-top: 0;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 10px 5px 10px 0;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #f8f8f8;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #e8e8e8;
+    }
+    .log {
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+    .badge.danger {
+      background: #f44336;
+      color: white;
+    }
+    .badge.success {
+      background: #4CAF50;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>Race Condition Prevention - Effect System</h1>
+  <p>Сравнение синхронного и асинхронного выполнения effects</p>
+
+  <div class="demo">
+    <div class="demo-box old">
+      <h3>❌ Синхронная (старая) <span class="badge danger">RACE CONDITIONS</span></h3>
+      <p>Effects запускаются сразу при изменении state</p>
+      <button onclick="runSyncDemo()">Запустить Demo</button>
+      <div class="log" id="sync-log"></div>
+    </div>
+
+    <div class="demo-box new">
+      <h3>✅ Асинхронная (новая) <span class="badge success">SAFE</span></h3>
+      <p>Effects батчатся и запускаются через microtask</p>
+      <button onclick="runAsyncDemo()">Запустить Demo</button>
+      <div class="log" id="async-log"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { reactive, effect, flushEffects } from '../dist/index.js';
+
+    // === Синхронная демонстрация (имитация) ===
+    window.runSyncDemo = function() {
+      const logs = [];
+      const log = (msg) => {
+        logs.push(msg);
+        document.getElementById('sync-log').textContent = logs.join('\n');
+      };
+
+      log('=== Синхронное выполнение ===\n');
+
+      // Имитируем синхронный effect
+      let state = { count: 0 };
+      let effectRuns = 0;
+
+      function syncEffect() {
+        effectRuns++;
+        log(`[Effect #${effectRuns}] Running with count=${state.count}`);
+
+        // Effect может изменить state!
+        if (state.count === 1) {
+          log(`[Effect #${effectRuns}] Changing count to 2 INSIDE effect!`);
+          state.count = 2;
+          syncEffect(); // НЕМЕДЛЕННО запускается снова!
+        }
+      }
+
+      // Пользовательские изменения
+      log('\n[User] Setting count = 1');
+      state.count = 1;
+      syncEffect();
+
+      log('\n[User] Setting count = 5');
+      state.count = 5;
+      syncEffect();
+
+      log('\n[User] Setting count = 10');
+      state.count = 10;
+      syncEffect();
+
+      log(`\n❌ ПРОБЛЕМЫ:`);
+      log(`   - Effect запустился ${effectRuns} раз`);
+      log(`   - Effect может вызвать сам себя (race condition)`);
+      log(`   - Каждое изменение = немедленный re-render`);
+      log(`   - Непредсказуемый порядок выполнения`);
+    };
+
+    // === Асинхронная демонстрация (реальная) ===
+    window.runAsyncDemo = async function() {
+      const logs = [];
+      const log = (msg) => {
+        logs.push(msg);
+        document.getElementById('async-log').textContent = logs.join('\n');
+      };
+
+      log('=== Асинхронное выполнение ===\n');
+
+      const state = reactive({ count: 0 });
+      let effectRuns = 0;
+
+      effect(() => {
+        effectRuns++;
+        log(`[Effect #${effectRuns}] Running with count=${state.count}`);
+      });
+
+      await flushEffects();
+      log('[Initial effect flushed]');
+
+      // Множественные изменения подряд
+      log('\n[User] Setting count = 1');
+      state.count = 1;
+      log('[Queued for next microtask]');
+
+      log('[User] Setting count = 5');
+      state.count = 5;
+      log('[Queued (replaced previous)]');
+
+      log('[User] Setting count = 10');
+      state.count = 10;
+      log('[Queued (replaced previous)]');
+
+      log('\n[Waiting for microtask...]');
+      await flushEffects();
+      log('[Effects flushed!]');
+
+      log(`\n✅ ПРЕИМУЩЕСТВА:`);
+      log(`   - Effect запустился ${effectRuns} раз (1 initial + 1 batched)`);
+      log(`   - Множественные изменения = одно выполнение`);
+      log(`   - Безопасно: effect не может вызвать сам себя`);
+      log(`   - Предсказуемый порядок (computed → regular)`);
+      log(`   - Минимум DOM updates`);
+    };
+
+    // === Infinite loop prevention ===
+    const demoButton = document.createElement('button');
+    demoButton.textContent = 'Демо: Infinite Loop Prevention';
+    demoButton.style.marginTop = '20px';
+    demoButton.style.width = '100%';
+    demoButton.onclick = async function() {
+      const state = reactive({ count: 0 });
+      const logs = [];
+      let effectRuns = 0;
+
+      effect(() => {
+        effectRuns++;
+        console.log(`Effect #${effectRuns}: count = ${state.count}`);
+        logs.push(`Effect #${effectRuns}: count = ${state.count}`);
+
+        if (state.count < 5) {
+          state.count++; // Изменяем state внутри effect!
+        }
+      });
+
+      // Запускаем несколько раз
+      for (let i = 0; i < 10; i++) {
+        await flushEffects();
+      }
+
+      alert(`✅ Безопасно!\n\nEffect запустился ${effectRuns} раз.\nФинальное значение: ${state.count}\n\n${logs.join('\n')}`);
+    };
+    document.body.appendChild(demoButton);
+  </script>
+</body>
+</html>
+

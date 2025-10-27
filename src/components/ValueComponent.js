@@ -1,35 +1,53 @@
 import Component from './Component.js';
+import {effect} from '../Effect.js';
 
 export default function ValueComponent (Class = HTMLElement) {
   return class ValueComponentClass extends Component(Class) {
+    #propEffect = null;
+    #valueNodes = new Map(); // Track rendered value nodes for updates
+
     added () {
       this.prop = this.getAttribute('property') ?? this.getAttribute('rel');
-      this.handler = this.update.bind(this);
-      this.model.on(this.prop, this.handler);
+
+      // Create effect to track model property changes
+      this.#propEffect = effect(() => {
+        this.render();
+      });
     }
 
     removed () {
-      if (this.prop && this.handler) {
-        this.model.off(this.prop, this.handler);
+      // Cleanup effect
+      if (this.#propEffect) {
+        this.#propEffect();
+        this.#propEffect = null;
       }
+      this.#valueNodes.clear();
     }
 
     render () {
       const container = this.hasAttribute('shadow')
         ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
         : this;
+
+      // Get current values
+      const values = this.model.hasValue(this.prop)
+        ? (Array.isArray(this.model[this.prop]) ? this.model[this.prop] : [this.model[this.prop]])
+        : [];
+
+      // For now, simple approach: clear and re-render
+      // TODO: Implement reconciliation for better performance
       container.replaceChildren();
-      if (!this.model.hasValue(this.prop)) return;
-      if (Array.isArray(this.model[this.prop])) {
-        this.model[this.prop].forEach((value) => this.renderValue(value, container));
-      } else {
-        this.renderValue(this.model[this.prop], container);
-      }
+      this.#valueNodes.clear();
+
+      values.forEach((value, index) => {
+        this.renderValue(value, container, index);
+      });
     }
 
-    renderValue (value, container) {
+    renderValue (value, container, index) {
       const node = document.createTextNode(value.toString());
       container.appendChild(node);
+      this.#valueNodes.set(index, {value, node});
     }
   };
 }

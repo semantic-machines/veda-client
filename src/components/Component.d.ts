@@ -21,6 +21,11 @@ export interface ComponentInstance<M extends Model = Model> {
 
   update(): Promise<void>;
   populate(): Promise<void>;
+
+  // Reactive methods
+  reactive<T extends object>(obj: T): T;
+  effect(fn: () => void): () => void;
+  watch<T>(getter: () => T, callback: (newValue: T, oldValue: T | undefined) => void, options?: { immediate?: boolean }): () => void;
 }
 
 export interface ComponentConstructor {
@@ -33,4 +38,8 @@ export default function Component(
   ElementClass?: any,
   ModelClass?: any
 ): ComponentConstructor;
+
+// Re-export reactive utilities
+export function reactive<T extends object>(target: T): T;
+export function effect(fn: () => void, options?: { lazy?: boolean; scheduler?: (effect: () => void) => void; computed?: boolean }): () => void;
 

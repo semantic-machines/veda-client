@@ -2,6 +2,8 @@ import Model from '../Model.js';
 import PropertyComponent from './PropertyComponent.js';
 import RelationComponent from './RelationComponent.js';
 import ExpressionParser from './ExpressionParser.js';
+import {effect} from '../Effect.js';
+import {reactive} from '../Reactive.js';
 
 const marker = Date.now();
 const re = new RegExp(`^${marker}`);
@@ -45,7 +47,7 @@ export function safe (value) {
     '\\': '&#x5C;',
     '`': '&#x60;',
   };
-  return value.replace(/[&<>"'/\\`]/g, char => map[char]).replace(/{{.*?}}/g, '');
+  return value.replace(/[&<>"'/\\`]/g, char => map[char]).replace(/\{.*?\}/g, '');
 }
 
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
@@ -58,6 +60,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     #resolveRendered;
     #childrenRendered = [];
+    #effects = []; // User-created effects via watch()
+    #renderEffects = []; // Auto-created effects for {expressions}
+    #modelSubscription = null;
+    #isReactive = false;
+
     async #setRendered() {
       await Promise.all(this.#childrenRendered);
       this.#resolveRendered?.();
@@ -69,6 +76,12 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       this.rendered = new Promise((resolve) => {
         this.#resolveRendered = resolve;
       });
+
+      // Auto-detect reactive state
+      const originalState = this.state;
+      if (originalState && originalState.__isReactive) {
+        this.#isReactive = true;
+      }
     }
 
     renderedCallback () {}
@@ -88,6 +101,14 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     async disconnectedCallback () {
       try {
+        // Cleanup reactive effects
+        this.#cleanupEffects();
+
+        if (this.model && this.#modelSubscription) {
+          this.model.off?.('modified', this.#modelSubscription);
+          this.#modelSubscription = null;
+        }
+
         const removed = this.removed();
         if (removed instanceof Promise) await removed;
       } catch (error) {
@@ -95,6 +116,16 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       } finally {
         this.#setRendered();
       }
+    }
+
+    /**
+     * Clean up all effects
+     */
+    #cleanupEffects() {
+      this.#effects.forEach(cleanup => cleanup());
+      this.#effects = [];
+      this.#renderEffects.forEach(cleanup => cleanup());
+      this.#renderEffects = [];
     }
 
     model;
@@ -155,6 +186,110 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       if (this.model) {
         await this.model.load?.();
         this.model.subscribe?.();
+
+        // Setup reactive model subscription if component is reactive
+        if (this.#isReactive) {
+          this.#modelSubscription = () => {
+            this.#scheduleUpdate();
+          };
+          this.model.on?.('modified', this.#modelSubscription);
+        }
+      }
+    }
+
+    /**
+     * Schedule update via microtask (batching)
+     */
+    #updateScheduled = false;
+    #scheduleUpdate() {
+      if (this.#updateScheduled) return;
+
+      this.#updateScheduled = true;
+      queueMicrotask(() => {
+        this.#updateScheduled = false;
+        this.update().catch(error => {
+          console.error('Component reactive update error:', error);
+        });
+      });
+    }
+
+    /**
+     * Process text node for reactive expressions {expr}
+     */
+    #processTextNode(textNode) {
+      const text = textNode.nodeValue;
+      const regex = /\{([^}]+)\}/g;
+
+      // Check if text contains expressions
+      if (!regex.test(text)) {
+        return;
+      }
+
+      regex.lastIndex = 0; // Reset regex
+
+      // Parse text into parts: static text and expressions
+      const parts = [];
+      let lastIndex = 0;
+      let match;
+
+      while ((match = regex.exec(text)) !== null) {
+        // Add static text before expression
+        if (match.index > lastIndex) {
+          parts.push({
+            type: 'static',
+            value: text.substring(lastIndex, match.index)
+          });
+        }
+
+        // Add expression
+        parts.push({
+          type: 'expression',
+          code: match[1].trim()
+        });
+
+        lastIndex = regex.lastIndex;
+      }
+
+      // Add remaining static text
+      if (lastIndex < text.length) {
+        parts.push({
+          type: 'static',
+          value: text.substring(lastIndex)
+        });
+      }
+
+      // If reactive component, create effects for expressions
+      if (this.#isReactive) {
+        const parent = textNode.parentNode;
+        const nextSibling = textNode.nextSibling;
+
+        // Create nodes for each part
+        const nodes = parts.map(part => {
+          if (part.type === 'static') {
+            return document.createTextNode(part.value);
+          } else {
+            // Create text node for expression
+            const node = document.createTextNode('');
+
+            // Create effect to update this text node
+            const cleanup = effect(() => {
+              const value = this.#evaluate(part.code);
+              node.nodeValue = value ?? '';
+            });
+
+            this.#renderEffects.push(cleanup);
+            return node;
+          }
+        });
+
+        // Replace original text node with new nodes
+        textNode.remove();
+        nodes.forEach(node => parent.insertBefore(node, nextSibling));
+      } else {
+        // Non-reactive: just evaluate once
+        textNode.nodeValue = text.replace(/\{([^}]+)\}/g, (_, code) => {
+          return this.#evaluate(code.trim()) ?? '';
+        });
       }
     }
 
@@ -165,7 +300,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       while (node) {
         if (node.nodeType === Node.TEXT_NODE) {
-          node.nodeValue = node.nodeValue.replaceAll(/{{(.*?)}}/gs, (_, e) => this.#evaluate(e));
+          // Process reactive expressions in text nodes
+          this.#processTextNode(node);
           node = walker.nextNode();
         } else {
           if (!node.tagName.includes('-') && !node.hasAttribute('is') && !node.hasAttribute('about') && !node.hasAttribute('property') && !node.hasAttribute('rel')) {
@@ -297,10 +433,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     #processAttributes (node) {
       for (const attr of [...node.attributes]) {
-        // Handle event attributes with {{ }} syntax
-        if (attr.name.startsWith('on') && attr.name.length > 2 && attr.value.includes('{{')) {
+        // Handle event attributes with { } syntax
+        if (attr.name.startsWith('on') && attr.name.length > 2 && attr.value.includes('{')) {
           const eventName = attr.name.slice(2).toLowerCase(); // onclick -> click
-          const expr = attr.value.replace(/{{|}}/g, '').trim();
+          const expr = attr.value.replace(/[{}]/g, '').trim();
 
           // Remove attribute to prevent browser's default eval behavior
           node.removeAttribute(attr.name);
@@ -336,11 +472,77 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             console.warn(`Invalid event handler expression '${expr}':`, error.message);
           }
         }
-        // Handle regular attributes with {{ }} interpolation
-        else if (attr.value && attr.value.includes('{{')) {
-          attr.nodeValue = attr.nodeValue.replaceAll(/{{(.*?)}}/gs, (_, e) => this.#evaluate(e));
+        // Handle regular attributes with { } interpolation
+        else if (attr.value && attr.value.includes('{')) {
+          const attrName = attr.nodeName;
+          const template = attr.nodeValue;
+
+          // If reactive component, create effect for this attribute
+          if (this.#isReactive && /\{([^}]+)\}/g.test(template)) {
+            const cleanup = effect(() => {
+              const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
+                return this.#evaluate(code.trim()) ?? '';
+              });
+              node.setAttribute(attrName, value);
+            });
+
+            this.#renderEffects.push(cleanup);
+          } else {
+            // Non-reactive: evaluate once
+            attr.nodeValue = template.replace(/\{([^}]+)\}/g, (_, code) => {
+              return this.#evaluate(code.trim()) ?? '';
+            });
+          }
         }
       }
     }
+
+    /**
+     * Helper: create reactive state (call in constructor)
+     */
+    reactive(obj) {
+      this.#isReactive = true;
+      return reactive(obj);
+    }
+
+    /**
+     * Helper: create an effect
+     */
+    effect(fn) {
+      const cleanup = effect(fn);
+      this.#effects.push(cleanup);
+      return cleanup;
+    }
+
+    /**
+     * Helper: watch a value and run callback when it changes
+     * @param {Function} getter - Function that returns the value to watch
+     * @param {Function} callback - Callback to run when value changes
+     * @param {Object} options - Options { immediate: true } to run callback immediately
+     */
+    watch(getter, callback, options = {}) {
+      let oldValue;
+      let isFirst = true;
+
+      const cleanup = effect(() => {
+        const newValue = getter();
+        if (isFirst) {
+          isFirst = false;
+          oldValue = newValue;
+          // Run callback immediately on first run if immediate option is true
+          if (options.immediate) {
+            callback(newValue, undefined);
+          }
+        } else if (newValue !== oldValue) {
+          callback(newValue, oldValue);
+          oldValue = newValue;
+        }
+      });
+
+      this.#effects.push(cleanup);
+      return cleanup;
+    }
   }
 }
+
+export {reactive, effect};

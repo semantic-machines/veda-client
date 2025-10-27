@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reactive Expressions Example</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .example {
+      margin: 30px 0;
+      padding: 20px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+    }
+    .example h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    button {
+      padding: 8px 16px;
+      margin: 5px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #f8f8f8;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #e8e8e8;
+    }
+    input {
+      padding: 8px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin: 5px;
+    }
+    .counter {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2196F3;
+    }
+    .status {
+      padding: 5px 10px;
+      border-radius: 4px;
+      display: inline-block;
+      font-weight: bold;
+    }
+    .status[data-active="true"] {
+      background: #4CAF50;
+      color: white;
+    }
+    .status[data-active="false"] {
+      background: #f44336;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>Reactive Expressions with Single Braces {}</h1>
+  <p>These examples demonstrate reactive expressions using <code>{expression}</code> syntax.</p>
+
+  <div class="example">
+    <reactive-counter></reactive-counter>
+  </div>
+
+  <div class="example">
+    <reactive-input></reactive-input>
+  </div>
+
+  <div class="example">
+    <reactive-computed></reactive-computed>
+  </div>
+
+  <script type="module">
+    import { Component, html, reactive } from '../dist/index.js';
+
+    // Example 1: Simple counter with reactive text
+    class ReactiveCounter extends Component(HTMLElement) {
+      static tag = 'reactive-counter';
+
+      constructor() {
+        super();
+        this.state = reactive({
+          count: 0
+        });
+      }
+
+      increment() {
+        this.state.count++;
+      }
+
+      decrement() {
+        this.state.count--;
+      }
+
+      reset() {
+        this.state.count = 0;
+      }
+
+      render() {
+        return html`
+          <h3>Example 1: Reactive Counter</h3>
+          <p class="counter">Count: {this.state.count}</p>
+          <div>
+            <button onclick="{increment}">+</button>
+            <button onclick="{decrement}">-</button>
+            <button onclick="{reset}">Reset</button>
+          </div>
+          <p><small>The count updates automatically without manual update() calls</small></p>
+        `;
+      }
+    }
+
+    // Example 2: Reactive input binding
+    class ReactiveInput extends Component(HTMLElement) {
+      static tag = 'reactive-input';
+
+      constructor() {
+        super();
+        this.state = reactive({
+          text: 'Hello',
+          active: true
+        });
+      }
+
+      handleInput(event) {
+        this.state.text = event.target.value;
+      }
+
+      toggleActive() {
+        this.state.active = !this.state.active;
+      }
+
+      render() {
+        return html`
+          <h3>Example 2: Reactive Input & Attributes</h3>
+          <div>
+            <input
+              type="text"
+              value="{this.state.text}"
+              placeholder="Type something..."
+              oninput="{handleInput}" />
+          </div>
+          <p>You typed: <strong>{this.state.text}</strong></p>
+          <p>Length: {this.state.text.length} characters</p>
+          <div>
+            <span class="status" data-active="{this.state.active}">
+              Status: {this.state.active ? 'Active' : 'Inactive'}
+            </span>
+            <button onclick="{toggleActive}">Toggle Status</button>
+          </div>
+          <p><small>Text and attributes update reactively</small></p>
+        `;
+      }
+    }
+
+    // Example 3: Computed properties
+    class ReactiveComputed extends Component(HTMLElement) {
+      static tag = 'reactive-computed';
+
+      constructor() {
+        super();
+        this.state = reactive({
+          firstName: 'John',
+          lastName: 'Doe',
+          items: ['Apple', 'Banana', 'Orange']
+        });
+      }
+
+      get fullName() {
+        return `${this.state.firstName} ${this.state.lastName}`;
+      }
+
+      get itemCount() {
+        return this.state.items.length;
+      }
+
+      handleFirstNameInput(event) {
+        this.state.firstName = event.target.value;
+      }
+
+      handleLastNameInput(event) {
+        this.state.lastName = event.target.value;
+      }
+
+      addItem() {
+        const num = this.state.items.length + 1;
+        this.state.items.push(`Item ${num}`);
+      }
+
+      removeItem() {
+        this.state.items.pop();
+      }
+
+      render() {
+        return html`
+          <h3>Example 3: Computed Properties & Arrays</h3>
+          <div>
+            <input
+              type="text"
+              value="{this.state.firstName}"
+              placeholder="First name"
+              oninput="{handleFirstNameInput}" />
+            <input
+              type="text"
+              value="{this.state.lastName}"
+              placeholder="Last name"
+              oninput="{handleLastNameInput}" />
+          </div>
+          <p>Full name: <strong>{this.fullName}</strong></p>
+          <div>
+            <p>Items count: {this.itemCount}</p>
+            <button onclick="{addItem}">Add Item</button>
+            <button onclick="{removeItem}">Remove Item</button>
+          </div>
+          <p><small>Computed properties (fullName, itemCount) update automatically</small></p>
+        `;
+      }
+    }
+
+    customElements.define(ReactiveCounter.tag, ReactiveCounter);
+    customElements.define(ReactiveInput.tag, ReactiveInput);
+    customElements.define(ReactiveComputed.tag, ReactiveComputed);
+  </script>
+</body>
+</html>
+

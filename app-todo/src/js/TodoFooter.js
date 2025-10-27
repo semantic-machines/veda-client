@@ -20,7 +20,7 @@ export default class TodoFooter extends Component(HTMLElement) {
           <li><a class="${this.filter === 'active' ? 'selected' : ''}" href="#/active">Active</a></li>
           <li><a class="${this.filter === 'completed' ? 'selected' : ''}" href="#/completed">Completed</a></li>
         </ul>
-        ${this.completedCount > 0 ? html`<button class="clear-completed" onclick="{{handleClearCompleted}}">Clear completed</button>` : ''}
+        ${this.completedCount > 0 ? html`<button class="clear-completed" onclick="{handleClearCompleted}">Clear completed</button>` : ''}
       </footer>
     `;
   }

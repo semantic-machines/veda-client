@@ -1,10 +1,10 @@
 import Emitter from './Emitter.js';
-import Observable from './Observable.js';
 import Backend from './Backend.js';
 import WeakCache from './WeakCache.js';
 import Subscription from './Subscription.js';
 import Value from './Value.js';
 import {genUri, decorator} from './Util.js';
+import {reactive} from './Reactive.js';
 
 const IS_NEW = Symbol('isNew');
 const IS_SYNC = Symbol('isSync');
@@ -16,7 +16,7 @@ const REMOVE_PROMISE = Symbol('removePromise');
 const MEMBERSHIPS = Symbol('memberships');
 const RIGHTS = Symbol('rights');
 
-export default class Model extends Observable(Emitter(Object)) {
+export default class Model extends Emitter(Object) {
   static cache = new WeakCache();
 
   constructor (data) {
@@ -29,22 +29,55 @@ export default class Model extends Observable(Emitter(Object)) {
       this.isNew(false);
       this.isSync(false);
       this.isLoaded(false);
-      return Model.cache.get(this.id) ?? (Model.cache.set(this.id, this), this);
+
+      // Check cache - return cached proxy if exists
+      const cached = Model.cache.get(this.id);
+      if (cached) {
+        return cached;
+      }
     } else if (typeof data === 'undefined' || data === null) {
       this.id = genUri();
       this.isNew(true);
       this.isSync(false);
       this.isLoaded(false);
-      return (Model.cache.set(this.id, this), this);
     } else if (typeof data === 'object') {
       const id = data['@'];
-      const cached = Model.cache.get(id) ?? (Model.cache.set(id, this), this);
-      cached.apply(data);
-      cached.isNew(false);
-      cached.isSync(true);
-      cached.isLoaded(true);
-      return cached;
+      const cached = Model.cache.get(id);
+
+      if (cached) {
+        // Update cached model with new data
+        cached.apply(data);
+        cached.isNew(false);
+        cached.isSync(true);
+        cached.isLoaded(true);
+        return cached;
+      }
+
+      this.id = id;
+      this.apply(data);
+      this.isNew(false);
+      this.isSync(true);
+      this.isLoaded(true);
     }
+
+    // Make the model reactive with emit events for backward compatibility
+    const reactiveModel = reactive(this, {
+      onSet: function(key, value, oldValue) {
+        // Emit events for backward compatibility
+        this.emit(key, value);
+        this.emit('modified', key, value);
+      },
+      onDelete: function(key) {
+        // Emit events for backward compatibility
+        this.emit(key);
+        this.emit('modified', key);
+      }
+    });
+
+    // Cache the reactive proxy
+    Model.cache.set(this.id, reactiveModel);
+
+    return reactiveModel;
   }
 
   apply (data) {

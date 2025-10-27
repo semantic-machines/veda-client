@@ -2,9 +2,9 @@ import ValueComponent from './ValueComponent.js';
 
 export default function RelationComponent (Class = HTMLElement) {
   return class RelationComponentClass extends ValueComponent(Class) {
-    async renderValue (value, container) {
+    async renderValue (value, container, index) {
       if (!this.template) {
-        return super.renderValue(value, container);
+        return super.renderValue(value, container, index);
       }
 
       // Save current model

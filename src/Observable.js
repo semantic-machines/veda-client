@@ -1,3 +1,9 @@
+/**
+ * @deprecated Observable is deprecated. Use reactive() instead.
+ * This is kept for backward compatibility only.
+ * Model now uses reactive() internally.
+ */
+
 const handler = {
   'get': function (target, prop, receiver) {
     const value = Reflect.get(target, prop, receiver);
@@ -23,6 +29,9 @@ const handler = {
   },
 };
 
+/**
+ * @deprecated Use reactive() from Reactive.js instead
+ */
 export default function Observable(Class = Object) {
   return class extends Class {
     constructor(...args) {
