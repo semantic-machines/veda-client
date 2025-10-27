@@ -71,7 +71,7 @@ export default function IfComponent(Class = HTMLElement) {
     #evaluateCondition(expr) {
       try {
         // Remove { } if present
-        const cleanExpr = expr.replace(/^\{|\}$/g, '').trim();
+        const cleanExpr = expr.replace(/^{|}$/g, '').trim();
 
         // Use safe ExpressionParser instead of new Function()
         const value = ExpressionParser.evaluate(cleanExpr, this);

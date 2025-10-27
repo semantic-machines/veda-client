@@ -264,7 +264,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       // If reactive component, create effects for expressions
       if (this.#isReactive) {
         const parent = textNode.parentNode;
-        const nextSibling = textNode.nextSibling;
 
         // Create nodes for each part
         const nodes = parts.map(part => {
