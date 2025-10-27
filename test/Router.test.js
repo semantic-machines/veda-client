@@ -206,11 +206,11 @@ export default ({test, assert}) => {
     const r = new Router();
     let routeCalled = false;
 
-    r.add('#/test-go', () => {
+    r.add('#/testgo', () => {
       routeCalled = true;
     });
 
-    r.go('#/test-go');
+    r.go('#/testgo');
     assert(routeCalled === true);
 
     r.clear();

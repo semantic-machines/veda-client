@@ -1,3 +1,6 @@
+// Setup DOM environment first
+import './setup-dom.js';
+
 import ImportedWebSocket from 'ws';
 if (!globalThis.WebSocket) {
   globalThis.WebSocket = ImportedWebSocket;
