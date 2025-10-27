@@ -108,6 +108,7 @@ export default function IfComponent(Class = HTMLElement) {
 
       } else if (!show && this.#currentContent) {
         // Hide: remove content and add placeholder
+        // Browser will automatically call disconnectedCallback for all web components
         this.#currentContent.forEach(node => {
           if (node.parentNode === this) {
             this.removeChild(node);
@@ -128,9 +129,17 @@ export default function IfComponent(Class = HTMLElement) {
   };
 }
 
-// Define the component
-const IfComponentClass = IfComponent(HTMLElement);
-customElements.define(IfComponentClass.tag, IfComponentClass);
+// Define the component only if running in browser
+let If;
+if (typeof customElements !== 'undefined') {
+  const IfComponentClass = IfComponent(HTMLElement);
+  customElements.define(IfComponentClass.tag, IfComponentClass);
+  If = IfComponentClass;
+} else {
+  // Export function for testing in Node.js
+  If = IfComponent;
+}
 
-export { IfComponentClass as If };
+export { If };
+
 

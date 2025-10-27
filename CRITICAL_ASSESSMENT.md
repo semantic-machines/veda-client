@@ -143,44 +143,26 @@
 
 ## 🚀 Next Steps (Phase 1.1)
 
-### Priority 1: Fix If Component Memory Leak 🔥
+### Priority 1: ~~Fix If Component Memory Leak~~ ✅ NO ISSUE FOUND
 
-**File:** `src/components/IfComponent.js`
+**Initial concern:**
+- Believed `disconnectedCallback` not called when content hidden
 
-**Problem:**
-```javascript
-#updateVisibility(show) {
-  if (!show && this.#currentContent) {
-    // ❌ Just removes nodes, no cleanup
-    this.#currentContent.forEach(node => {
-      if (node.parentNode === this) {
-        this.removeChild(node);
-      }
-    });
-  }
-}
-```
+**Investigation result:**
+- ✅ Browser ALWAYS calls `disconnectedCallback` per HTML spec
+- ✅ `Component` base class already has `#cleanupEffects()` in `disconnectedCallback`
+- ✅ `this.effect()` and `this.watch()` auto-register cleanup
+- ✅ No memory leak exists if developers use `this.effect()` correctly
+
+**Root cause of confusion:**
+- Developers might use `import { effect }` directly instead of `this.effect()`
+- Direct imports don't auto-register for cleanup
 
 **Solution:**
-```javascript
-#updateVisibility(show) {
-  if (!show && this.#currentContent) {
-    this.#currentContent.forEach(node => {
-      // ✅ Call disconnectedCallback for components
-      if (node instanceof HTMLElement && 'disconnectedCallback' in node) {
-        node.disconnectedCallback?.();
-      }
-      // ✅ Remove from DOM
-      if (node.parentNode === this) {
-        this.removeChild(node);
-      }
-    });
-    this.#currentContent = null;
-  }
-}
-```
+- ✅ Document best practice: use `this.effect()` not `import { effect }`
+- ✅ No code changes needed - architecture is already correct!
 
-**Estimate:** 1-2 hours + testing
+**Estimate:** 0 hours (documentation only) ✅ COMPLETE
 
 ---
 

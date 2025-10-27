@@ -199,9 +199,17 @@ export default function LoopComponent(Class = HTMLElement) {
   };
 }
 
-// Define the component
-const LoopComponentClass = LoopComponent(HTMLElement);
-customElements.define(LoopComponentClass.tag, LoopComponentClass);
+// Define the component only if running in browser
+let Loop;
+if (typeof customElements !== 'undefined') {
+  const LoopComponentClass = LoopComponent(HTMLElement);
+  customElements.define(LoopComponentClass.tag, LoopComponentClass);
+  Loop = LoopComponentClass;
+} else {
+  // Export function for testing in Node.js
+  Loop = LoopComponent;
+}
 
-export { LoopComponentClass as Loop };
+export { Loop };
+
 

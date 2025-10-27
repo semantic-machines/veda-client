@@ -144,29 +144,27 @@ items.reverse();
 
 ### 2. If Component
 
-#### 🐛 Memory Leak (CRITICAL)
+#### ⚠️ Limited Expression Syntax
 
 **Issue:**
-- `disconnectedCallback` NOT called when content removed
-- Components with effects/timers/listeners NOT cleaned up
+- No complex expressions in `condition` attribute
+- Only simple property access
 
 ```javascript
-<veda-if condition="{show}">
-  <my-component></my-component>
-  // Has effects, timers, event listeners
-</veda-if>
+// ✅ GOOD:
+<veda-if condition="{this.isVisible}">
 
-// When show = false:
-// ❌ Component removed from DOM
-// ❌ BUT effects still running!
-// ❌ Memory leak!
+// ❌ BAD (not supported):
+<veda-if condition="{this.count > 5 && this.isActive}">
+
+// ✅ Workaround - use computed:
+get shouldShow() {
+  return this.count > 5 && this.isActive;
+}
+<veda-if condition="{this.shouldShow}">
 ```
 
-**Workaround:**
-- Avoid complex components inside `<veda-if>`
-- Or manually cleanup in component
-
-**Status:** 🔥 HIGH PRIORITY FIX in Phase 1.1
+**Status:** Documented limitation (use computed properties)
 
 ---
 
