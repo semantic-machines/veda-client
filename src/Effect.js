@@ -23,7 +23,7 @@ const effectTriggerCount = new WeakMap();
 function queueEffect(effect) {
   // Track trigger count for infinite loop detection
   const count = effectTriggerCount.get(effect) || 0;
-  
+
   if (count >= MAX_TRIGGER_COUNT) {
     console.error(
       `Infinite loop detected: Effect triggered ${count} times in a single update cycle.`,
@@ -32,7 +32,7 @@ function queueEffect(effect) {
     );
     return;
   }
-  
+
   effectTriggerCount.set(effect, count + 1);
   effectQueue.add(effect);
   queueFlush();
@@ -75,11 +75,11 @@ async function flushEffects() {
         effect();
       }
     }
-    
+
     // Clear trigger counts after successful flush
     // This allows effects to trigger again in next update cycle
     sortedEffects.forEach(effect => effectTriggerCount.delete(effect));
-    
+
   } finally {
     isFlushing = false;
 
@@ -88,7 +88,7 @@ async function flushEffects() {
       queueFlush();
     }
   }
-  
+
   return Promise.resolve();
 }
 

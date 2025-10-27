@@ -147,7 +147,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     async update () {
       // Clear old child promises to prevent memory leak
       this.#childrenRendered = [];
-      
+
       const pre = this.pre();
       if (pre instanceof Promise) await pre;
 
@@ -288,7 +288,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         // Insert new nodes BEFORE removing old one to avoid race condition
         // This ensures parent reference stays valid
         nodes.forEach(node => parent.insertBefore(node, textNode));
-        
+
         // Now safe to remove original text node
         textNode.remove();
       } else {
@@ -522,17 +522,17 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     /**
      * Helper: watch a value and run callback when it changes
-     * 
+     *
      * NOTE: Uses reference equality (===) for comparison.
      * For objects/arrays, callback will only trigger if the reference changes,
      * not when properties inside are modified.
-     * 
+     *
      * Examples:
      *   this.watch(() => state.count, (val) => ...);  // Triggers on count change
      *   this.watch(() => state.items, (val) => ...);  // Only triggers if items = newArray
      *   state.items.push(x);  // Won't trigger (same reference)
      *   state.items = [...state.items, x];  // Triggers (new reference)
-     * 
+     *
      * @param {Function} getter - Function that returns the value to watch
      * @param {Function} callback - Callback to run when value changes
      * @param {Object} options - Options { immediate: true } to run callback immediately

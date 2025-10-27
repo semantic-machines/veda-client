@@ -45,7 +45,7 @@ export function reactive(target, options = {}) {
         if (Array.isArray(target)) {
           const mutationMethods = ['push', 'pop', 'shift', 'unshift', 'splice'];
           const sortingMethods = ['sort', 'reverse'];
-          
+
           // Methods that always modify array
           if (mutationMethods.includes(key)) {
             return function(...args) {
@@ -55,7 +55,7 @@ export function reactive(target, options = {}) {
               return result;
             };
           }
-          
+
           // Methods that may or may not modify (sort, reverse)
           // Only trigger if array actually changed
           if (sortingMethods.includes(key)) {
@@ -63,15 +63,15 @@ export function reactive(target, options = {}) {
               // Snapshot array before operation
               const before = [...target];
               const result = value.apply(target, args);
-              
+
               // Check if array actually changed
-              const changed = before.length !== target.length || 
+              const changed = before.length !== target.length ||
                              before.some((val, idx) => val !== target[idx]);
-              
+
               if (changed) {
                 trigger(target, null, true);
               }
-              
+
               return result;
             };
           }

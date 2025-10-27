@@ -221,6 +221,44 @@ get itemClass() {
 
 ---
 
+#### ⚠️ HTML Sanitization (safe() function)
+
+**Issue:**
+- The `safe()` function escapes HTML **and removes ALL `{}`** characters
+- This is intentional (prevents expression injection) but affects edge cases
+
+```javascript
+// ❌ Issue:
+safe('Style: { color: red }');    // Returns: 'Style: '
+safe('JSON: {"key": "value"}');   // Returns: 'JSON: '
+safe('Code: function() {}');      // Returns: 'Code: function() '
+
+// ✅ Workaround - use raw():
+raw`Style: { color: red }`;       // Preserves {}
+raw`JSON: {"key": "value"}`;      // Preserves {}
+```
+
+**When this matters:**
+- Displaying JSON in UI
+- Showing CSS snippets  
+- Code examples with object literals
+- Mathematical notation with sets
+
+**Workaround:**
+```javascript
+// Use raw() for content that should not be sanitized
+render() {
+  return html`
+    <pre>${raw`{ "json": "example" }`}</pre>
+    <code>${raw`const obj = { key: 'value' };`}</code>
+  `;
+}
+```
+
+**Status:** Documented limitation (use `raw()` when displaying code/JSON)
+
+---
+
 ### 4. Reactivity
 
 #### ⚠️ Array Index Assignment
