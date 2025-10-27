@@ -104,15 +104,15 @@ export function reactive(target, options = {}) {
   };
 
   const proxy = new Proxy(target, handler);
-  
+
   // Store the proxy to prevent creating multiple proxies for the same object
   reactiveMap.set(target, proxy);
-  
+
   return proxy;
 }
 
 /**
- * Creates a computed property that automatically tracks dependencies  
+ * Creates a computed property that automatically tracks dependencies
  * @param {Function} getter - The getter function
  * @returns {Object} - Object with value getter
  */
@@ -120,7 +120,7 @@ export function computed(getter) {
   let value;
   let dirty = true;
 
-  // The computed object that will be returned  
+  // The computed object that will be returned
   const computed = {
     get value() {
       // Re-compute if dirty
