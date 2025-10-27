@@ -1,5 +1,8 @@
 import {effect, track, trigger} from './Effect.js';
 
+// WeakMap to store already wrapped reactive objects
+const reactiveMap = new WeakMap();
+
 /**
  * Creates a reactive proxy that tracks property access and triggers updates
  * @param {Object} target - The object to make reactive
@@ -16,6 +19,12 @@ export function reactive(target, options = {}) {
   // Don't wrap already reactive objects
   if (target.__isReactive) {
     return target;
+  }
+
+  // Check if we already wrapped this object (prevents circular references)
+  const existingProxy = reactiveMap.get(target);
+  if (existingProxy) {
+    return existingProxy;
   }
 
   const handler = {
@@ -94,41 +103,60 @@ export function reactive(target, options = {}) {
     }
   };
 
-  return new Proxy(target, handler);
+  const proxy = new Proxy(target, handler);
+  
+  // Store the proxy to prevent creating multiple proxies for the same object
+  reactiveMap.set(target, proxy);
+  
+  return proxy;
 }
 
 /**
- * Creates a computed property that automatically tracks dependencies
+ * Creates a computed property that automatically tracks dependencies  
  * @param {Function} getter - The getter function
  * @returns {Object} - Object with value getter
  */
 export function computed(getter) {
   let value;
   let dirty = true;
-  let effect;
 
-  const computedEffect = () => {
-    if (dirty) {
-      effect = getter();
-      value = effect;
-      dirty = false;
-    }
-    return value;
-  };
-
-  // Mark for invalidation when dependencies change
-  const invalidate = () => {
-    dirty = true;
-  };
-
-  return {
+  // The computed object that will be returned  
+  const computed = {
     get value() {
-      const result = computedEffect();
-      track(computedEffect, 'value');
-      return result;
-    },
-    effect: invalidate
+      // Re-compute if dirty
+      if (dirty) {
+        // Run getter to compute value
+        // The effect wrapper will track dependencies
+        value = getter();
+        dirty = false;
+      }
+      // Track that something accessed this computed value
+      track(this, 'value');
+      return value;
+    }
   };
+
+  // Create an effect that runs the getter
+  // This effect will be triggered when dependencies change
+  effect(() => {
+    // Access the computed value to set up tracking
+    // This creates the dependency link
+    // eslint-disable-next-line no-unused-expressions
+    computed.value;
+  }, {
+    lazy: false, // Run immediately
+    computed: true,
+    scheduler: () => {
+      // When dependencies change, mark as dirty
+      if (!dirty) {
+        dirty = true;
+        // Trigger effects that depend on this computed value
+        trigger(computed, 'value');
+      }
+    }
+  });
+
+  return computed;
 }
 
 export {effect};
