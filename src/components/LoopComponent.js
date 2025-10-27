@@ -84,9 +84,20 @@ export default function LoopComponent(Class = HTMLElement) {
       const newKeys = new Set();
       const newItemsMap = new Map();
 
-      // Build map of new items
+      // Build map of new items with duplicate key detection
       newItems.forEach((item, index) => {
         const key = this.#getKey(item, keyAttr, index);
+        
+        // Warn about duplicate keys
+        if (newItemsMap.has(key)) {
+          console.warn(
+            `Loop component: Duplicate key "${key}" found.`,
+            'Each item in the list must have a unique key.',
+            'Current item:', item,
+            'Previous item:', newItemsMap.get(key).item
+          );
+        }
+        
         newKeys.add(key);
         newItemsMap.set(key, {item, index});
       });

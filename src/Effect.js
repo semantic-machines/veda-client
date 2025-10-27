@@ -13,10 +13,27 @@ const effectQueue = new Set();
 let isFlushing = false;
 let isFlushPending = false;
 
+// Infinite loop detection
+const MAX_TRIGGER_COUNT = 100;
+const effectTriggerCount = new WeakMap();
+
 /**
  * Queue an effect for execution
  */
 function queueEffect(effect) {
+  // Track trigger count for infinite loop detection
+  const count = effectTriggerCount.get(effect) || 0;
+  
+  if (count >= MAX_TRIGGER_COUNT) {
+    console.error(
+      `Infinite loop detected: Effect triggered ${count} times in a single update cycle.`,
+      'This usually means an effect is modifying state it depends on.',
+      effect
+    );
+    return;
+  }
+  
+  effectTriggerCount.set(effect, count + 1);
   effectQueue.add(effect);
   queueFlush();
 }
@@ -33,9 +50,10 @@ function queueFlush() {
 
 /**
  * Flush all queued effects
+ * @returns {Promise<void>}
  */
-function flushEffects() {
-  if (isFlushing) return;
+async function flushEffects() {
+  if (isFlushing) return Promise.resolve();
 
   isFlushPending = false;
   isFlushing = true;
@@ -57,6 +75,11 @@ function flushEffects() {
         effect();
       }
     }
+    
+    // Clear trigger counts after successful flush
+    // This allows effects to trigger again in next update cycle
+    sortedEffects.forEach(effect => effectTriggerCount.delete(effect));
+    
   } finally {
     isFlushing = false;
 
@@ -65,6 +88,8 @@ function flushEffects() {
       queueFlush();
     }
   }
+  
+  return Promise.resolve();
 }
 
 /**

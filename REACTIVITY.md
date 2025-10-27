@@ -180,6 +180,30 @@ async connectedCallback() {
 }
 ```
 
+### ⚠️ Important: Reference Equality
+
+`watch()` uses **reference equality (===)** for comparison:
+
+```javascript
+state = reactive({ items: [1, 2, 3] });
+
+// ❌ Won't trigger - same array reference
+this.watch(() => state.items, (val) => console.log('changed'));
+state.items.push(4);  // No trigger!
+
+// ✅ Triggers - new array reference
+state.items = [...state.items, 4];  // Triggers!
+
+// ✅ Alternative: watch array length
+this.watch(() => state.items.length, (len) => console.log('length:', len));
+state.items.push(5);  // Triggers! (length changed)
+```
+
+**For objects/arrays:**
+- Changes to properties inside won't trigger
+- Only reassigning the whole object/array will trigger
+- To watch deep changes, watch specific properties or use `effect()` directly
+
 ## Effects
 
 Use `effect()` for more complex reactive logic:

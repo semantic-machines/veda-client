@@ -22,6 +22,9 @@ export default class Model extends Emitter(Object) {
   constructor (data) {
     super();
 
+    // Setup modified listener that marks model as not sync
+    // Note: For cached models returning early, this listener is already attached
+    // from the first construction, so we don't duplicate it
     this.on('modified', () => this.isSync(false));
 
     if (typeof data === 'string') {
@@ -33,7 +36,7 @@ export default class Model extends Emitter(Object) {
       // Check cache - return cached proxy if exists
       const cached = Model.cache.get(this.id);
       if (cached) {
-        return cached;
+        return cached; // Already reactive and has listener
       }
     } else if (typeof data === 'undefined' || data === null) {
       this.id = genUri();
@@ -46,11 +49,12 @@ export default class Model extends Emitter(Object) {
 
       if (cached) {
         // Update cached model with new data
+        // No need to reattach listener - already attached from first construction
         cached.apply(data);
         cached.isNew(false);
         cached.isSync(true);
         cached.isLoaded(true);
-        return cached;
+        return cached; // Already reactive and has listener
       }
 
       this.id = id;

@@ -19,6 +19,7 @@ export function trigger(target: object, key: string | symbol, triggerAll?: boole
 
 /**
  * Flush all queued effects (for testing)
+ * @returns Promise that resolves when all effects are flushed
  */
 export function flushEffects(): Promise<void>;
 
