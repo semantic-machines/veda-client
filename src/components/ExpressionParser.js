@@ -23,52 +23,56 @@ export default class ExpressionParser {
       return undefined;
     }
 
-    // Remove 'this.' prefix if present
-    const normalized = expr.startsWith('this.') ? expr.slice(5) : expr === 'this' ? '' : expr;
+    const normalized = this.#normalizeExpression(expr);
 
-    // Return context itself for 'this'
     if (normalized === '') {
       return context;
     }
 
-    // Split by . and ?. to get tokens
     const parts = normalized.split(/(\?\.|\.)/).filter(part => part && part !== '.');
+    const result = this.#evaluateParts(parts, context);
 
+    if (preserveContext && typeof result.value === 'function' && result.parent) {
+      return { value: result.value, context: result.parent };
+    }
+
+    return result.value;
+  }
+
+  static #normalizeExpression(expr) {
+    if (expr === 'this') {
+      return '';
+    }
+    if (expr.startsWith('this.')) {
+      return expr.slice(5);
+    }
+    return expr;
+  }
+
+  static #evaluateParts(parts, context) {
     let value = context;
     let parent = null;
     let nextIsOptional = false;
 
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
-
-      // Check for optional chaining marker
+    for (const part of parts) {
       if (part === '?.') {
         nextIsOptional = true;
         continue;
       }
 
-      // Check if value is null/undefined
       if (value == null) {
         if (nextIsOptional) {
-          return undefined;
+          return { value: undefined, parent };
         }
         throw new Error(`Cannot read property '${part}' of ${value}`);
       }
 
       parent = value;
-
-      // Parse numeric index or property name
       const numericValue = /^\d+$/.test(part) ? parseInt(part, 10) : part;
       value = value[numericValue];
-
       nextIsOptional = false;
     }
 
-    // If value is a function and we need to preserve context
-    if (preserveContext && typeof value === 'function' && parent) {
-      return { value, context: parent };
-    }
-
-    return value;
+    return { value, parent };
   }
 }
