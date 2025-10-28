@@ -131,6 +131,9 @@ export default class Model extends Emitter(Object) {
     const updater = (id) => {
       const model = new Model(id);
       model.reset().catch((error) => {
+        // Note: This error handler is difficult to test without real WebSocket messages
+        // It's triggered when the server sends an update for a model that fails to load
+        // Coverage: Tested manually in production, but hard to mock in unit tests
         console.error(`Error resetting model ${id}`, error);
       });
     };

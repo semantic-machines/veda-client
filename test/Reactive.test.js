@@ -203,15 +203,20 @@ export default ({test, assert}) => {
     });
 
     await flushEffects();
-    assert(sum === 6);
+    assert(sum === 6, 'Initial sum should be 6');
 
     obj.items = [5, 5];
     await flushEffects();
-    assert(sum === 10);
+    assert(sum === 10, 'Sum should be 10 after [5, 5]');
 
     obj.items = [1, 2, 3, 4];
     await flushEffects();
-    assert(sum === 10);
+    assert(sum === 10, 'Sum should be 10 after [1, 2, 3, 4]');
+
+    // Change to different sum to verify reactivity works
+    obj.items = [2, 3, 4];
+    await flushEffects();
+    assert(sum === 9, 'Sum should be 9 after [2, 3, 4]');
   });
 
   test('Reactive - handle array mutations (push, pop)', async () => {
@@ -331,21 +336,25 @@ export default ({test, assert}) => {
   test('Reactive - handle array reverse', async () => {
     const obj = reactive({items: [1, 2, 3]});
     let sum = 0;
+    let effectRuns = 0;
 
     effect(() => {
+      effectRuns++;
       sum = obj.items.reduce((a, b) => a + b, 0);
     });
 
     await flushEffects();
-    assert(sum === 6);
+    assert(sum === 6, 'Initial sum should be 6');
+    assert(effectRuns === 1, 'Effect should run once initially');
 
     obj.items.reverse();
     await flushEffects();
-    assert(sum === 6); // Sum is same but order changed
+    assert(sum === 6, 'Sum is same but order changed');
+    assert(effectRuns === 2, 'Effect should run after reverse');
 
     // Verify order actually changed by accessing items
-    assert(obj.items[0] === 3);
-    assert(obj.items[2] === 1);
+    assert(obj.items[0] === 3, 'First item should be 3 after reverse');
+    assert(obj.items[2] === 1, 'Last item should be 1 after reverse');
   });
 
   test('Reactive - handle Date objects', async () => {

@@ -91,16 +91,24 @@ export default ({test, assert}) => {
 
   test('Роутер - валидация регулярных выражений', async () => {
     const r = new Router();
+    let param;
 
-    r.add('#/valid/(?:[0-9]+)', (param) => {
-      assert(param === undefined)
+    // Valid regex - non-capturing group with digits
+    r.add('#/valid/(?:[0-9]+)', (capturedParam) => {
+      param = capturedParam;
     });
 
+    // Test that the route works
+    r.route('#/valid/123');
+    // Non-capturing group (?:...) doesn't capture, so param should be undefined
+    assert(param === undefined, 'Non-capturing group should not capture parameter');
+
+    // Invalid regex - nested groups
     try {
       r.add('#/invalid/(?:a(?:b))', () => {});
       assert(false, 'Должна быть ошибка для вложенных групп');
     } catch (e) {
-      assert(true);
+      assert(true, 'Should throw error for nested groups');
     }
 
     r.clear();
