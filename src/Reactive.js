@@ -164,7 +164,6 @@ export function computed(getter) {
   effect(() => {
     // Access the computed value to set up tracking
     // This creates the dependency link
-    // eslint-disable-next-line no-unused-expressions
     computed.value;
   }, {
     lazy: false, // Run immediately

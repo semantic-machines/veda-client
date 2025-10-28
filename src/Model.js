@@ -66,7 +66,7 @@ export default class Model extends Emitter(Object) {
 
     // Make the model reactive with emit events for backward compatibility
     const reactiveModel = reactive(this, {
-      onSet: function(key, value, oldValue) {
+      onSet: function(key, value) {
         // Emit events for backward compatibility
         this.emit(key, value);
         this.emit('modified', key, value);
