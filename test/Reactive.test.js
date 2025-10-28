@@ -466,5 +466,150 @@ export default ({test, assert}) => {
     });
     assert(result === 10, 'untrack should return function result');
   });
+
+  // ==================== COMPUTED VALUES ====================
+
+  test('Reactive - computed basic reactivity', async () => {
+    const {computed} = await import('../src/Reactive.js');
+    const state = reactive({count: 0});
+    const doubled = computed(() => state.count * 2);
+
+    assert.equal(doubled.value, 0, 'Initial computed value should be 0');
+
+    state.count = 5;
+    await flushEffects();
+
+    assert.equal(doubled.value, 10, 'Computed should update when dependency changes');
+  });
+
+  test('Reactive - computed caching works', async () => {
+    const {computed} = await import('../src/Reactive.js');
+    const state = reactive({count: 0});
+    let runCount = 0;
+    
+    const doubled = computed(() => {
+      runCount++;
+      return state.count * 2;
+    });
+
+    // First access
+    assert.equal(doubled.value, 0);
+    assert.equal(runCount, 1, 'Getter should run once');
+
+    // Second access (should use cache)
+    assert.equal(doubled.value, 0);
+    assert.equal(runCount, 1, 'Getter should not run again (cached)');
+
+    // Change dependency
+    state.count = 5;
+    await flushEffects();
+
+    // Access again (should re-run)
+    assert.equal(doubled.value, 10);
+    assert.equal(runCount, 2, 'Getter should run again after dependency change');
+  });
+
+  test('Reactive - computed chained values', async () => {
+    const {computed} = await import('../src/Reactive.js');
+    const state = reactive({count: 0});
+    const doubled = computed(() => state.count * 2);
+    const quadrupled = computed(() => doubled.value * 2);
+
+    assert.equal(quadrupled.value, 0);
+
+    state.count = 5;
+    await flushEffects();
+
+    assert.equal(doubled.value, 10);
+    assert.equal(quadrupled.value, 20, 'Chained computed should update');
+  });
+
+  test('Reactive - computed with effect', async () => {
+    const {computed} = await import('../src/Reactive.js');
+    const state = reactive({count: 0});
+    const doubled = computed(() => state.count * 2);
+    let effectValue = 0;
+
+    effect(() => {
+      effectValue = doubled.value;
+    });
+
+    await flushEffects();
+    assert.equal(effectValue, 0);
+
+    state.count = 5;
+    await flushEffects();
+
+    assert.equal(effectValue, 10, 'Effect should react to computed value change');
+  });
+
+  test('Reactive - computed multiple dependencies', async () => {
+    const {computed} = await import('../src/Reactive.js');
+    const state = reactive({a: 1, b: 2});
+    const sum = computed(() => state.a + state.b);
+
+    assert.equal(sum.value, 3);
+
+    state.a = 10;
+    await flushEffects();
+    assert.equal(sum.value, 12, 'Should update when first dependency changes');
+
+    state.b = 20;
+    await flushEffects();
+    assert.equal(sum.value, 30, 'Should update when second dependency changes');
+  });
+
+  // ==================== CIRCULAR REFERENCES ====================
+
+  test('Reactive - circular reference simple self-reference', () => {
+    const obj = {name: 'test'};
+    obj.self = obj;
+
+    // Should not throw
+    const state = reactive(obj);
+    
+    assert.equal(state.name, 'test');
+    assert.equal(state.self, state, 'Circular reference should work');
+    assert.ok(state.self.__isReactive, 'Circular reference should be reactive');
+  });
+
+  test('Reactive - circular reference complex nested', () => {
+    const parent = {name: 'parent'};
+    const child = {name: 'child', parent: parent};
+    parent.child = child;
+
+    // Should not throw
+    const state = reactive(parent);
+    
+    assert.equal(state.name, 'parent');
+    assert.equal(state.child.name, 'child');
+    assert.equal(state.child.parent, state, 'Parent reference should point back to same proxy');
+  });
+
+  test('Reactive - circular reference multiple refs to same object', () => {
+    const shared = {value: 42};
+    const obj = {
+      ref1: shared,
+      ref2: shared
+    };
+
+    const state = reactive(obj);
+    
+    assert.equal(state.ref1, state.ref2, 'Multiple references to same object should be same proxy');
+    
+    state.ref1.value = 100;
+    assert.equal(state.ref2.value, 100, 'Changes through one reference should reflect in other');
+  });
+
+  test('Reactive - circular reference array with circular ref', () => {
+    const arr = [1, 2, 3];
+    arr.push(arr); // arr[3] = arr
+
+    // Should not throw
+    const state = reactive(arr);
+    
+    assert.equal(state[0], 1);
+    assert.equal(state[3], state, 'Array circular reference should work');
+  });
 };
 
