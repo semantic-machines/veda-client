@@ -92,7 +92,10 @@ export default class Model extends Emitter(Object) {
     propsToDelete.forEach(prop => prop !== 'id' && delete this[prop]);
 
     dataProps.forEach((prop) => {
-      if (prop === '@') return this.id = data['@'] ?? genUri();
+      if (prop === '@') {
+        this.id = data['@'] ?? genUri();
+        return;
+      }
       let value = data[prop];
       if (Array.isArray(value)) {
         value = value.map(Value.parse);
@@ -145,28 +148,40 @@ export default class Model extends Emitter(Object) {
   }
 
   isNew (value) {
-    return typeof value === 'undefined' ? this[IS_NEW] : this[IS_NEW] = !!value;
+    if (typeof value === 'undefined') {
+      return this[IS_NEW];
+    }
+    this[IS_NEW] = !!value;
+    return this[IS_NEW];
   }
 
   isSync (value) {
-    return typeof value === 'undefined' ? this[IS_SYNC] : this[IS_SYNC] = !!value;
+    if (typeof value === 'undefined') {
+      return this[IS_SYNC];
+    }
+    this[IS_SYNC] = !!value;
+    return this[IS_SYNC];
   }
 
   isLoaded (value) {
-    return typeof value === 'undefined' ? this[IS_LOADED] : this[IS_LOADED] = !!value;
+    if (typeof value === 'undefined') {
+      return this[IS_LOADED];
+    }
+    this[IS_LOADED] = !!value;
+    return this[IS_LOADED];
   }
 
   hasValue (prop, value) {
     if (!prop && typeof value !== 'undefined') {
       return Object.getOwnPropertyNames(this).reduce((prev, prop) => prev || this.hasValue(prop, value), false);
     }
-    let found = !!(typeof this[prop] !== 'undefined');
+    const found = typeof this[prop] !== 'undefined';
     if (typeof value !== 'undefined' && value !== null) {
       const serialized = Value.serialize(value);
       let propValue = this[prop];
       if (propValue instanceof Function) return false;
       propValue = Array.isArray(propValue) ? propValue : [propValue];
-      found = found && propValue.some((item) => serialized.isEqual(Value.serialize(item)));
+      return found && propValue.some((item) => serialized.isEqual(Value.serialize(item)));
     }
     return found;
   }

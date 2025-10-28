@@ -164,7 +164,7 @@ export function computed(getter) {
   effect(() => {
     // Access the computed value to set up tracking
     // This creates the dependency link
-    computed.value;
+    void computed.value; // Access for side effect
   }, {
     lazy: false, // Run immediately
     computed: true,
