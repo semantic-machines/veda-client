@@ -57,31 +57,37 @@ export default ({test, assert}) => {
 
   test('Model - cached model gets updated with new data', () => {
     const id = 'd:test_cached_model_' + Date.now();
-
+    
     // Create first model with string ID
     const m1 = new Model(id);
     m1['rdfs:label'] = ['First Label'];
-
+    
+    // Note: New models start with isNew() based on constructor logic
+    // When created with just ID, they may or may not be marked as new initially
+    // The important part is that they get updated correctly when data arrives
+    
     // Create second model with same ID but with full data object
+    // This simulates receiving data from server for an existing cached model
     const m2 = new Model({
       '@': id,
       'rdfs:label': [{data: 'Second Label', type: 'String'}],
       'rdfs:comment': [{data: 'New Comment', type: 'String'}]
     });
-
-    // Should return same cached instance
+    
+    // Should return same cached instance (this is the key behavior we're testing)
     assert(m1 === m2, 'Should return cached instance');
-
+    
     // Cached instance should be updated with new data
     // Value.parse for String type returns plain string
-    assert(m1['rdfs:label'][0] === 'Second Label', 'Label should be updated');
-    assert(m1.hasValue('rdfs:comment'), 'Comment should be added');
+    assert(m1['rdfs:label'][0] === 'Second Label', 'Label should be updated from cached model');
+    assert(m1.hasValue('rdfs:comment'), 'Comment should be added to cached model');
     assert(m1['rdfs:comment'][0] === 'New Comment', 'Comment value should be correct');
-
-    // Check flags are set correctly
-    assert(m1.isSync() === true, 'Should be marked as sync');
-    assert(m1.isLoaded() === true, 'Should be marked as loaded');
-    assert(m1.isNew() === false, 'Should not be new');
+    
+    // Check flags are set correctly after applying server data (lines 52-57 in Model.js)
+    // When constructor receives object with '@', it updates cached model and sets these flags
+    assert(m1.isNew() === false, 'Cached model should not be new after server data applied');
+    assert(m1.isSync() === true, 'Cached model should be synced after server data applied');
+    assert(m1.isLoaded() === true, 'Cached model should be loaded after server data applied');
   });
 
   test('Model - генерация ID для пустой модели', () => {
@@ -105,13 +111,30 @@ export default ({test, assert}) => {
 
   test('Model - apply with non-array value', () => {
     const id = 'd:test_non_array_' + Date.now();
-    const m = new Model({
+    
+    // Test with non-array value (single object)
+    const m1 = new Model({
       '@': id,
       'rdfs:label': {data: 'Single Label', type: 'String'} // Non-array value
     });
-
-    // Value.parse for non-array should work (line 100-101)
-    assert(m['rdfs:label'] === 'Single Label', 'Should parse non-array value');
+    
+    // Value.parse for non-array should work (line 100-101 in Model.js)
+    assert(m1['rdfs:label'] === 'Single Label', 'Should parse non-array value');
+    
+    // Test with array value for comparison
+    const id2 = 'd:test_array_' + Date.now();
+    const m2 = new Model({
+      '@': id2,
+      'rdfs:label': [{data: 'Array Label', type: 'String'}] // Array value
+    });
+    
+    // Should parse array differently (line 97-98 in Model.js)
+    assert(Array.isArray(m2['rdfs:label']), 'Array value should remain as array');
+    assert(m2['rdfs:label'][0] === 'Array Label', 'Should parse array value');
+    
+    // Verify that non-array and array are handled differently
+    assert(typeof m1['rdfs:label'] === 'string', 'Non-array should be string');
+    assert(typeof m2['rdfs:label'] === 'object', 'Array should be object');
   });
 
   test('Model - работа со значениями свойств', () => {

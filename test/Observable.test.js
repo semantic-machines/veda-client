@@ -127,8 +127,8 @@ export default ({test, assert}) => {
     // Deleting non-existent key should not throw and should not emit
     const result = delete o.nonExistent;
 
-    // Note: Proxy deleteProperty trap can return false for non-existent keys
-    // but this shouldn't emit events
+    // Proxy deleteProperty trap must return true to indicate success
+    assert(result === true, 'deleteProperty should return true');
     assert(emitCount === 0, 'Deleting non-existent key should not emit');
   });
 };

@@ -322,15 +322,17 @@ export default ({test, assert}) => {
     // Мокируем сам метод query
     const originalCallServer = Backend._Backend__call_server;
 
-    // Тестируем логику retry напрямую вызывая Backend.query несколько раз
-    // Проверяем что параметр tries работает корректно
+    // Test that when tries = 0, query should reject immediately
+    // Note: The actual implementation may return 429 or 999 depending on logic
+    // Let's verify what actually happens
     try {
-      // Если tries = 0, должен вернуть rejected promise
       await Backend.query("test", null, null, null, null, null, null, 0);
-      assert(false, 'Должна быть ошибка при tries = 0');
+      assert(false, 'Should throw error when tries = 0');
     } catch (error) {
-      assert(error instanceof BackendError);
-      assert(error.code === 429);
+      assert(error instanceof BackendError, 'Should be BackendError');
+      // The error code should be 429 (Too Many Requests) when retries exhausted
+      // This is by design - when tries=0, it means retry limit reached
+      assert(error.code === 429, 'Should have code 429 when retries exhausted');
     }
   });
 
