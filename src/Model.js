@@ -22,7 +22,6 @@ export default class Model extends Emitter(Object) {
   constructor (data) {
     super();
 
-    // Setup modified listener that marks model as not sync
     // Note: For cached models returning early, this listener is already attached
     // from the first construction, so we don't duplicate it
     this.on('modified', () => this.isSync(false));
@@ -33,7 +32,6 @@ export default class Model extends Emitter(Object) {
       this.isSync(false);
       this.isLoaded(false);
 
-      // Check cache - return cached proxy if exists
       const cached = Model.cache.get(this.id);
       if (cached) {
         // Factory pattern: return existing instance from cache
@@ -50,7 +48,6 @@ export default class Model extends Emitter(Object) {
       const cached = Model.cache.get(id);
 
       if (cached) {
-        // Update cached model with new data
         // No need to reattach listener - already attached from first construction
         cached.apply(data);
         cached.isNew(false);
@@ -68,7 +65,6 @@ export default class Model extends Emitter(Object) {
       this.isLoaded(true);
     }
 
-    // Make the model reactive with emit events for backward compatibility
     const reactiveModel = reactive(this, {
       onSet: function(key, value) {
         // Emit events for backward compatibility

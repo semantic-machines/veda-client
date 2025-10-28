@@ -237,8 +237,6 @@ export default ({test, assert}) => {
     // Simulate location hash change first
     window.location.hash = '#/testpopstate';
 
-    // Create and pass PopStateEvent to go()
-    // This tests line 18-19: if (to instanceof PopStateEvent) { this.route(location.hash); }
     const popStateEvent = new PopStateEvent('popstate', { state: null });
     r.go(popStateEvent);
 

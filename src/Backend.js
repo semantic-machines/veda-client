@@ -140,7 +140,7 @@ export default class Backend {
     );
   }
 
-  static query (queryStr, sort, databases, top, limit, from, sql, tries = 10, signal) {
+  static query (queryStr, sort, databases, top, limit, from, sql, signal, tries = 10) {
     if (!tries) return Promise.reject(new BackendError(429));
     const arg = queryStr;
     const isObj = typeof arg === 'object';
@@ -154,7 +154,7 @@ export default class Backend {
     return Backend.#call_server(params).catch(async (backendError) => {
       if (backendError.code === 999 && tries > 1) {
         await timeout(1000);
-        return Backend.query(queryStr, sort, databases, top, limit, from, sql, --tries, signal);
+        return Backend.query(queryStr, sort, databases, top, limit, from, sql, signal, --tries);
       }
       throw backendError;
     });
@@ -171,7 +171,7 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
-  static get_individual (uri, cache = true, signal) {
+  static get_individual (uri, cache = true, signal = undefined) {
     const params = {
       method: 'GET',
       url: 'get_individual',

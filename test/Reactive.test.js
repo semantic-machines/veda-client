@@ -285,7 +285,6 @@ export default ({test, assert}) => {
     assert(runs === 0);
 
     // To run lazy effect, we need to call it differently
-    // For now, just test that it didn't run immediately
     cleanup(); // cleanup
   });
 
@@ -322,7 +321,6 @@ export default ({test, assert}) => {
     await flushEffects();
     assert(runs === 1);
 
-    // Sort already sorted array - should not trigger
     obj.items.sort();
     await flushEffects();
     assert(runs === 1, 'Should not trigger on unchanged sort');
@@ -414,7 +412,6 @@ export default ({test, assert}) => {
     effect(() => {
       result = obj.a;
       pauseTracking();
-      // This read should not be tracked
       result += obj.b;
       resumeTracking();
     });
@@ -439,7 +436,6 @@ export default ({test, assert}) => {
 
     effect(() => {
       result = obj.a;
-      // This read should not be tracked
       untrack(() => {
         result += obj.b;
       });
@@ -504,7 +500,6 @@ export default ({test, assert}) => {
     state.count = 5;
     await flushEffects();
 
-    // Access again (should re-run)
     assert.equal(doubled.value, 10);
     assert.equal(runCount, 2, 'Getter should run again after dependency change');
   });

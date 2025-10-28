@@ -67,12 +67,10 @@ export default ({test, assert}) => {
       emitCount++;
     });
 
-    // Set with symbol should not emit
     o[sym] = 'value';
     assert(o[sym] === 'value');
     assert(emitCount === 0, 'Symbol property should not emit modified');
 
-    // Set with string should emit
     o.test = 'string';
     assert(emitCount === 1, 'String property should emit modified');
   });

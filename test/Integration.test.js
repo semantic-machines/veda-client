@@ -26,7 +26,6 @@ export default ({test, assert}) => {
 
     await flushEffects();
 
-    // Trigger multiple synchronous updates
     state.count = 1;
     state.count = 2;
     state.count = 3;
@@ -90,7 +89,6 @@ export default ({test, assert}) => {
     let effectRuns = 0;
     effect(() => {
       effectRuns++;
-      // Access the circular reference
       const name = obj.self?.name;
     });
 
@@ -146,7 +144,6 @@ export default ({test, assert}) => {
 
   test('Memory - model cache does not leak', () => {
     // Note: Model cache is by design - models are cached by ID
-    // This test verifies the cache mechanism works as expected
     
     const uniqueId1 = 'd:cache_test_1_' + Date.now();
     const uniqueId2 = 'd:cache_test_2_' + Date.now();
@@ -178,7 +175,6 @@ export default ({test, assert}) => {
 
     await flushEffects();
     
-    // Trigger effect multiple times
     for (let i = 0; i < 3; i++) {
       state.value++;
       await flushEffects();
@@ -207,7 +203,6 @@ export default ({test, assert}) => {
 
     await flushEffects();
     
-    // Delete non-existent property
     delete obj.nonExistent;
     await flushEffects();
 
@@ -215,7 +210,6 @@ export default ({test, assert}) => {
   });
 
   test('Edge case - very deep nesting (10 levels)', async () => {
-    // Create deeply nested object
     let current = {value: 'deep'};
     for (let i = 0; i < 10; i++) {
       current = {nested: current};
@@ -225,7 +219,6 @@ export default ({test, assert}) => {
     let accessedValue = null;
 
     effect(() => {
-      // Access deeply nested value
       accessedValue = deep?.nested?.nested?.nested?.nested?.nested?.nested?.nested?.nested?.nested?.nested?.value;
     });
 
@@ -286,11 +279,9 @@ export default ({test, assert}) => {
     const id = 'd:integration_' + Date.now();
     const m = new Model(id);
 
-    // Track reactive changes
     let changeCount = 0;
     m.on('modified', () => changeCount++);
 
-    // Create on server
     m['rdfs:label'] = ['Test'];
     m['rdf:type'] = [new Model('rdfs:Resource')];
     await m.save();
@@ -357,7 +348,6 @@ export default ({test, assert}) => {
     const cleanups = [];
     let totalRuns = 0;
 
-    // Create 100 effects
     for (let i = 0; i < 100; i++) {
       cleanups.push(effect(() => {
         totalRuns++;
@@ -386,7 +376,6 @@ export default ({test, assert}) => {
 
     await flushEffects();
 
-    // Add 1000 items
     for (let i = 0; i < 1000; i++) {
       obj.items.push(i);
     }

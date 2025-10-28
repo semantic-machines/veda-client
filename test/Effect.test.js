@@ -130,7 +130,6 @@ export default ({test, assert}) => {
       await flushEffects();
       const initialRuns = effectRuns;
 
-      // Trigger 150 synchronous changes BEFORE any flush
       // Each change calls trigger() → queueEffect()
       // After 100 calls, it logs error and stops adding to queue
       for (let i = 0; i < 150; i++) {
@@ -196,7 +195,6 @@ export default ({test, assert}) => {
     await flushEffects();
     const runsAfterFirst = effectRuns;
 
-    // Trigger many times in new cycle
     for (let i = 0; i < 50; i++) {
       state.count++;
     }

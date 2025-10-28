@@ -46,7 +46,6 @@ export default ({test, assert}) => {
     let event1Value = null;
     let event2Value = null;
 
-    // When registering handler for multiple events,
     // handler receives event name as first arg, value as second
     emitter.on('event1 event2', function(eventName, value) {
       if (eventName === 'event1') {

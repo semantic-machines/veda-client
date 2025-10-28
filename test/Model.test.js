@@ -58,16 +58,12 @@ export default ({test, assert}) => {
   test('Model - cached model gets updated with new data', () => {
     const id = 'd:test_cached_model_' + Date.now();
     
-    // Create first model with string ID
     const m1 = new Model(id);
     m1['rdfs:label'] = ['First Label'];
     
     // Note: New models start with isNew() based on constructor logic
-    // When created with just ID, they may or may not be marked as new initially
     // The important part is that they get updated correctly when data arrives
     
-    // Create second model with same ID but with full data object
-    // This simulates receiving data from server for an existing cached model
     const m2 = new Model({
       '@': id,
       'rdfs:label': [{data: 'Second Label', type: 'String'}],
@@ -83,8 +79,6 @@ export default ({test, assert}) => {
     assert(m1.hasValue('rdfs:comment'), 'Comment should be added to cached model');
     assert(m1['rdfs:comment'][0] === 'New Comment', 'Comment value should be correct');
     
-    // Check flags are set correctly after applying server data (lines 52-57 in Model.js)
-    // When constructor receives object with '@', it updates cached model and sets these flags
     assert(m1.isNew() === false, 'Cached model should not be new after server data applied');
     assert(m1.isSync() === true, 'Cached model should be synced after server data applied');
     assert(m1.isLoaded() === true, 'Cached model should be loaded after server data applied');
@@ -96,12 +90,10 @@ export default ({test, assert}) => {
   });
 
   test('Model - constructor early return for string ID already cached', () => {
-    // Create initial model
     const id = 'd:test_early_return_' + Date.now();
     const m1 = new Model(id);
     m1['rdfs:label'] = ['Test Label'];
 
-    // Create another model with same string ID - constructor should return early (line 100-101)
     const m2 = new Model(id);
 
     // Should be same instance

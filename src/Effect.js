@@ -8,20 +8,14 @@ const targetMap = new WeakMap();
 const effectStack = [];
 let shouldTrack = true;
 
-// Queue for batching effect execution
 const effectQueue = new Set();
 let isFlushing = false;
 let isFlushPending = false;
 
-// Infinite loop detection
 const MAX_TRIGGER_COUNT = 100;
 const effectTriggerCount = new WeakMap();
 
-/**
- * Queue an effect for execution
- */
 function queueEffect(effect) {
-  // Track trigger count for infinite loop detection
   const count = effectTriggerCount.get(effect) || 0;
 
   if (count >= MAX_TRIGGER_COUNT) {
@@ -38,9 +32,6 @@ function queueEffect(effect) {
   queueFlush();
 }
 
-/**
- * Schedule effect queue flush
- */
 function queueFlush() {
   if (!isFlushPending && !isFlushing) {
     isFlushPending = true;
@@ -48,10 +39,6 @@ function queueFlush() {
   }
 }
 
-/**
- * Flush all queued effects
- * @returns {Promise<void>}
- */
 async function flushEffects() {
   if (isFlushing) return Promise.resolve();
 
@@ -59,7 +46,6 @@ async function flushEffects() {
   isFlushing = true;
 
   try {
-    // Sort effects by priority (computed first)
     const sortedEffects = Array.from(effectQueue).sort((a, b) => {
       if (a.options?.computed && !b.options?.computed) return -1;
       if (!a.options?.computed && b.options?.computed) return 1;
@@ -76,14 +62,11 @@ async function flushEffects() {
       }
     }
 
-    // Clear trigger counts after successful flush
-    // This allows effects to trigger again in next update cycle
     sortedEffects.forEach(effect => effectTriggerCount.delete(effect));
 
   } finally {
     isFlushing = false;
 
-    // If more effects were queued during flush, flush again
     if (effectQueue.size > 0) {
       queueFlush();
     }
@@ -170,7 +153,6 @@ export function trigger(target, key, triggerAll = false) {
   const add = (effectsToAdd) => {
     if (effectsToAdd) {
       effectsToAdd.forEach(effect => {
-        // Don't trigger effect if it's currently running
         if (effect !== activeEffect) {
           effectsToQueue.add(effect);
         }
@@ -179,21 +161,14 @@ export function trigger(target, key, triggerAll = false) {
   };
 
   if (triggerAll) {
-    // Trigger all effects for this target (used for array mutations)
     depsMap.forEach(dep => add(dep));
   } else {
-    // Add effects for this specific key
     add(depsMap.get(key));
   }
 
-  // Queue all effects for batched execution
   effectsToQueue.forEach(effect => queueEffect(effect));
 }
 
-/**
- * Clean up effect dependencies
- * @param {Function} effect - The effect to clean up
- */
 function cleanup(effect) {
   const {deps} = effect;
   if (deps.length) {
@@ -204,16 +179,10 @@ function cleanup(effect) {
   }
 }
 
-/**
- * Pause tracking temporarily
- */
 export function pauseTracking() {
   shouldTrack = false;
 }
 
-/**
- * Resume tracking
- */
 export function resumeTracking() {
   shouldTrack = true;
 }
@@ -232,8 +201,5 @@ export function untrack(fn) {
   }
 }
 
-/**
- * Export flushEffects for testing
- */
 export { flushEffects };
 

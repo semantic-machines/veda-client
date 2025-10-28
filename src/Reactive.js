@@ -1,6 +1,5 @@
 import {effect, track, trigger} from './Effect.js';
 
-// WeakMap to store already wrapped reactive objects
 const reactiveMap = new WeakMap();
 
 /**
@@ -16,12 +15,10 @@ export function reactive(target, options = {}) {
     return target;
   }
 
-  // Don't wrap already reactive objects
   if (target.__isReactive) {
     return target;
   }
 
-  // Check if we already wrapped this object (prevents circular references)
   const existingProxy = reactiveMap.get(target);
   if (existingProxy) {
     return existingProxy;
@@ -29,42 +26,32 @@ export function reactive(target, options = {}) {
 
   const handler = {
     get(target, key, receiver) {
-      // Special marker for reactive detection
       if (key === '__isReactive') {
         return true;
       }
 
-      // Track this property access
       track(target, key);
 
       const value = Reflect.get(target, key, receiver);
 
-      // Bind functions to maintain correct context
       if (typeof value === 'function') {
-        // For arrays, wrap mutation methods to trigger reactivity
         if (Array.isArray(target)) {
           const mutationMethods = ['push', 'pop', 'shift', 'unshift', 'splice'];
           const sortingMethods = ['sort', 'reverse'];
 
-          // Methods that always modify array
           if (mutationMethods.includes(key)) {
             return function(...args) {
               const result = value.apply(target, args);
-              // Trigger all effects that access any property of this array
               trigger(target, null, true);
               return result;
             };
           }
 
-          // Methods that may or may not modify (sort, reverse)
-          // Only trigger if array actually changed
           if (sortingMethods.includes(key)) {
             return function(...args) {
-              // Snapshot array before operation
               const before = [...target];
               const result = value.apply(target, args);
 
-              // Check if array actually changed
               const changed = before.length !== target.length ||
                              before.some((val, idx) => val !== target[idx]);
 
@@ -79,10 +66,7 @@ export function reactive(target, options = {}) {
         return value.bind(target);
       }
 
-      // Deep reactivity - wrap nested objects
-      // But skip Promises, Dates, and other special objects
       if (typeof value === 'object' && value !== null) {
-        // Don't wrap Promise, Date, RegExp, etc
         if (value instanceof Promise || value instanceof Date || value instanceof RegExp) {
           return value;
         }
@@ -96,11 +80,9 @@ export function reactive(target, options = {}) {
       const oldValue = target[key];
       const result = Reflect.set(target, key, value, receiver);
 
-      // Only trigger if value actually changed
       if (oldValue !== value) {
         trigger(target, key);
 
-        // Call custom onSet handler if provided
         if (options.onSet && typeof key !== 'symbol') {
           options.onSet.call(target, key, value, oldValue);
         }
@@ -116,7 +98,6 @@ export function reactive(target, options = {}) {
       if (hadKey) {
         trigger(target, key);
 
-        // Call custom onDelete handler if provided
         if (options.onDelete && typeof key !== 'symbol') {
           options.onDelete.call(target, key);
         }
@@ -127,8 +108,6 @@ export function reactive(target, options = {}) {
   };
 
   const proxy = new Proxy(target, handler);
-
-  // Store the proxy to prevent creating multiple proxies for the same object
   reactiveMap.set(target, proxy);
 
   return proxy;
@@ -143,36 +122,25 @@ export function computed(getter) {
   let value;
   let dirty = true;
 
-  // The computed object that will be returned
   const computed = {
     get value() {
-      // Re-compute if dirty
       if (dirty) {
-        // Run getter to compute value
-        // The effect wrapper will track dependencies
         value = getter();
         dirty = false;
       }
-      // Track that something accessed this computed value
       track(this, 'value');
       return value;
     }
   };
 
-  // Create an effect that runs the getter
-  // This effect will be triggered when dependencies change
   effect(() => {
-    // Access the computed value to set up tracking
-    // This creates the dependency link
-    void computed.value; // Access for side effect
+    void computed.value;
   }, {
-    lazy: false, // Run immediately
+    lazy: false,
     computed: true,
     scheduler: () => {
-      // When dependencies change, mark as dirty
       if (!dirty) {
         dirty = true;
-        // Trigger effects that depend on this computed value
         trigger(computed, 'value');
       }
     }

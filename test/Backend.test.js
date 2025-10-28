@@ -184,7 +184,7 @@ export default ({test, assert}) => {
     const signal = controller.signal;
 
     // Запускаем запрос и сразу отменяем его
-    const queryPromise = Backend.query('test query', null, null, null, null, null, null, 10, signal);
+    const queryPromise = Backend.query('test query', null, null, null, null, null, null, signal, 10);
     controller.abort();
 
     try {
@@ -326,12 +326,11 @@ export default ({test, assert}) => {
     // Note: The actual implementation may return 429 or 999 depending on logic
     // Let's verify what actually happens
     try {
-      await Backend.query("test", null, null, null, null, null, null, 0);
+      await Backend.query("test", null, null, null, null, null, null, undefined, 0);
       assert(false, 'Should throw error when tries = 0');
     } catch (error) {
       assert(error instanceof BackendError, 'Should be BackendError');
       // The error code should be 429 (Too Many Requests) when retries exhausted
-      // This is by design - when tries=0, it means retry limit reached
       assert(error.code === 429, 'Should have code 429 when retries exhausted');
     }
   });

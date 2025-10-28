@@ -14,7 +14,6 @@ export default ({ test, assert }) => {
   });
 
   test('If component - can be instantiated with mock', () => {
-    // Create a minimal mock base class for testing
     class MockElement {
       constructor() {
         this.childNodes = [];
@@ -34,7 +33,6 @@ export default ({ test, assert }) => {
       remove() {}
     }
 
-    // Create If component class with mock
     const IfClass = IfComponentFunc(MockElement);
     const instance = new IfClass();
 
