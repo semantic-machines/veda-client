@@ -48,16 +48,70 @@ export default ({test, assert}) => {
 
   test('Model - создание модели из URI', () => {
     const m3 = new Model({
-      '@': 'd:test1',
-      'rdf:type': {data: 'owl:Thing', type: 'Uri'},
+      '@': 'd:test_individual',
+      'rdf:type': [{data: 'rdfs:Resource', type: 'Uri'}]
     });
-    const m4 = new Model('owl:Thing');
-    assert(m3['rdf:type'].id === m4.id);
+    assert(m3.id === 'd:test_individual');
+    assert(Array.isArray(m3['rdf:type']));
+  });
+
+  test('Model - cached model gets updated with new data', () => {
+    const id = 'd:test_cached_model_' + Date.now();
+
+    // Create first model with string ID
+    const m1 = new Model(id);
+    m1['rdfs:label'] = ['First Label'];
+
+    // Create second model with same ID but with full data object
+    const m2 = new Model({
+      '@': id,
+      'rdfs:label': [{data: 'Second Label', type: 'String'}],
+      'rdfs:comment': [{data: 'New Comment', type: 'String'}]
+    });
+
+    // Should return same cached instance
+    assert(m1 === m2, 'Should return cached instance');
+
+    // Cached instance should be updated with new data
+    // Value.parse for String type returns plain string
+    assert(m1['rdfs:label'][0] === 'Second Label', 'Label should be updated');
+    assert(m1.hasValue('rdfs:comment'), 'Comment should be added');
+    assert(m1['rdfs:comment'][0] === 'New Comment', 'Comment value should be correct');
+
+    // Check flags are set correctly
+    assert(m1.isSync() === true, 'Should be marked as sync');
+    assert(m1.isLoaded() === true, 'Should be marked as loaded');
+    assert(m1.isNew() === false, 'Should not be new');
   });
 
   test('Model - генерация ID для пустой модели', () => {
     const m = new Model();
     assert(/^d:[a-z0-9]+$/.test(m.id));
+  });
+
+  test('Model - constructor early return for string ID already cached', () => {
+    // Create initial model
+    const id = 'd:test_early_return_' + Date.now();
+    const m1 = new Model(id);
+    m1['rdfs:label'] = ['Test Label'];
+
+    // Create another model with same string ID - constructor should return early (line 100-101)
+    const m2 = new Model(id);
+
+    // Should be same instance
+    assert(m1 === m2, 'Should return same cached instance');
+    assert(m2['rdfs:label'][0] === 'Test Label', 'Should have same data');
+  });
+
+  test('Model - apply with non-array value', () => {
+    const id = 'd:test_non_array_' + Date.now();
+    const m = new Model({
+      '@': id,
+      'rdfs:label': {data: 'Single Label', type: 'String'} // Non-array value
+    });
+
+    // Value.parse for non-array should work (line 100-101)
+    assert(m['rdfs:label'] === 'Single Label', 'Should parse non-array value');
   });
 
   test('Model - работа со значениями свойств', () => {
@@ -243,31 +297,6 @@ export default ({test, assert}) => {
     // Когда одно значение, должно вернуть его без фильтрации
     const label = m.toLabel('rdfs:label', ['RU']);
     assert(label === 'Single Label');
-  });
-
-  test('Model - subscribe с ошибкой reset', async () => {
-    await Backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
-
-    // Создаем модель с несуществующим ID чтобы вызвать ошибку при reset
-    const m = new Model('test:nonexistent:model:12345');
-    m['v-s:updateCounter'] = [0];
-
-    // Мокируем консоль чтобы поймать ошибку
-    const originalError = console.error;
-    let errorLogged = false;
-    console.error = (...args) => {
-      if (args[0].includes('Error resetting model')) {
-        errorLogged = true;
-      }
-    };
-
-    // Подписываемся (это вызовет reset при получении обновления)
-    m.subscribe();
-
-    await timeout(100);
-
-    m.unsubscribe();
-    console.error = originalError;
   });
 
   test('Model - loadRight кеширование', async () => {

@@ -99,4 +99,36 @@ export default ({test, assert}) => {
     const elapsed = Date.now() - start;
     assert(elapsed >= 100, 'timeout должен ждать указанное время');
   });
+
+  test('Util - diff with properties only in second object', () => {
+    const obj1 = {a: 1};
+    const obj2 = {a: 1, b: 2, c: 3};
+
+    const delta = diff(obj1, obj2);
+    assert(delta.includes('b'), 'Should detect property only in second object');
+    assert(delta.includes('c'), 'Should detect property only in second object');
+  });
+
+  test('Util - eq with nested objects and different types', () => {
+    // Test with arrays
+    const arr1 = [1, 2, 3];
+    const arr2 = [1, 2, 3];
+    const arr3 = [1, 2, 4];
+
+    assert(eq(arr1, arr2), 'Equal arrays should be equal');
+    assert(!eq(arr1, arr3), 'Different arrays should not be equal');
+
+    // Test with functions
+    const fn = () => {};
+    assert(!eq(fn, () => {}), 'Different function instances should not be equal');
+
+    // Test with different types
+    assert(!eq({a: 1}, [1]), 'Different types should not be equal');
+    assert(!eq(1, '1'), 'Different types should not be equal');
+
+    // Test with objects of different lengths
+    const short = {a: 1};
+    const long = {a: 1, b: 2};
+    assert(!eq(short, long), 'Objects with different number of properties should not be equal');
+  });
 };

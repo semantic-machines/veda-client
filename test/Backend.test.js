@@ -451,5 +451,62 @@ export default ({test, assert}) => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+
+    // Тест uploadFile с другими типами ошибок при fetch
+    globalThis.fetch = async () => {
+      throw new Error('Generic fetch error');
+    };
+
+    try {
+      await Backend.uploadFile({
+        path: 'test.txt',
+        uri: 'd:test_file',
+        file: 'test'
+      });
+      assert(false, 'Должна быть ошибка');
+    } catch (error) {
+      assert(error instanceof BackendError, 'Should wrap error in BackendError');
+      assert(error.code === 0, 'Should have code 0 for generic errors');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('Backend - query retry logic with 999 error', async () => {
+    await Backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
+
+    const originalFetch = globalThis.fetch;
+    let attempts = 0;
+
+    // Mock fetch to return 999 error first, then success
+    globalThis.fetch = async (url, options) => {
+      if (url.toString().includes('query')) {
+        attempts++;
+        if (attempts < 2) {
+          // First attempt - return 999 error
+          return {
+            ok: false,
+            status: 999,
+            statusText: 'Custom Error',
+            json: async () => ({ code: 999 })
+          };
+        } else {
+          // Second attempt - success
+          return {
+            ok: true,
+            json: async () => ({ result: [] })
+          };
+        }
+      }
+      return originalFetch(url, options);
+    };
+
+    try {
+      const result = await Backend.query("'rdf:type' === 'owl:Class'", null, null, null, null, null, null, 3);
+      assert(result !== null, 'Should retry and succeed');
+      assert(attempts === 2, 'Should have retried once');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 };

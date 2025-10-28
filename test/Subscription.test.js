@@ -99,7 +99,7 @@ export default ({test, assert}) => {
     Subscription.unsubscribe(model.id);
     assert(Subscription._getSubscriptionCount() === initialCount);
 
-    // Теперь если придет обновление для удаленной подписки, оно должно быть обработано корректно
+    // Теперь если придет обновление для удаленной подписки, оно должно быть обработано корректно (line 64)
     await timeout(100);
   });
 };

@@ -57,4 +57,78 @@ export default ({test, assert}) => {
     assert(type === 'e');
     assert(payload === 10);
   });
+
+  test('Observable - set with symbol property', async () => {
+    const o = new ObservableObject();
+    const sym = Symbol('test');
+    let emitCount = 0;
+
+    o.on('modified', () => {
+      emitCount++;
+    });
+
+    // Set with symbol should not emit
+    o[sym] = 'value';
+    assert(o[sym] === 'value');
+    assert(emitCount === 0, 'Symbol property should not emit modified');
+
+    // Set with string should emit
+    o.test = 'string';
+    assert(emitCount === 1, 'String property should emit modified');
+  });
+
+  test('Observable - deleteProperty', async () => {
+    const o = new ObservableObject();
+    let deleteEmitted = false;
+    let modifiedEmitted = false;
+
+    o.test = 'value';
+
+    o.on('test', () => {
+      deleteEmitted = true;
+    });
+
+    o.on('modified', (key) => {
+      if (key === 'test') {
+        modifiedEmitted = true;
+      }
+    });
+
+    delete o.test;
+
+    assert(deleteEmitted, 'Should emit property-specific event on delete');
+    assert(modifiedEmitted, 'Should emit modified event on delete');
+    assert(!('test' in o), 'Property should be deleted');
+  });
+
+  test('Observable - deleteProperty with symbol', async () => {
+    const o = new ObservableObject();
+    const sym = Symbol('test');
+    let emitCount = 0;
+
+    o.on('modified', () => {
+      emitCount++;
+    });
+
+    o[sym] = 'value';
+    delete o[sym];
+
+    assert(emitCount === 0, 'Symbol delete should not emit');
+  });
+
+  test('Observable - deleteProperty on non-existent key', async () => {
+    const o = new ObservableObject();
+    let emitCount = 0;
+
+    o.on('modified', () => {
+      emitCount++;
+    });
+
+    // Deleting non-existent key should not throw and should not emit
+    const result = delete o.nonExistent;
+
+    // Note: Proxy deleteProperty trap can return false for non-existent keys
+    // but this shouldn't emit events
+    assert(emitCount === 0, 'Deleting non-existent key should not emit');
+  });
 };

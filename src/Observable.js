@@ -24,8 +24,8 @@ const handler = {
         target.emit?.(prop);
         target.emit?.('modified', prop);
       }
-      return true;
     }
+    return true; // Always return true to indicate success
   },
 };
 

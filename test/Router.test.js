@@ -216,6 +216,29 @@ export default ({test, assert}) => {
     r.clear();
   });
 
+  test('Роутер - go с PopStateEvent', () => {
+    if (typeof window === 'undefined') return;
+
+    const r = new Router();
+    let routeCalled = false;
+
+    r.add('#/testpopstate', () => {
+      routeCalled = true;
+    });
+
+    // Simulate location hash change first
+    window.location.hash = '#/testpopstate';
+
+    // Create and pass PopStateEvent to go()
+    // This tests line 18-19: if (to instanceof PopStateEvent) { this.route(location.hash); }
+    const popStateEvent = new PopStateEvent('popstate', { state: null });
+    r.go(popStateEvent);
+
+    assert(routeCalled === true, 'Route should be called on popstate event');
+
+    r.clear();
+  });
+
   test('Роутер - toString', () => {
     const r = new Router();
     r.add('#/test', () => {});
