@@ -36,6 +36,8 @@ export default function Observable(Class = Object) {
   return class extends Class {
     constructor(...args) {
       super(...args);
+      // Factory pattern: return proxy instead of instance
+      // eslint-disable-next-line sonarjs/no-return-in-constructor
       return new Proxy(this, handler);
     }
   };

@@ -36,6 +36,8 @@ export default class Model extends Emitter(Object) {
       // Check cache - return cached proxy if exists
       const cached = Model.cache.get(this.id);
       if (cached) {
+        // Factory pattern: return existing instance from cache
+        // eslint-disable-next-line sonarjs/no-return-in-constructor
         return cached; // Already reactive and has listener
       }
     } else if (typeof data === 'undefined' || data === null) {
@@ -54,6 +56,8 @@ export default class Model extends Emitter(Object) {
         cached.isNew(false);
         cached.isSync(true);
         cached.isLoaded(true);
+        // Factory pattern: return existing instance from cache
+        // eslint-disable-next-line sonarjs/no-return-in-constructor
         return cached; // Already reactive and has listener
       }
 
@@ -81,6 +85,8 @@ export default class Model extends Emitter(Object) {
     // Cache the reactive proxy
     Model.cache.set(this.id, reactiveModel);
 
+    // Factory pattern: return reactive proxy instead of this
+    // eslint-disable-next-line sonarjs/no-return-in-constructor
     return reactiveModel;
   }
 

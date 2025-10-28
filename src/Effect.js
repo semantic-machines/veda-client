@@ -137,12 +137,14 @@ export function track(target, key) {
 
   let depsMap = targetMap.get(target);
   if (!depsMap) {
-    targetMap.set(target, (depsMap = new Map()));
+    depsMap = new Map();
+    targetMap.set(target, depsMap);
   }
 
   let dep = depsMap.get(key);
   if (!dep) {
-    depsMap.set(key, (dep = new Set()));
+    dep = new Set();
+    depsMap.set(key, dep);
   }
 
   if (!dep.has(activeEffect)) {
@@ -195,8 +197,8 @@ export function trigger(target, key, triggerAll = false) {
 function cleanup(effect) {
   const {deps} = effect;
   if (deps.length) {
-    for (let i = 0; i < deps.length; i++) {
-      deps[i].delete(effect);
+    for (const dep of deps) {
+      dep.delete(effect);
     }
     deps.length = 0;
   }
