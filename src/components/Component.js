@@ -58,12 +58,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       return this.tag;
     }
 
-    #resolveRendered;
-    #childrenRendered = [];
-    #effects = []; // User-created effects via watch()
-    #renderEffects = []; // Auto-created effects for {expressions}
-    #modelSubscription = null;
-    #isReactive = false;
+  #resolveRendered;
+  #childrenRendered = [];
+  #effects = []; // User-created effects via watch()
+  #renderEffects = []; // Auto-created effects for {expressions}
+  #isReactive = false; // Tracks if component uses reactive state
 
     async #setRendered() {
       await Promise.all(this.#childrenRendered);
@@ -93,24 +92,21 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       }
     }
 
-    async disconnectedCallback () {
-      try {
-        // Cleanup reactive effects
-        this.#cleanupEffects();
+  async disconnectedCallback () {
+    try {
+      // Cleanup reactive effects
+      this.#cleanupEffects();
 
-        if (this.model && this.#modelSubscription) {
-          this.model.off?.('modified', this.#modelSubscription);
-          this.#modelSubscription = null;
-        }
+      // Model subscription cleanup removed - using fine-grained reactivity via effect()
 
-        const removed = this.removed();
-        if (removed instanceof Promise) await removed;
-      } catch (error) {
-        console.log(this, 'Component remove error', error);
-      } finally {
-        this.#setRendered();
-      }
+      const removed = this.removed();
+      if (removed instanceof Promise) await removed;
+    } catch (error) {
+      console.log(this, 'Component remove error', error);
+    } finally {
+      this.#setRendered();
     }
+  }
 
     /**
      * Clean up all effects
@@ -193,36 +189,18 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         await this.model.load?.();
         this.model.subscribe?.();
 
-        // Setup reactive model subscription if component is reactive
-        if (this.#isReactive) {
-          this.#modelSubscription = () => {
-            this.#scheduleUpdate();
-          };
-          this.model.on?.('modified', this.#modelSubscription);
-        }
+        // Fine-grained reactivity is handled by effect() in:
+        // - ValueComponent/PropertyComponent/RelationComponent (property/rel attributes)
+        // - Reactive attributes (checked="{...}", etc)
+        // - Computed properties accessed in templates
+        // No need for coarse-grained model.on('modified') subscription
       }
     }
 
-    /**
-     * Schedule update via microtask (batching)
-     */
-    #updateScheduled = false;
-    #scheduleUpdate() {
-      if (this.#updateScheduled) return;
-
-      this.#updateScheduled = true;
-      queueMicrotask(() => {
-        this.#updateScheduled = false;
-        this.update().catch(error => {
-          console.error('Component reactive update error:', error);
-        });
-      });
-    }
-
-    /**
-     * Process text node for reactive expressions {expr}
-     */
-    #processTextNode(textNode) {
+  /**
+   * Process text node for reactive expressions {expr}
+   */
+  #processTextNode(textNode) {
       const text = textNode.nodeValue;
       const regex = /\{([^}]+)\}/g;
 

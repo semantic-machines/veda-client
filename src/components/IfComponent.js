@@ -94,35 +94,40 @@ export default function IfComponent(Class = HTMLElement) {
       }
     }
 
-    #updateVisibility(show) {
-      if (show && !this.#currentContent) {
-        const content = this.#template.cloneNode(true);
+  #updateVisibility(show) {
+    // Check if current content nodes are still in the DOM
+    const hasValidContent = this.#currentContent &&
+      this.#currentContent.length > 0 &&
+      this.#currentContent.some(n => n.parentNode === this);
 
-        const tempContainer = document.createElement('div');
-        tempContainer.appendChild(content);
+    if (show && !hasValidContent) {
+      const content = this.#template.cloneNode(true);
 
-        // Pass parent context to _process so expressions are evaluated in parent's context
-        this._process(tempContainer, this._vedaParentContext);
+      const tempContainer = document.createElement('div');
+      tempContainer.appendChild(content);
 
-        const processedContent = document.createDocumentFragment();
-        while (tempContainer.firstChild) {
-          processedContent.appendChild(tempContainer.firstChild);
-        }
+      // Pass parent context to _process so expressions are evaluated in parent's context
+      this._process(tempContainer, this._vedaParentContext);
 
-        this.appendChild(processedContent);
-        this.#currentContent = Array.from(this.childNodes).filter(n => n !== this.#placeholder);
-
-      } else if (!show && this.#currentContent) {
-        this.#currentContent.forEach(node => {
-          if (node.parentNode === this) {
-            this.removeChild(node);
-          }
-        });
-        this.#currentContent = null;
-
-        this.appendChild(this.#placeholder);
+      const processedContent = document.createDocumentFragment();
+      while (tempContainer.firstChild) {
+        processedContent.appendChild(tempContainer.firstChild);
       }
+
+      this.appendChild(processedContent);
+      this.#currentContent = Array.from(this.childNodes).filter(n => n !== this.#placeholder);
+
+    } else if (!show && hasValidContent) {
+      this.#currentContent.forEach(node => {
+        if (node.parentNode === this) {
+          this.removeChild(node);
+        }
+      });
+      this.#currentContent = null;
+
+      this.appendChild(this.#placeholder);
     }
+  }
 
     #findParentComponent() {
       let context = this.parentElement;

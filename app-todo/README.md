@@ -1,319 +1,313 @@
-# TodoMVC • Veda Framework
+# TodoMVC - Two Implementations
 
-> Classic [TodoMVC](http://todomvc.com) implementation using Veda framework
+This folder contains **two implementations** of TodoMVC using Veda Framework, demonstrating different approaches.
 
-## Overview
-
-Clean, modular implementation of the TodoMVC specification using the Veda framework - a reactive Web Components framework with RDF semantic data modeling.
-
-## Features
-
-### Full TodoMVC Specification
-
-- ✅ Add todos
-- ✅ Mark todos as complete
-- ✅ Edit todos (double-click)
-- ✅ Delete todos
-- ✅ Toggle all todos
-- ✅ Clear completed
-- ✅ Filter by status (All/Active/Completed)
-- ✅ Display active count
-- ✅ Persist data to backend
-
-### Modular Architecture
-
-The app is split into 4 clean, reusable components:
-
-1. **TodoApp** (158 lines) - Main coordinator component
-2. **TodoHeader** (75 lines) - Input for new todos
-3. **TodoItem** (187 lines) - Individual todo with edit mode
-4. **TodoFooter** (126 lines) - Filters and clear button
-
-**Total:** ~546 lines (down from 613 in monolithic version)
-
-## Architecture
-
-### Component Structure
-
-```
-TodoApp (coordinator)
-├── TodoHeader
-│   └── Emits: new-todo
-├── TodoItem (×N)
-│   └── Emits: toggle-todo, destroy-todo, save-todo
-└── TodoFooter
-    └── Emits: clear-completed
-```
-
-### Communication Pattern
-
-**Parent ← Child:** Custom events bubble up
-```javascript
-// Child emits
-this.dispatchEvent(new CustomEvent('new-todo', {
-  detail: { title },
-  bubbles: true
-}));
-
-// Parent listens
-this.addEventListener('new-todo', this.handleNewTodo.bind(this));
-```
-
-**Parent → Child:** Props via attributes
-```javascript
-<todo-footer
-  active-count="${this.activeTodos.length}"
-  completed-count="${this.completedTodos.length}"
-  filter="${this.filter}"
-></todo-footer>
-```
-
-### Files Structure
-
-```
-app/
-├── src/
-│   ├── ontology/
-│   │   └── todomvc.ttl          # RDF ontology
-│   ├── css/
-│   │   └── todomvc.css          # Base styles
-│   ├── js/
-│   │   ├── index.js             # Entry point
-│   │   ├── routes.js            # Routing
-│   │   ├── TodoApp.js           # Main component (158 lines)
-│   │   ├── TodoHeader.js        # Header component (75 lines)
-│   │   ├── TodoItem.js          # Item component (187 lines)
-│   │   └── TodoFooter.js        # Footer component (126 lines)
-│   └── index.html
-└── README.md
-```
-
-## Components
-
-### TodoApp
-
-**Responsibilities:**
-- Coordinate child components
-- Manage todo list state
-- Handle CRUD operations
-- Apply filters
-
-**Methods:**
-```javascript
-handleNewTodo(event)        // Create todo
-handleToggleTodo(event)     // Toggle completion
-handleDestroyTodo(event)    // Delete todo
-handleSaveTodo(event)       // Update todo text
-handleToggleAll()           // Toggle all todos
-handleClearCompleted()      // Remove completed
-```
-
-### TodoHeader
-
-**Responsibilities:**
-- Render title and input
-- Emit `new-todo` event on Enter
-
-**Features:**
-- Auto-focus input
-- Clear input after submit
-- Validate empty input
-
-### TodoItem
-
-**Responsibilities:**
-- Display single todo
-- Handle edit mode
-- Emit events for actions
-
-**Features:**
-- Toggle checkbox
-- Double-click to edit
-- Escape/Enter in edit mode
-- Delete button on hover
-
-**Events:**
-- `toggle-todo` - Completion toggled
-- `destroy-todo` - Delete clicked
-- `save-todo` - Edit submitted
-
-### TodoFooter
-
-**Responsibilities:**
-- Show active count
-- Render filter links
-- Clear completed button
-
-**Props:**
-- `active-count` - Number of active todos
-- `completed-count` - Number of completed
-- `filter` - Current filter (all/active/completed)
-
-**Events:**
-- `clear-completed` - Clear button clicked
-
-## Data Model
-
-### RDF Ontology
-
-```turtle
-v-s:Todo
-  rdf:type owl:Class ;
-  rdfs:label "Todo" ;
-.
-
-v-s:TodoList
-  rdf:type owl:Class ;
-  rdfs:label "Todo List" ;
-.
-
-v-s:hasTodo
-  rdf:type owl:ObjectProperty ;
-  rdfs:domain v-s:TodoList ;
-  rdfs:range v-s:Todo ;
-.
-
-v-s:title
-  rdf:type owl:DatatypeProperty ;
-  rdfs:domain v-s:Todo ;
-  rdfs:range xsd:string ;
-.
-
-v-s:completed
-  rdf:type owl:DatatypeProperty ;
-  rdfs:domain v-s:Todo ;
-  rdfs:range xsd:boolean ;
-.
-```
-
-## Running
+## 🚀 Quick Start
 
 ```bash
 # Install dependencies
-pnpm install
+npm install
 
-# Build
-pnpm run build
+# Build both versions
+npm run build
 
-# Watch mode
-pnpm run watch
+# Start dev server (from parent directory)
+cd .. && npm start
+
+# Open in browser
+open http://localhost:8081/app-todo/
 ```
 
-Open `dist/app/index.html` in browser.
+Then choose between **Imperative** or **Declarative** version.
 
-## Benefits of Modular Approach
+---
 
-### 1. Separation of Concerns
-Each component has a single, clear responsibility
+## 📁 File Structure
 
-### 2. Reusability
-`TodoItem` and `TodoFooter` can be reused in other apps
-
-### 3. Testability
-Easy to test components in isolation
-
-### 4. Maintainability
-Small files are easier to understand and modify
-
-### 5. Team Development
-Multiple developers can work on different components
-
-## Framework Features Demonstrated
-
-### 1. Custom Events
-Clean parent-child communication using DOM events
-
-### 2. Web Components
-Real custom elements with encapsulated styles
-
-### 3. Reactive Updates
-Model changes automatically trigger re-renders
-
-### 4. RDF Semantic Data
-Data stored with meaning and relationships
-
-### 5. Backend Integration
-Built-in persistence via WebSocket
-
-### 6. CSP Compliance
-No eval(), safe expression parser
-
-## Code Highlights
-
-### Creating Todo (TodoApp)
-
-```javascript
-async handleNewTodo(event) {
-  const { title } = event.detail;
-
-  const todo = new Model();
-  todo['rdf:type'] = [new Model('v-s:Todo')];
-  todo['v-s:title'] = [title];
-  todo['v-s:completed'] = [false];
-
-  this.model.addValue('v-s:hasTodo', todo);
-  await Promise.all([todo.save(), this.model.save()]);
-  this.update();
-}
+```
+app-todo/
+├── index.html              # Main entry - choose implementation
+├── imperative.html         # Imperative version entry
+├── declarative.html        # Declarative version entry
+│
+├── src/                    # Imperative version (Loop component)
+│   └── js/
+│       ├── TodoApp.js      # Main app with Loop
+│       ├── TodoItem.js     # Manual rendering
+│       ├── TodoFooter.js
+│       └── TodoHeader.js
+│
+├── src-declarative/        # Declarative version (property/rel)
+│   └── js/
+│       ├── TodoApp.js      # Main app with rel
+│       ├── TodoList.js     # Filter wrapper
+│       ├── TodoItem.js     # Uses property components
+│       ├── TodoFooter.js
+│       └── TodoHeader.js
+│
+├── build.mjs               # Unified build script
+├── watch.mjs               # Watch mode for development
+└── package.json
 ```
 
-### Emitting Event (TodoHeader)
+---
 
-```javascript
-handleNewTodo(event, node) {
-  if (event.keyCode !== ENTER_KEY) return;
+## 🎯 Version 1: Imperative (Loop Component)
 
-  const title = node.value.trim();
-  if (!title) return;
+**File**: `src/js/TodoApp.js`
+**URL**: `imperative.html`
 
-  this.dispatchEvent(new CustomEvent('new-todo', {
-    detail: { title },
-    bubbles: true
-  }));
+### Key Features:
 
-  node.value = '';
-}
-```
+- **Loop component** for rendering lists
+- **Manual rendering** with `render()` methods
+- **Reactive expressions** `{this.property}`
+- **Full control** over rendering logic
 
-### Component Composition (TodoApp)
+### Example Code:
 
 ```javascript
 render() {
   return html`
-    <section class="todoapp">
-      <todo-header></todo-header>
-
-      <ul class="todo-list">
-        ${this.filteredTodos.map(todo => html`
-          <todo-item about="${todo.id}"></todo-item>
-        `)}
-      </ul>
-
-      <todo-footer
-        active-count="${this.activeTodos.length}"
-        filter="${this.filter}"
-      ></todo-footer>
-    </section>
+    <ul>
+      <${Loop} items="{this.filteredTodos}" item-key="id">
+        <template>
+          <li is="${TodoItem}"></li>
+        </template>
+      </${Loop}>
+    </ul>
   `;
 }
 ```
 
-## Comparison with Other Frameworks
+### TodoItem Rendering:
 
-| Feature | Veda | React | Vue | Svelte |
-|---------|------|-------|-----|--------|
-| Components | Web Components | JSX | SFC | Svelte |
-| State | RDF Models | useState | ref/reactive | stores |
-| Events | DOM Events | Props | emit | dispatch |
-| Persistence | Built-in | External | External | External |
-| Data Model | Semantic RDF | Plain JS | Plain JS | Plain JS |
+```javascript
+render() {
+  return html`
+    <label>{this.title}</label>
+    <input checked="{this.completed}" />
+  `;
+}
+```
 
-## License
+**Pros:**
+- ✅ Full control over rendering
+- ✅ Complex filtering logic easy to implement
+- ✅ Clear data flow
+- ✅ Best for dynamic, interactive UIs
 
-MIT
+**Cons:**
+- ❌ More JavaScript code
+- ❌ Manual template management
 
-## Links
+---
 
-- [TodoMVC](http://todomvc.com)
-- [Veda Framework](https://github.com/semantic-machines/veda-client)
-- [Web Components](https://developer.mozilla.org/en-US/docs/Web/Web_Components)
+## 🎯 Version 2: Declarative (property/rel)
+
+**File**: `src-declarative/js/TodoApp.js`
+**URL**: `declarative.html`
+
+### Key Features:
+
+- **rel component** for automatic model iteration
+- **property component** for displaying model properties
+- **Minimal JavaScript** - logic in templates
+- **Model-driven** architecture
+
+### Example Code:
+
+```javascript
+render() {
+  return html`
+    <ul rel="v-s:hasTodo">
+      <template>
+        <${TodoList} filter="{this.state.filter}"></${TodoList}>
+      </template>
+    </ul>
+  `;
+}
+```
+
+### TodoItem with property:
+
+```javascript
+render() {
+  return html`
+    <label>
+      <span property="v-s:title"></span>
+    </label>
+    <input checked="{this.completed}" />
+  `;
+}
+```
+
+**Pros:**
+- ✅ Less JavaScript code
+- ✅ Declarative model binding
+- ✅ Automatic updates from model
+- ✅ Best for CRUD/data-driven apps
+
+**Cons:**
+- ❌ Less control over rendering
+- ❌ Filtering requires wrapper component
+
+---
+
+## 🔄 Key Differences
+
+| Feature | Imperative (Loop) | Declarative (property/rel) |
+|---------|-------------------|---------------------------|
+| **List rendering** | `<Loop items="{array}">` | `<ul rel="property">` |
+| **Value display** | `{this.title}` | `<span property="v-s:title">` |
+| **Model binding** | Manual via `model` prop | Automatic via `rel` |
+| **Filtering** | In computed property | Via wrapper component |
+| **JavaScript** | More code | Less code |
+| **Use case** | Interactive UIs | Data-driven apps |
+
+---
+
+## 📖 Component Syntax Reference
+
+### Loop Component (Imperative)
+
+```javascript
+import { Loop } from 'framework';
+
+<${Loop} items="{this.items}" item-key="id">
+  <template>
+    <li is="${MyItem}"></li>
+  </template>
+</${Loop}>
+```
+
+- **items**: Expression returning array
+- **item-key**: Property for reconciliation
+- **model**: Each child gets `model = item`
+
+### rel Component (Declarative)
+
+```html
+<ul rel="v-s:hasTodo">
+  <template>
+    <my-item></my-item>
+  </template>
+</ul>
+```
+
+- **rel**: Model property name (must be array of models)
+- **template**: Each instance gets `model = relatedModel`
+- Automatic iteration over `this.model[rel]`
+
+### property Component
+
+```html
+<!-- Simple display -->
+<span property="rdfs:label"></span>
+
+<!-- With template -->
+<div property="v-s:title">
+  <template>
+    <strong><slot></slot></strong>
+  </template>
+</div>
+
+<!-- Multiple values -->
+<ul property="v-s:tags">
+  <template>
+    <li><slot></slot></li>
+  </template>
+</ul>
+```
+
+- **property**: Model property name
+- **template**: Custom rendering
+- **slot**: Replaced with value
+- Automatic iteration for arrays
+
+---
+
+## 🚀 Running the Apps
+
+```bash
+# Build all versions
+npm run build
+
+# Watch mode (auto-rebuild on changes)
+npm run watch
+
+# Start dev server (from parent directory)
+cd .. && npm start
+
+# Open in browser
+# Main page: http://localhost:8081/app-todo/
+# Imperative: http://localhost:8081/app-todo/imperative.html
+# Declarative: http://localhost:8081/app-todo/declarative.html
+```
+
+---
+
+## 🎓 When to Use Which?
+
+### Use **Loop Component** (Imperative) when:
+- Building interactive, dynamic UIs
+- Need complex filtering/sorting logic
+- Want full control over rendering
+- Building real-time apps (chat, games)
+
+### Use **property/rel** (Declarative) when:
+- Building CRUD applications
+- Model is the source of truth
+- Want minimal JavaScript
+- Building admin panels, forms, data grids
+
+---
+
+## 💡 Best Practices
+
+### For Both Versions:
+
+1. **Model as source of truth**
+   ```javascript
+   get todos() {
+     return this.model?.['v-s:hasTodo'] || [];
+   }
+   ```
+
+2. **Computed properties for derived data**
+   ```javascript
+   get activeTodos() {
+     return this.todos.filter(t => !t['v-s:completed']?.[0]);
+   }
+   ```
+
+3. **Effects for side effects**
+   ```javascript
+   this.effect(() => {
+     console.log('Count:', this.state.count);
+   });
+   ```
+
+4. **Optimistic updates with rollback**
+   ```javascript
+   const prev = this.value;
+   this.value = newValue;
+   try {
+     await this.save();
+   } catch (error) {
+     this.value = prev;
+   }
+   ```
+
+---
+
+## 📚 Learn More
+
+- [Veda Framework Documentation](https://github.com/semantic-machines/veda-client)
+- [Component API](../src/components/Component.js)
+- [Loop Component](../src/components/LoopComponent.js)
+- [Value/Property/Relation Components](../src/components/)
+
+---
+
+**Both implementations are production-ready and fully functional!** Choose the one that fits your use case best.

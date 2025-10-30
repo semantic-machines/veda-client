@@ -7,26 +7,39 @@ export default function RelationComponent (Class = HTMLElement) {
         return super.renderValue(value, container, index);
       }
 
-      // Save current model
       const originalModel = this.model;
 
       try {
-        // Temporarily set model to value for processing
         this.model = value;
 
-        // Create fragment from template
-        const template = document.createElement('template');
-        template.innerHTML = this.template;
-        const fragment = template.content;
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = this.template;
+        const templateEl = tempDiv.querySelector('template');
 
-        // Process fragment (uses this.model = value)
-        // All components will be children in DOM tree for method lookup
+        if (!templateEl) {
+          console.warn('[RelationComponent] No <template> element found in template HTML');
+          return super.renderValue(value, container, index);
+        }
+
+        const fragment = templateEl.content.cloneNode(true);
+
         this._process(fragment);
 
-        // Append fragment children to container
+        const walker = document.createTreeWalker(
+          fragment,
+          NodeFilter.SHOW_ELEMENT
+        );
+
+        let node = walker.nextNode();
+        while (node) {
+          if ((node.tagName.includes('-') || node.hasAttribute('is')) && !node.hasAttribute('about')) {
+            node.model = value;
+          }
+          node = walker.nextNode();
+        }
+
         container.append(fragment);
       } finally {
-        // Restore original model
         this.model = originalModel;
       }
     }
