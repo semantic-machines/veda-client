@@ -105,9 +105,7 @@ import { Loop } from 'framework';
 html`
   <ul>
     <${Loop} items="{this.todos}" item-key="id">
-      <template>
-        <li is="${TodoItem}"></li>
-      </template>
+      <li is="${TodoItem}"></li>
     </${Loop}>
   </ul>
 `
@@ -118,7 +116,7 @@ html`
 - `item-key`: Property for reconciliation (default: `id`)
 
 **How it works:**
-- Each template instance gets `model = item`
+- Each child element gets `model = item`
 - Reconciliation reuses DOM elements
 - Updates only when items array changes
 
@@ -133,9 +131,7 @@ import { If } from 'framework';
 
 html`
   <${If} condition="{this.isVisible}">
-    <template>
-      <div>Visible content</div>
-    </template>
+    <div>Visible content</div>
   </${If}>
 `
 ```
@@ -145,7 +141,7 @@ html`
 
 **How it works:**
 - Creates/removes content based on condition
-- Content inside `<template>` is cloned when shown
+- Child elements are cloned when shown
 - Leaves comment node when hidden
 
 ---
@@ -392,14 +388,21 @@ child.model = this.model;
 
 ## ✅ Best Practices
 
-1. **Always wrap Loop/If content in `<template>`**
+1. **Loop/If content no longer needs `<template>` wrapper**
    ```javascript
+   // ✅ Clean syntax
    html`
      <${Loop} items="{this.items}" item-key="id">
-       <template>  ← Required!
-         <my-item></my-item>
-       </template>
+       <my-item></my-item>
      </${Loop}>
+   `
+
+   // ✅ Multiple children work too
+   html`
+     <${If} condition="{this.show}">
+       <h1>Title</h1>
+       <p>Content</p>
+     </${If}>
    `
    ```
 
@@ -444,17 +447,13 @@ child.model = this.model;
 
 ## 🐛 Common Pitfalls
 
-1. **Forgetting `<template>` in Loop/If**
+1. **Mutating arrays instead of replacing**
    ```javascript
-   // ❌ Wrong
-   <${Loop} items="{items}">
-     <my-item></my-item>
-   </${Loop}>
+   // ❌ Doesn't trigger reactivity
+   this.todos.push(newTodo);
 
-   // ✅ Correct
-   <${Loop} items="{items}">
-     <template><my-item></my-item></template>
-   </${Loop}>
+   // ✅ Creates new array
+   this.todos = [...this.todos, newTodo];
    ```
 
 2. **Complex expressions in templates**

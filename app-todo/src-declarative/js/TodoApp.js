@@ -164,33 +164,29 @@ export default class TodoApp extends Component(HTMLElement) {
         <${TodoHeader}></${TodoHeader}>
 
         <${If} condition="{this.hasTodos}">
-          <template>
-            <section class="main">
-              <input id="toggle-all"
-                     class="toggle-all"
-                     type="checkbox"
-                     name="toggle-all"
-                     aria-label="Toggle all todos"
-                     checked="{this.allCompleted}"
-                     onchange="{handleToggleAll}"/>
-              <label for="toggle-all">Mark all as complete</label>
+          <section class="main">
+            <input id="toggle-all"
+                   class="toggle-all"
+                   type="checkbox"
+                   name="toggle-all"
+                   aria-label="Toggle all todos"
+                   checked="{this.allCompleted}"
+                   onchange="{handleToggleAll}"/>
+            <label for="toggle-all">Mark all as complete</label>
 
-              <!-- Filtered list with Loop for UI-driven filtering -->
-              <ul class="todo-list">
-                <${Loop} items="{this.filteredTodos}">
-                  <template>
-                    <li is="${TodoItem}"></li>
-                  </template>
-                </${Loop}>
-              </ul>
-            </section>
+            <!-- Filtered list with Loop for UI-driven filtering -->
+            <ul class="todo-list">
+              <${Loop} items="{this.filteredTodos}">
+                <li is="${TodoItem}"></li>
+              </${Loop}>
+            </ul>
+          </section>
 
-            <${TodoFooter}
-              active-count="{this.activeTodos.length}"
-              completed-count="{this.completedTodos.length}"
-              filter="{this.state.filter}">
-            </${TodoFooter}>
-          </template>
+          <${TodoFooter}
+            active-count="{this.activeTodos.length}"
+            completed-count="{this.completedTodos.length}"
+            filter="{this.state.filter}">
+          </${TodoFooter}>
         </${If}>
       </section>
 

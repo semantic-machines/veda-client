@@ -7,14 +7,13 @@ import {effect} from '../Effect.js';
  *
  * Usage:
  * <veda-loop items="{this.todos}" item-key="id">
- *   <template>
- *     <todo-item></todo-item>
- *   </template>
+ *   <todo-item></todo-item>
  * </veda-loop>
  *
- * Or with inline template:
- * <veda-loop items="{this.todos}" item-key="id">
- *   <todo-item></todo-item>
+ * Multiple children will be repeated for each item:
+ * <veda-loop items="{this.users}" item-key="id">
+ *   <h3>{this.model.name}</h3>
+ *   <p>{this.model.email}</p>
  * </veda-loop>
  */
 export default function LoopComponent(Class = HTMLElement) {
@@ -30,28 +29,37 @@ export default function LoopComponent(Class = HTMLElement) {
     }
 
     async connectedCallback() {
-      await super.connectedCallback();
-
       // Find and cache parent component context
       this._vedaParentContext = this.#findParentComponent();
 
+      // Extract template - Component._process() stores innerHTML in this.template
+      this.#template = document.createDocumentFragment();
+
       if (this.template) {
+        // Template was saved by parent's _process()
         const temp = document.createElement('div');
         temp.innerHTML = this.template;
 
+        // Check if there's a <template> element (old syntax support)
         const templateEl = temp.querySelector('template');
+
         if (templateEl) {
-          this.#template = templateEl.content.cloneNode(true);
+          // Old syntax: <Loop><template>...</template></Loop>
+          const content = templateEl.content.cloneNode(true);
+          this.#template.appendChild(content);
         } else {
-          this.#template = document.createDocumentFragment();
+          // New syntax: <Loop>...</Loop> - use all children
           while (temp.firstChild) {
             this.#template.appendChild(temp.firstChild);
           }
         }
-      } else {
-        console.warn('Loop: No template content found');
-        this.#template = document.createDocumentFragment();
       }
+
+      // Clear original children - they'll be recreated for each item
+      this.replaceChildren();
+
+      // Now call super which will process the component
+      await super.connectedCallback();
 
       const itemsExpr = this.getAttribute('items');
       if (!itemsExpr) {

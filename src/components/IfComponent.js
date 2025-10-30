@@ -10,11 +10,10 @@ import {effect} from '../Effect.js';
  *   <div>Details content</div>
  * </veda-if>
  *
- * With template:
+ * Multiple children:
  * <veda-if condition="{this.isLoggedIn}">
- *   <template>
- *     <user-profile></user-profile>
- *   </template>
+ *   <h1>Welcome</h1>
+ *   <user-profile></user-profile>
  * </veda-if>
  */
 export default function IfComponent(Class = HTMLElement) {
@@ -27,30 +26,39 @@ export default function IfComponent(Class = HTMLElement) {
     #placeholder = null;
 
     async connectedCallback() {
-      await super.connectedCallback();
-
       this.#placeholder = document.createComment('veda-if');
 
       // Find and store parent component context for expression evaluation
       this._vedaParentContext = this.#findParentComponent();
 
+      // Extract template - Component._process() stores innerHTML in this.template
+      this.#template = document.createDocumentFragment();
+
       if (this.template) {
+        // Template was saved by parent's _process()
         const temp = document.createElement('div');
         temp.innerHTML = this.template;
 
+        // Check if there's a <template> element (old syntax support)
         const templateEl = temp.querySelector('template');
+
         if (templateEl) {
-          this.#template = templateEl.content.cloneNode(true);
+          // Old syntax: <If><template>...</template></If>
+          const content = templateEl.content.cloneNode(true);
+          this.#template.appendChild(content);
         } else {
-          this.#template = document.createDocumentFragment();
+          // New syntax: <If>...</If> - use all children
           while (temp.firstChild) {
             this.#template.appendChild(temp.firstChild);
           }
         }
-      } else {
-        console.warn('If: No template content found');
-        this.#template = document.createDocumentFragment();
       }
+
+      // Clear original children - they'll be added back conditionally
+      this.replaceChildren();
+
+      // Now call super which will process the component
+      await super.connectedCallback();
 
       const conditionExpr = this.getAttribute('condition');
       if (!conditionExpr) {
