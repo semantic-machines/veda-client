@@ -25,30 +25,40 @@ export default function LoopComponent(Class = HTMLElement) {
     #itemsMap = new Map(); // key → {element, model}
     #template = null;
 
+    constructor() {
+      super();
+    }
+
     async connectedCallback() {
       await super.connectedCallback();
 
-      // Extract template
-      const templateEl = this.querySelector('template');
-      if (templateEl) {
-        this.#template = templateEl.content.cloneNode(true);
-        templateEl.remove();
-      } else {
-        // Use children as template
-        this.#template = document.createDocumentFragment();
-        while (this.firstChild) {
-          this.#template.appendChild(this.firstChild);
+      // Find and cache parent component context
+      this._vedaParentContext = this.#findParentComponent();
+
+      if (this.template) {
+        const temp = document.createElement('div');
+        temp.innerHTML = this.template;
+
+        const templateEl = temp.querySelector('template');
+        if (templateEl) {
+          this.#template = templateEl.content.cloneNode(true);
+        } else {
+          this.#template = document.createDocumentFragment();
+          while (temp.firstChild) {
+            this.#template.appendChild(temp.firstChild);
+          }
         }
+      } else {
+        console.warn('Loop: No template content found');
+        this.#template = document.createDocumentFragment();
       }
 
-      // Get items getter from attribute
       const itemsExpr = this.getAttribute('items');
       if (!itemsExpr) {
         console.warn('Loop component requires "items" attribute');
         return;
       }
 
-      // Create effect for reactive rendering
       this.#loopEffect = effect(() => {
         const items = this.#evaluateItems(itemsExpr);
         this.#reconcile(items);
@@ -66,12 +76,17 @@ export default function LoopComponent(Class = HTMLElement) {
 
     #evaluateItems(expr) {
       try {
-        // Remove { } if present
         const cleanExpr = expr.replace(/^\{|\}$/g, '').trim();
 
-        // Use safe ExpressionParser instead of new Function()
-        const items = ExpressionParser.evaluate(cleanExpr, this);
+        // Use cached parent context
+        const context = this._vedaParentContext;
 
+        if (!context) {
+          console.warn('Loop: Cannot find parent component context');
+          return [];
+        }
+
+        const items = ExpressionParser.evaluate(cleanExpr, context);
         return Array.isArray(items) ? items : [];
       } catch (error) {
         console.error('Loop: Failed to evaluate items expression:', expr, error);
@@ -87,7 +102,7 @@ export default function LoopComponent(Class = HTMLElement) {
       // Build map of new items with duplicate key detection
       newItems.forEach((item, index) => {
         const key = this.#getKey(item, keyAttr, index);
-        
+
         // Warn about duplicate keys
         if (newItemsMap.has(key)) {
           console.warn(
@@ -97,7 +112,7 @@ export default function LoopComponent(Class = HTMLElement) {
             'Previous item:', newItemsMap.get(key).item
           );
         }
-        
+
         newKeys.add(key);
         newItemsMap.set(key, {item, index});
       });
@@ -200,6 +215,23 @@ export default function LoopComponent(Class = HTMLElement) {
           element.setAttribute('about', item.id);
         }
       }
+    }
+
+    #findParentComponent() {
+      let context = this.parentElement;
+      let depth = 0;
+      while (context && depth < 10) {
+        const tagName = context.tagName?.toLowerCase();
+        const isComponent = tagName?.includes('-') || context.hasAttribute('is');
+        const isFrameworkComponent = tagName === 'veda-if' || tagName === 'veda-loop';
+
+        if (isComponent && !isFrameworkComponent) {
+          return context;
+        }
+        context = context.parentElement;
+        depth++;
+      }
+      return null;
     }
 
     render() {

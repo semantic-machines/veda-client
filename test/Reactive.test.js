@@ -482,7 +482,7 @@ export default ({test, assert}) => {
     const {computed} = await import('../src/Reactive.js');
     const state = reactive({count: 0});
     let runCount = 0;
-    
+
     const doubled = computed(() => {
       runCount++;
       return state.count * 2;
@@ -562,7 +562,7 @@ export default ({test, assert}) => {
 
     // Should not throw
     const state = reactive(obj);
-    
+
     assert.equal(state.name, 'test');
     assert.equal(state.self, state, 'Circular reference should work');
     assert.ok(state.self.__isReactive, 'Circular reference should be reactive');
@@ -575,7 +575,7 @@ export default ({test, assert}) => {
 
     // Should not throw
     const state = reactive(parent);
-    
+
     assert.equal(state.name, 'parent');
     assert.equal(state.child.name, 'child');
     assert.equal(state.child.parent, state, 'Parent reference should point back to same proxy');
@@ -589,9 +589,9 @@ export default ({test, assert}) => {
     };
 
     const state = reactive(obj);
-    
+
     assert.equal(state.ref1, state.ref2, 'Multiple references to same object should be same proxy');
-    
+
     state.ref1.value = 100;
     assert.equal(state.ref2.value, 100, 'Changes through one reference should reflect in other');
   });
@@ -602,9 +602,147 @@ export default ({test, assert}) => {
 
     // Should not throw
     const state = reactive(arr);
-    
+
     assert.equal(state[0], 1);
     assert.equal(state[3], state, 'Array circular reference should work');
+  });
+
+  // ==================== METHOD BINDING TESTS ====================
+
+  test('Reactive - method bound to proxy returns correct context', () => {
+    const obj = reactive({
+      value: 10,
+      getValue() {
+        return this.value;
+      }
+    });
+
+    assert.equal(obj.getValue(), 10, 'Method should return correct value');
+    assert.equal(obj.__isReactive, true, 'Object should be reactive');
+  });
+
+  test('Reactive - method can modify properties through proxy', () => {
+    const obj = reactive({
+      value: 5,
+      setValue(val) {
+        this.value = val;
+      }
+    });
+
+    obj.setValue(20);
+    assert.equal(obj.value, 20, 'Method should set value correctly');
+  });
+
+  test('Reactive - method with internal assignment triggers onSet callback', () => {
+    let onSetCalled = false;
+    let capturedKey = null;
+    let capturedValue = null;
+
+    const obj = reactive({
+      arr: [1, 2],
+      add(val) {
+        this.arr = [...this.arr, val];
+      }
+    }, {
+      onSet(key, value) {
+        onSetCalled = true;
+        capturedKey = key;
+        capturedValue = value;
+      }
+    });
+
+    obj.add(3);
+
+    assert.ok(onSetCalled, 'onSet callback should be triggered');
+    assert.equal(capturedKey, 'arr', 'Should capture correct key');
+    assert.deepEqual(capturedValue, [1, 2, 3], 'Should capture correct value');
+    assert.deepEqual(obj.arr, [1, 2, 3], 'Array should have new value');
+  });
+
+  test('Reactive - method binding preserves this context for nested calls', () => {
+    const obj = reactive({
+      multiplier: 2,
+      base: 10,
+      calculate() {
+        return this.getBase() * this.multiplier;
+      },
+      getBase() {
+        return this.base;
+      }
+    });
+
+    assert.equal(obj.calculate(), 20, 'Nested method calls should work correctly');
+  });
+
+  test('Reactive - method triggering reactivity in effect', async () => {
+    const obj = reactive({
+      count: 0,
+      increment() {
+        this.count++;
+      }
+    });
+
+    let effectRuns = 0;
+    let lastValue = 0;
+
+    effect(() => {
+      lastValue = obj.count;
+      effectRuns++;
+    });
+
+    await flushEffects();
+    assert.equal(effectRuns, 1, 'Effect should run initially');
+    assert.equal(lastValue, 0, 'Initial value should be 0');
+
+    obj.increment();
+    await flushEffects();
+    assert.equal(effectRuns, 2, 'Effect should run after method call');
+    assert.equal(lastValue, 1, 'Value should be updated');
+
+    obj.increment();
+    await flushEffects();
+    assert.equal(effectRuns, 3, 'Effect should run after second method call');
+    assert.equal(lastValue, 2, 'Value should be updated again');
+  });
+
+  test('Reactive - method modifying array property triggers reactivity', async () => {
+    const obj = reactive({
+      items: [],
+      addItem(item) {
+        this.items = [...this.items, item];
+      },
+      removeItem(item) {
+        this.items = this.items.filter(i => i !== item);
+      }
+    });
+
+    let effectRuns = 0;
+    let lastLength = 0;
+
+    effect(() => {
+      lastLength = obj.items.length;
+      effectRuns++;
+    });
+
+    await flushEffects();
+    assert.equal(effectRuns, 1, 'Effect should run initially');
+    assert.equal(lastLength, 0, 'Initial length should be 0');
+
+    obj.addItem('a');
+    await flushEffects();
+    assert.equal(effectRuns, 2, 'Effect should run after addItem');
+    assert.equal(lastLength, 1, 'Length should be 1');
+
+    obj.addItem('b');
+    await flushEffects();
+    assert.equal(effectRuns, 3, 'Effect should run after second addItem');
+    assert.equal(lastLength, 2, 'Length should be 2');
+
+    obj.removeItem('a');
+    await flushEffects();
+    assert.equal(effectRuns, 4, 'Effect should run after removeItem');
+    assert.equal(lastLength, 1, 'Length should be 1 again');
+    assert.deepEqual(obj.items, ['b'], 'Items should be correct');
   });
 };
 

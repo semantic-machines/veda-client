@@ -24,7 +24,7 @@ export function reactive(target, options = {}) {
     return existingProxy;
   }
 
-  const handler = {
+  const proxy = new Proxy(target, {
     get(target, key, receiver) {
       if (key === '__isReactive') {
         return true;
@@ -63,7 +63,9 @@ export function reactive(target, options = {}) {
             };
           }
         }
-        return value.bind(target);
+        // Return the function bound to the receiver (proxy), not target
+        // This ensures that methods like addValue/removeValue work with the proxy
+        return value.bind(receiver);
       }
 
       if (typeof value === 'object' && value !== null) {
@@ -84,7 +86,7 @@ export function reactive(target, options = {}) {
         trigger(target, key);
 
         if (options.onSet && typeof key !== 'symbol') {
-          options.onSet.call(target, key, value, oldValue);
+          options.onSet.call(proxy, key, value, oldValue);
         }
       }
 
@@ -99,15 +101,14 @@ export function reactive(target, options = {}) {
         trigger(target, key);
 
         if (options.onDelete && typeof key !== 'symbol') {
-          options.onDelete.call(target, key);
+          options.onDelete.call(proxy, key);
         }
       }
 
       return result;
     }
-  };
+  });
 
-  const proxy = new Proxy(target, handler);
   reactiveMap.set(target, proxy);
 
   return proxy;

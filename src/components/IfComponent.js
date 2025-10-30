@@ -29,32 +29,38 @@ export default function IfComponent(Class = HTMLElement) {
     async connectedCallback() {
       await super.connectedCallback();
 
-      // Create placeholder comment node
       this.#placeholder = document.createComment('veda-if');
 
-      // Extract template
-      const templateEl = this.querySelector('template');
-      if (templateEl) {
-        this.#template = templateEl.content.cloneNode(true);
-        templateEl.remove();
-      } else {
-        // Use children as template
-        this.#template = document.createDocumentFragment();
-        while (this.firstChild) {
-          this.#template.appendChild(this.firstChild);
+      // Find and store parent component context for expression evaluation
+      this._vedaParentContext = this.#findParentComponent();
+
+      if (this.template) {
+        const temp = document.createElement('div');
+        temp.innerHTML = this.template;
+
+        const templateEl = temp.querySelector('template');
+        if (templateEl) {
+          this.#template = templateEl.content.cloneNode(true);
+        } else {
+          this.#template = document.createDocumentFragment();
+          while (temp.firstChild) {
+            this.#template.appendChild(temp.firstChild);
+          }
         }
+      } else {
+        console.warn('If: No template content found');
+        this.#template = document.createDocumentFragment();
       }
 
-      // Get condition getter from attribute
       const conditionExpr = this.getAttribute('condition');
       if (!conditionExpr) {
         console.warn('If component requires "condition" attribute');
         return;
       }
 
-      // Create effect for reactive rendering
       this.#ifEffect = effect(() => {
-        const condition = this.#evaluateCondition(conditionExpr);
+        const currentCondition = this.getAttribute('condition');
+        const condition = this.#evaluateCondition(currentCondition);
         this.#updateVisibility(condition);
       });
     }
@@ -70,11 +76,17 @@ export default function IfComponent(Class = HTMLElement) {
 
     #evaluateCondition(expr) {
       try {
-        // Remove { } if present
         const cleanExpr = expr.replace(/^{|}$/g, '').trim();
 
-        // Use safe ExpressionParser instead of new Function()
-        const value = ExpressionParser.evaluate(cleanExpr, this);
+        // Use cached parent context
+        const context = this._vedaParentContext;
+
+        if (!context) {
+          console.warn('If: Cannot find parent component context');
+          return false;
+        }
+
+        const value = ExpressionParser.evaluate(cleanExpr, context);
         return !!value;
       } catch (error) {
         console.error('If: Failed to evaluate condition expression:', expr, error);
@@ -84,32 +96,23 @@ export default function IfComponent(Class = HTMLElement) {
 
     #updateVisibility(show) {
       if (show && !this.#currentContent) {
-        // Show: clone template and insert
         const content = this.#template.cloneNode(true);
 
-        // Process the content (for reactive expressions, etc)
         const tempContainer = document.createElement('div');
         tempContainer.appendChild(content);
-        this._process(tempContainer);
 
-        // Move processed content back to fragment
+        // Pass parent context to _process so expressions are evaluated in parent's context
+        this._process(tempContainer, this._vedaParentContext);
+
         const processedContent = document.createDocumentFragment();
         while (tempContainer.firstChild) {
           processedContent.appendChild(tempContainer.firstChild);
         }
 
-        // Remove placeholder if present
-        if (this.#placeholder.parentNode === this) {
-          this.removeChild(this.#placeholder);
-        }
-
-        // Add content
         this.appendChild(processedContent);
-        this.#currentContent = Array.from(this.childNodes);
+        this.#currentContent = Array.from(this.childNodes).filter(n => n !== this.#placeholder);
 
       } else if (!show && this.#currentContent) {
-        // Hide: remove content and add placeholder
-        // Browser will automatically call disconnectedCallback for all web components
         this.#currentContent.forEach(node => {
           if (node.parentNode === this) {
             this.removeChild(node);
@@ -117,9 +120,25 @@ export default function IfComponent(Class = HTMLElement) {
         });
         this.#currentContent = null;
 
-        // Add placeholder
         this.appendChild(this.#placeholder);
       }
+    }
+
+    #findParentComponent() {
+      let context = this.parentElement;
+      let depth = 0;
+      while (context && depth < 10) {
+        const tagName = context.tagName?.toLowerCase();
+        const isComponent = tagName?.includes('-') || context.hasAttribute('is');
+        const isFrameworkComponent = tagName === 'veda-if' || tagName === 'veda-loop';
+
+        if (isComponent && !isFrameworkComponent) {
+          return context;
+        }
+        context = context.parentElement;
+        depth++;
+      }
+      return null;
     }
 
     render() {

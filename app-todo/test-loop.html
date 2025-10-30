@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Loop Test</title>
+</head>
+<body>
+  <div id="app"></div>
+  
+  <script type="module">
+    import { reactive, effect } from '../../src/index.js';
+    import '../../src/components/LoopComponent.js';
+    
+    const state = reactive({
+      items: [
+        { id: '1', title: 'Test 1' },
+        { id: '2', title: 'Test 2' },
+        { id: '3', title: 'Test 3' }
+      ]
+    });
+    
+    const app = document.getElementById('app');
+    app.innerHTML = `
+      <h1>Loop Test</h1>
+      <veda-loop id="test-loop">
+        <template>
+          <div class="item"></div>
+        </template>
+      </veda-loop>
+    `;
+    
+    const loop = document.getElementById('test-loop');
+    
+    // Set items manually first
+    setTimeout(() => {
+      console.log('Setting items:', state.items);
+      loop.setAttribute('items', JSON.stringify(state.items));
+    }, 100);
+    
+  </script>
+</body>
+</html>

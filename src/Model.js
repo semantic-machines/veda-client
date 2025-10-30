@@ -24,7 +24,9 @@ export default class Model extends Emitter(Object) {
 
     // Note: For cached models returning early, this listener is already attached
     // from the first construction, so we don't duplicate it
-    this.on('modified', () => this.isSync(false));
+    this.on('modified', () => {
+      this.isSync(false);
+    });
 
     if (typeof data === 'string') {
       this.id = data;
@@ -67,14 +69,16 @@ export default class Model extends Emitter(Object) {
 
     const reactiveModel = reactive(this, {
       onSet: function(key, value) {
-        // Emit events for backward compatibility
-        this.emit(key, value);
-        this.emit('modified', key, value);
+        if (typeof this.emit === 'function') {
+          this.emit(key, value);
+          this.emit('modified', key, value);
+        }
       },
       onDelete: function(key) {
-        // Emit events for backward compatibility
-        this.emit(key);
-        this.emit('modified', key);
+        if (typeof this.emit === 'function') {
+          this.emit(key);
+          this.emit('modified', key);
+        }
       }
     });
 
@@ -191,7 +195,8 @@ export default class Model extends Emitter(Object) {
     } else {
       const currentValue = this[prop];
       if (Array.isArray(currentValue)) {
-        this[prop] = [...currentValue, value];
+        const newValue = [...currentValue, value];
+        this[prop] = newValue;
       } else {
         this[prop] = [currentValue, value];
       }
@@ -210,6 +215,7 @@ export default class Model extends Emitter(Object) {
       } else {
         delete this[prop];
       }
+      this.isSync(false); // Mark model as modified
     }
   }
 

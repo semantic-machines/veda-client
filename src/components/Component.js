@@ -76,12 +76,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       this.rendered = new Promise((resolve) => {
         this.#resolveRendered = resolve;
       });
-
-      // Auto-detect reactive state
-      const originalState = this.state;
-      if (originalState && originalState.__isReactive) {
-        this.#isReactive = true;
-      }
     }
 
     renderedCallback () {}
@@ -148,6 +142,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       // Clear old child promises to prevent memory leak
       this.#childrenRendered = [];
 
+      // Clear old render effects
+      this.#renderEffects.forEach(cleanup => cleanup());
+      this.#renderEffects = [];
+
       const pre = this.pre();
       if (pre instanceof Promise) await pre;
 
@@ -181,6 +179,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     async populate () {
+      // Auto-detect reactive state (check here, not in constructor)
+      if (!this.#isReactive && this.state && this.state.__isReactive) {
+        this.#isReactive = true;
+      }
+
       if (!this.model) {
         if (this.hasAttribute('about')) this.model = new ModelClass(this.getAttribute('about'));
       } else if (this.model.id) {
@@ -284,12 +287,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           }
         });
 
-        // Insert new nodes BEFORE removing old one to avoid race condition
-        // This ensures parent reference stays valid
-        nodes.forEach(node => parent.insertBefore(node, textNode));
+        // Replace textNode content with empty string (keep the node for walker)
+        textNode.nodeValue = '';
 
-        // Now safe to remove original text node
-        textNode.remove();
+        // Insert new nodes after the (now empty) textNode
+        nodes.forEach(node => parent.insertBefore(node, textNode.nextSibling));
       } else {
         // Non-reactive: just evaluate once
         textNode.nodeValue = text.replace(/\{([^}]+)\}/g, (_, code) => {
@@ -298,7 +300,16 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       }
     }
 
-    _process (fragment) {
+    _process (fragment, evalContext = null) {
+      // Auto-detect reactive state before processing
+      if (!this.#isReactive && this.state && this.state.__isReactive) {
+        this.#isReactive = true;
+      }
+
+      // Store eval context for this processing session
+      const previousContext = this._currentEvalContext;
+      this._currentEvalContext = evalContext || this;
+
       const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
 
       let node = walker.nextNode();
@@ -309,6 +320,16 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           this.#processTextNode(node);
           node = walker.nextNode();
         } else {
+          // Skip template content inside veda-if/veda-loop - they handle their own templates
+          if (node.tagName === 'TEMPLATE') {
+            const parent = node.parentNode;
+            if (parent && parent.tagName && (parent.tagName === 'VEDA-IF' || parent.tagName === 'VEDA-LOOP')) {
+              walker.nextSibling(); // Skip to next sibling, don't descend into template
+              node = walker.currentNode;
+              continue;
+            }
+          }
+
           if (!node.tagName.includes('-') && !node.hasAttribute('is') && !node.hasAttribute('about') && !node.hasAttribute('property') && !node.hasAttribute('rel')) {
             this.#processAttributes(node);
             node = walker.nextNode();
@@ -355,7 +376,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             const Class = customElements.get(tag);
             if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
             component = document.createElement(tag);
-            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
+            // Copy attributes but preserve original values (not evaluated)
+            [...node.attributes].forEach((attr) => {
+              const originalValue = node.getAttribute(attr.nodeName);
+              component.setAttribute(attr.nodeName, originalValue);
+            });
           }
 
           // Customized built-in component
@@ -365,7 +390,13 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
             component = document.createElement(tag, {is});
             component.setAttribute('is', is); // Explicitly set 'is' attribute for findMethod
-            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
+            // Copy attributes but preserve original values (not evaluated)
+            [...node.attributes].forEach((attr) => {
+              if (attr.nodeName !== 'is') {
+                const originalValue = node.getAttribute(attr.nodeName);
+                component.setAttribute(attr.nodeName, originalValue);
+              }
+            });
           }
 
           component.template = node.innerHTML.trim();
@@ -400,11 +431,17 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           node = nextNode;
         }
       }
+
+      // Restore previous eval context
+      this._currentEvalContext = previousContext;
     }
 
-    #evaluate (e) {
+    #evaluate (e, fromNode = null) {
+      // Use stored eval context if available, otherwise use this
+      const context = this._currentEvalContext || this;
+
       try {
-        return ExpressionParser.evaluate(e, this);
+        return ExpressionParser.evaluate(e, context);
       } catch (error) {
         console.warn(`Invalid expression '${e}':`, error.message);
         return '';
@@ -437,6 +474,57 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     #processAttributes (node) {
+      // Process reactive attributes for custom components
+      if (node.tagName && (node.tagName.includes('-') || node.hasAttribute('is'))) {
+        const tagName = node.tagName.toLowerCase();
+        const isFrameworkComponent = tagName === 'veda-if' || tagName === 'veda-loop';
+
+        // Framework components handle their own special attributes
+        const frameworkAttrs = isFrameworkComponent ? ['condition', 'items', 'item-key'] : [];
+
+        // For custom components, process attributes with {} expressions
+        for (const attr of [...node.attributes]) {
+          // Skip framework-specific attributes
+          if (frameworkAttrs.includes(attr.name)) {
+            continue;
+          }
+
+          if (attr.value && attr.value.includes('{')) {
+            const attrName = attr.nodeName;
+            const template = attr.nodeValue;
+
+            // Use evalContext to check reactivity (for veda-if/veda-loop contexts)
+            const contextForReactivity = this._currentEvalContext || this;
+            const isReactive = contextForReactivity.state?.__isReactive || false;
+
+            // Create effect to update the attribute
+            if (isReactive && /\{([^}]+)\}/g.test(template)) {
+              // Capture evalContext for the effect closure
+              const evalContext = this._currentEvalContext || this;
+              const cleanup = effect(() => {
+                const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
+                  // Use captured evalContext for evaluation
+                  return ExpressionParser.evaluate(code.trim(), evalContext) ?? '';
+                });
+                // Only update if value changed to prevent unnecessary updates
+                if (node.getAttribute(attrName) !== value) {
+                  node.setAttribute(attrName, value);
+                }
+              });
+              this.#renderEffects.push(cleanup);
+            } else {
+              // Non-reactive: evaluate once
+              const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
+                return this.#evaluate(code.trim(), node) ?? '';
+              });
+              attr.nodeValue = value;
+            }
+          }
+        }
+        // Don't process other attributes for custom components
+        return;
+      }
+
       for (const attr of [...node.attributes]) {
         // Handle event attributes with { } syntax
         if (attr.name.startsWith('on') && attr.name.length > 2 && attr.value.includes('{')) {
@@ -482,21 +570,64 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           const attrName = attr.nodeName;
           const template = attr.nodeValue;
 
+          // Boolean attributes that should be set as properties for proper DOM behavior
+          const booleanProps = {
+            'checked': 'checked',
+            'disabled': 'disabled',
+            'selected': 'selected',
+            'readonly': 'readOnly',
+            'required': 'required',
+            'multiple': 'multiple',
+            'hidden': 'hidden'
+          };
+          const propName = booleanProps[attrName];
+
+          // Use evalContext to check reactivity (for veda-if/veda-loop contexts)
+          const contextForReactivity = this._currentEvalContext || this;
+          const isReactive = contextForReactivity.state?.__isReactive || false;
+
           // If reactive component, create effect for this attribute
-          if (this.#isReactive && /\{([^}]+)\}/g.test(template)) {
+          if (isReactive && /\{([^}]+)\}/g.test(template)) {
+            // Remove attribute initially to prevent it from being evaluated by browser
+            node.removeAttribute(attrName);
+
+            // Capture evalContext for the effect closure
+            const evalContext = this._currentEvalContext || this;
             const cleanup = effect(() => {
               const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
-                return this.#evaluate(code.trim()) ?? '';
+                // Use ExpressionParser for simple expressions
+                return ExpressionParser.evaluate(code.trim(), evalContext) ?? '';
               });
-              node.setAttribute(attrName, value);
+
+              if (propName) {
+                // For boolean properties, set both property and attribute
+                const boolValue = value === 'true' || value === '' || value === attrName;
+                if (node[propName] !== boolValue) {
+                  node[propName] = boolValue;
+                  node.toggleAttribute(attrName, boolValue);
+                }
+              } else {
+                // Only update if value changed
+                if (node.getAttribute(attrName) !== value) {
+                  node.setAttribute(attrName, value);
+                }
+              }
             });
 
             this.#renderEffects.push(cleanup);
           } else {
             // Non-reactive: evaluate once
-            attr.nodeValue = template.replace(/\{([^}]+)\}/g, (_, code) => {
+            const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
               return this.#evaluate(code.trim()) ?? '';
             });
+
+            if (propName) {
+              const boolValue = value === 'true' || value === '' || value === attrName;
+              node[propName] = boolValue;
+              node.toggleAttribute(attrName, boolValue);
+            } else {
+              attr.nodeValue = value;
+            }
           }
         }
       }

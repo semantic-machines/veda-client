@@ -1,12 +1,10 @@
 import { Component, html } from '../../../src/index.js';
 
-const ENTER_KEY = 13;
-
 export default class TodoHeader extends Component(HTMLElement) {
   static tag = 'todo-header';
 
   handleNewTodo(event, node) {
-    if (event.keyCode !== ENTER_KEY) return;
+    if (event.key !== 'Enter') return;
     const title = node.value.trim();
     if (!title) return;
     this.dispatchEvent(new CustomEvent('new-todo', { detail: { title }, bubbles: true }));
@@ -24,6 +22,3 @@ export default class TodoHeader extends Component(HTMLElement) {
 }
 
 customElements.define(TodoHeader.tag, TodoHeader);
-
-
-

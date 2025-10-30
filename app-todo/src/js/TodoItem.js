@@ -1,20 +1,17 @@
-import { Component, html, reactive } from '../../../src/index.js';
-
-const ENTER_KEY = 13;
-const ESCAPE_KEY = 27;
+import { Component, html } from '../../../src/index.js';
 
 export default class TodoItem extends Component(HTMLLIElement) {
   static tag = 'todo-item';
 
   constructor() {
     super();
-    // Reactive local state - automatically enables reactivity
-    this.state = reactive({
+    // Reactive local state
+    this.state = this.reactive({
       editing: false
     });
   }
 
-  // Computed properties - automatically tracked
+  // Computed properties
   get completed() {
     return this.model?.['v-s:completed']?.[0] || false;
   }
@@ -26,29 +23,26 @@ export default class TodoItem extends Component(HTMLLIElement) {
   async connectedCallback() {
     await super.connectedCallback();
 
-    // Setup reactive class bindings - run immediately
-    this.watch(() => this.completed, (completed) => {
-      this.classList.toggle('completed', completed);
-    }, { immediate: true });
+    // Separate effect for completed class - only runs when completed changes
+    this.effect(() => {
+      this.classList.toggle('completed', this.completed);
+    });
 
-    this.watch(() => this.state.editing, (editing) => {
-      this.classList.toggle('editing', editing);
+    // Separate effect for editing class and focus management - only runs when editing changes
+    this.effect(() => {
+      this.classList.toggle('editing', this.state.editing);
 
-      // Also update input display
-      const input = this.querySelector('.edit');
-      if (input) {
-        input.style.display = editing ? 'block' : 'none';
-
-        if (editing) {
-          // Focus on edit input when editing starts
+      if (this.state.editing) {
+        // Focus input when entering edit mode
+        const input = this.querySelector('.edit');
+        if (input) {
           requestAnimationFrame(() => {
             input.focus();
-            const l = input.value.length;
-            input.setSelectionRange(l, l);
+            input.setSelectionRange(input.value.length, input.value.length);
           });
         }
       }
-    }, { immediate: true });
+    });
   }
 
   handleToggle() {
@@ -73,11 +67,11 @@ export default class TodoItem extends Component(HTMLLIElement) {
   }
 
   handleEditKeyDown(event, node) {
-    if (event.keyCode === ESCAPE_KEY) {
+    if (event.key === 'Escape') {
       // Cancel editing
       this.state.editing = false;
       node.value = this.title; // Reset to original value
-    } else if (event.keyCode === ENTER_KEY) {
+    } else if (event.key === 'Enter') {
       this.handleEditSubmit(event, node);
     }
   }
@@ -105,9 +99,9 @@ export default class TodoItem extends Component(HTMLLIElement) {
                name="todo-completed"
                aria-label="Toggle todo completed"
                id="toggle-${this.model?.id || ''}"
-               ${this.completed ? 'checked' : ''}
+               checked="{this.completed}"
                onchange="{handleToggle}" />
-        <label ondblclick="{handleEdit}">${this.title}</label>
+        <label ondblclick="{handleEdit}">{this.title}</label>
         <button class="destroy"
                 aria-label="Delete todo"
                 onclick="{handleDestroy}"></button>
@@ -115,7 +109,7 @@ export default class TodoItem extends Component(HTMLLIElement) {
       <input class="edit"
              name="edit-todo"
              aria-label="Edit todo title"
-             value="${this.title}"
+             value="{this.title}"
              onkeydown="{handleEditKeyDown}"
              onblur="{handleEditBlur}" />
     `;
@@ -123,6 +117,3 @@ export default class TodoItem extends Component(HTMLLIElement) {
 }
 
 customElements.define(TodoItem.tag, TodoItem, { extends: 'li' });
-
-
-
