@@ -1,4 +1,5 @@
 import { Component, html, If, Loop } from '../../../src/index.js';
+import Model from '../../../src/Model.js';
 import TodoHeader from './TodoHeader.js';
 import TodoItem from './TodoItem.js';
 import TodoFooter from './TodoFooter.js';
@@ -95,7 +96,6 @@ export default class TodoApp extends Component(HTMLElement) {
 
   async handleNewTodo(event) {
     const { title } = event.detail;
-    const Model = (await import('../../../src/Model.js')).default;
     const todo = new Model();
     todo['rdf:type'] = [new Model('v-s:Todo')];
     todo['v-s:title'] = [title];
@@ -134,14 +134,13 @@ export default class TodoApp extends Component(HTMLElement) {
   async handleDestroyTodo(event) {
     const { todo } = event.detail;
 
-    // Remove from list
     this.model.removeValue('v-s:hasTodo', todo);
 
     try {
+      // TodoItem already calls todo.remove(), we only update the list
       await this.model.save();
     } catch (error) {
       console.error('Failed to remove todo from list:', error);
-      // Rollback
       this.model.addValue('v-s:hasTodo', todo);
     }
   }
