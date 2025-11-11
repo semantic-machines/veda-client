@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Template Syntax Test</title>
+  <style>
+    body { font-family: system-ui; padding: 20px; max-width: 1200px; margin: 0 auto; }
+    h2 { border-bottom: 2px solid #333; padding-bottom: 10px; margin-top: 40px; }
+    .test-case {
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin: 15px 0;
+      background: #f9f9f9;
+    }
+    .test-case h3 { margin-top: 0; color: #0066cc; }
+    .code {
+      background: #eee;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      margin: 10px 0;
+      white-space: pre;
+    }
+    .result {
+      border-left: 3px solid #4caf50;
+      padding: 10px;
+      margin: 10px 0;
+      background: white;
+    }
+    .tag {
+      display: inline-block;
+      background: #2196f3;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 3px;
+      margin: 2px;
+    }
+    todo-item-test {
+      display: block;
+      padding: 5px;
+      border: 1px solid #ccc;
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Template Syntax Test</h1>
+  <p>Testing If, Loop, Property, and Rel components with and without &lt;template&gt; wrapper</p>
+
+  <!-- ============================================ -->
+  <h2>1. If Component</h2>
+
+  <div class="test-case">
+    <h3>✅ Without &lt;template&gt; (new syntax)</h3>
+    <div class="code">&lt;veda-if condition="{this.showIf}"&gt;
+  &lt;div&gt;If content visible!&lt;/div&gt;
+&lt;/veda-if&gt;</div>
+    <test-if-component></test-if-component>
+  </div>
+
+  <div class="test-case">
+    <h3>🔄 With &lt;template&gt; (old syntax)</h3>
+    <div class="code">&lt;veda-if condition="{this.showIf}"&gt;
+  &lt;template&gt;
+    &lt;div&gt;If with template visible!&lt;/div&gt;
+  &lt;/template&gt;
+&lt;/veda-if&gt;</div>
+    <test-if-template-component></test-if-template-component>
+  </div>
+
+  <!-- ============================================ -->
+  <h2>2. Loop Component</h2>
+
+  <div class="test-case">
+    <h3>✅ Without &lt;template&gt; (new syntax)</h3>
+    <div class="code">&lt;veda-loop items="{this.items}" item-key="id"&gt;
+  &lt;div&gt;Item: {this.model.name}&lt;/div&gt;
+&lt;/veda-loop&gt;</div>
+    <test-loop-component></test-loop-component>
+  </div>
+
+  <div class="test-case">
+    <h3>🔄 With &lt;template&gt; (old syntax)</h3>
+    <div class="code">&lt;veda-loop items="{this.items}" item-key="id"&gt;
+  &lt;template&gt;
+    &lt;div&gt;Item with template: {this.model.name}&lt;/div&gt;
+  &lt;/template&gt;
+&lt;/veda-loop&gt;</div>
+    <test-loop-template-component></test-loop-template-component>
+  </div>
+
+  <!-- ============================================ -->
+  <h2>3. Property Component</h2>
+
+  <div class="test-case">
+    <h3>✅ Simple (no template)</h3>
+    <div class="code">&lt;span property="rdfs:label"&gt;&lt;/span&gt;</div>
+    <test-property-simple></test-property-simple>
+  </div>
+
+  <div class="test-case">
+    <h3>✅ Without &lt;template&gt; (new syntax)</h3>
+    <div class="code">&lt;div property="v-s:tags"&gt;
+  &lt;span class="tag"&gt;&lt;slot&gt;&lt;/slot&gt;&lt;/span&gt;
+&lt;/div&gt;</div>
+    <test-property-component></test-property-component>
+  </div>
+
+  <div class="test-case">
+    <h3>🔄 With &lt;template&gt; (old syntax)</h3>
+    <div class="code">&lt;div property="v-s:tags"&gt;
+  &lt;template&gt;
+    &lt;span class="tag"&gt;&lt;slot&gt;&lt;/slot&gt;&lt;/span&gt;
+  &lt;/template&gt;
+&lt;/div&gt;</div>
+    <test-property-template-component></test-property-template-component>
+  </div>
+
+  <!-- ============================================ -->
+  <h2>4. Rel Component</h2>
+
+  <div class="test-case">
+    <h3>✅ Without &lt;template&gt; (new syntax)</h3>
+    <div class="code">&lt;ul rel="v-s:hasTodo"&gt;
+  &lt;li is="todo-item-test"&gt;&lt;/li&gt;
+&lt;/ul&gt;</div>
+    <test-rel-component></test-rel-component>
+  </div>
+
+  <div class="test-case">
+    <h3>🔄 With &lt;template&gt; (old syntax)</h3>
+    <div class="code">&lt;ul rel="v-s:hasTodo"&gt;
+  &lt;template&gt;
+    &lt;li is="todo-item-test"&gt;&lt;/li&gt;
+  &lt;/template&gt;
+&lt;/ul&gt;</div>
+    <test-rel-template-component></test-rel-template-component>
+  </div>
+
+  <div class="test-case">
+    <h3>✅ Rel + Property (without custom component)</h3>
+    <div class="code">&lt;ul rel="v-s:hasTodo"&gt;
+  &lt;li property="v-s:title"&gt;&lt;/li&gt;
+&lt;/ul&gt;</div>
+    <test-rel-property-component></test-rel-property-component>
+  </div>
+
+  <div class="test-case">
+    <h3>🔄 Rel + Property with &lt;template&gt;</h3>
+    <div class="code">&lt;ul rel="v-s:hasTodo"&gt;
+  &lt;template&gt;
+    &lt;li property="v-s:title"&gt;&lt;/li&gt;
+  &lt;/template&gt;
+&lt;/ul&gt;</div>
+    <test-rel-property-template-component></test-rel-property-template-component>
+  </div>
+
+  <!-- ============================================ -->
+  <h2>5. Deep Nesting: rel → rel → rel → property</h2>
+
+  <div class="test-case">
+    <h3>🔥 Multi-level nested relations</h3>
+    <div class="code">&lt;div rel="v-s:hasSection"&gt;
+  &lt;h4 property="v-s:title"&gt;&lt;/h4&gt;
+  &lt;div rel="v-s:hasCategory"&gt;
+    &lt;h5 property="v-s:title"&gt;&lt;/h5&gt;
+    &lt;ul rel="v-s:hasItem"&gt;
+      &lt;li property="v-s:title"&gt;&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/div&gt;
+&lt;/div&gt;</div>
+    <test-rel-deep-nesting-component></test-rel-deep-nesting-component>
+  </div>
+
+  <!-- ============================================ -->
+  <h2>6. Mixed Nesting: rel → Loop (with filtering)</h2>
+
+  <div class="test-case">
+    <h3>🔥 Combining rel with Loop for filtered data</h3>
+    <div class="code">&lt;!-- Loop: iterate projects --&gt;
+&lt;Loop items="{this.projects}" item-key="id"&gt;
+  &lt;div&gt;
+    &lt;h4 property="v-s:title"&gt;&lt;/h4&gt;
+
+    &lt;!-- Nested Loop: filter tasks by priority --&gt;
+    &lt;ul&gt;
+      &lt;Loop items="{this.projectTasks}" item-key="id"&gt;
+        &lt;li property="v-s:title"&gt;&lt;/li&gt;
+      &lt;/Loop&gt;
+    &lt;/ul&gt;
+  &lt;/div&gt;
+&lt;/Loop&gt;</div>
+    <test-mixed-nesting-component></test-mixed-nesting-component>
+  </div>
+
+  <script type="module" src="./test-template-syntax.js"></script>
+</body>
+</html>
+

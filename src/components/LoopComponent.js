@@ -15,6 +15,8 @@ import {effect} from '../Effect.js';
  *   <h3>{this.model.name}</h3>
  *   <p>{this.model.email}</p>
  * </veda-loop>
+ *
+ * Note: <template> wrapper is optional (backward compatibility)
  */
 export default function LoopComponent(Class = HTMLElement) {
   return class LoopComponentClass extends Component(Class) {
@@ -201,16 +203,17 @@ export default function LoopComponent(Class = HTMLElement) {
         }
       }
 
-      // Set model if element is a component
-      if (item && typeof item === 'object' && 'id' in item) {
+      // Set model on element
+      if (item && typeof item === 'object') {
         element.model = item;
-        if (item.id) {
+        if ('id' in item && item.id) {
           element.setAttribute('about', item.id);
         }
       }
 
       // Process the element (for reactive expressions, etc)
-      this._process(element);
+      // Pass element as evalContext so {this.model.name} works
+      this._process(element, element);
 
       return element;
     }

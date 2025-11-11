@@ -15,6 +15,8 @@ import {effect} from '../Effect.js';
  *   <h1>Welcome</h1>
  *   <user-profile></user-profile>
  * </veda-if>
+ *
+ * Note: <template> wrapper is optional (backward compatibility)
  */
 export default function IfComponent(Class = HTMLElement) {
   return class IfComponentClass extends Component(Class) {

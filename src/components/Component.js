@@ -245,6 +245,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       // If reactive component, create effects for expressions
       if (this.#isReactive) {
         const parent = textNode.parentNode;
+        const evalContext = this._currentEvalContext || this;
 
         // Create nodes for each part
         const nodes = parts.map(part => {
@@ -255,9 +256,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             const node = document.createTextNode('');
 
             // Create effect to update this text node
+            // Capture evalContext in closure
             const cleanup = effect(() => {
-              const value = this.#evaluate(part.code);
-              node.nodeValue = value ?? '';
+              const value = ExpressionParser.evaluate(part.code, evalContext);
+              node.nodeValue = value != null ? String(value) : '';
             });
 
             this.#renderEffects.push(cleanup);
@@ -268,12 +270,17 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         // Replace textNode content with empty string (keep the node for walker)
         textNode.nodeValue = '';
 
-        // Insert new nodes after the (now empty) textNode
-        nodes.forEach(node => parent.insertBefore(node, textNode.nextSibling));
+        // Insert new nodes after the (now empty) textNode in correct order
+        let insertAfter = textNode;
+        nodes.forEach(node => {
+          parent.insertBefore(node, insertAfter.nextSibling);
+          insertAfter = node;
+        });
       } else {
         // Non-reactive: just evaluate once
         textNode.nodeValue = text.replace(/\{([^}]+)\}/g, (_, code) => {
-          return this.#evaluate(code.trim()) ?? '';
+          const value = this.#evaluate(code.trim());
+          return value != null ? String(value) : '';
         });
       }
     }
@@ -344,8 +351,12 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             component = document.createElement(tag, {is});
             component.setAttribute('is', is); // Explicitly set 'is' attribute for findMethod
             [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-            if (!component.hasAttribute('about') && this.model) {
-              component.model = this.model;
+            if (!component.hasAttribute('about')) {
+              // Use evalContext.model if available, otherwise fall back to this.model
+              const contextModel = (this._currentEvalContext && this._currentEvalContext.model) || this.model;
+              if (contextModel) {
+                component.model = contextModel;
+              }
             }
           }
 

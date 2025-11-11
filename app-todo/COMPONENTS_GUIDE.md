@@ -154,7 +154,12 @@ Display single value from model:
 <!-- Simple -->
 <span property="rdfs:label"></span>
 
-<!-- With template -->
+<!-- With custom formatting (optional <template>) -->
+<div property="v-s:title">
+  <strong><slot></slot></strong>
+</div>
+
+<!-- Or with explicit <template> -->
 <div property="v-s:title">
   <template>
     <strong><slot></slot></strong>
@@ -163,9 +168,7 @@ Display single value from model:
 
 <!-- Array values -->
 <ul property="v-s:tags">
-  <template>
-    <li><slot></slot></li>
-  </template>
+  <li><slot></slot></li>
 </ul>
 ```
 
@@ -176,6 +179,7 @@ Display single value from model:
 - Reads `this.model[property]`
 - If array, renders each value
 - `<slot>` replaced with value
+- `<template>` is optional for custom formatting
 - Automatically reactive
 
 ---
@@ -185,9 +189,15 @@ Display single value from model:
 Display related models:
 
 ```html
+<!-- Simple - use children as template for each related model -->
+<div rel="v-s:hasApplication">
+  <app-card></app-card>
+</div>
+
+<!-- Or with explicit <template> (old syntax) -->
 <div rel="v-s:hasApplication">
   <template>
-    <app-card></app-card>  <!-- model = each related model -->
+    <app-card></app-card>
   </template>
 </div>
 ```
@@ -197,8 +207,8 @@ Display related models:
 
 **How it works:**
 - Iterates over `this.model[rel]`
-- Each template gets `model = relatedModel`
-- Child components inherit model
+- Each child element gets `model = relatedModel`
+- `<template>` is optional (for backward compatibility)
 - Automatically reactive
 
 ---

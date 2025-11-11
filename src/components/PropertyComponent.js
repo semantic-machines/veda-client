@@ -24,26 +24,35 @@ export default function PropertyComponent (Class = HTMLElement) {
         return super.renderValue(value, container, index);
       }
 
-      let template = document.createElement('template');
-      template.innerHTML = this.template;
-      let fragment = template.content;
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = this.template;
+
+      const templateEl = tempDiv.querySelector('template');
+
+      let fragment;
+      if (templateEl) {
+        fragment = templateEl.content.cloneNode(true);
+      } else {
+        fragment = document.createDocumentFragment();
+        while (tempDiv.firstChild) {
+          fragment.appendChild(tempDiv.firstChild);
+        }
+      }
+
       const slot = fragment.querySelector('slot');
       if (slot) {
         const valueNode = document.createTextNode(value.toString());
         slot.parentNode.replaceChild(valueNode, slot);
       } else {
         const node = fragment.firstElementChild;
-        node.textContent = value.toString();
+        if (node) {
+          node.textContent = value.toString();
+        }
       }
 
-      // Process fragment for reactive expressions
       this._process(fragment);
 
       container.appendChild(fragment);
-
-      template.remove();
-      template = null;
-      fragment = null;
     }
   };
 }

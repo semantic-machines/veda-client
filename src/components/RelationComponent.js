@@ -14,16 +14,27 @@ export default function RelationComponent (Class = HTMLElement) {
 
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = this.template;
+        
+        // Check if there's a <template> element (old syntax support)
         const templateEl = tempDiv.querySelector('template');
-
-        if (!templateEl) {
-          console.warn('[RelationComponent] No <template> element found in template HTML');
-          return super.renderValue(value, container, index);
+        
+        let fragment;
+        if (templateEl) {
+          // Old syntax: <rel><template>...</template></rel>
+          fragment = templateEl.content.cloneNode(true);
+        } else {
+          // New syntax: <rel>...</rel> - use all children as template
+          fragment = document.createDocumentFragment();
+          while (tempDiv.firstChild) {
+            fragment.appendChild(tempDiv.firstChild);
+          }
         }
 
-        const fragment = templateEl.content.cloneNode(true);
-
-        this._process(fragment);
+        // Create a temporary element with the model to use as evalContext
+        const contextElement = document.createElement('div');
+        contextElement.model = value;
+        
+        this._process(fragment, contextElement);
 
         const walker = document.createTreeWalker(
           fragment,
