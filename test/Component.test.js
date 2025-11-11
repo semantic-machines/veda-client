@@ -2960,7 +2960,7 @@ export default ({ test, assert }) => {
     // Tests lines 180-181: auto-detect reactive state when state.__isReactive exists
     // The condition checks: !this.#isReactive && this.state && this.state.__isReactive
     // We need to create reactive state WITHOUT calling this.reactive()
-    
+
     // Import reactive from Component.js (already exported there)
     const { reactive } = await import('../src/components/Component.js');
 
@@ -2982,7 +2982,7 @@ export default ({ test, assert }) => {
     // Create reactive state using reactive() directly, not this.reactive()
     // This keeps #isReactive false
     component.state = reactive({ count: 0 });
-    
+
     // Verify state is reactive
     assert(component.state.__isReactive === true, 'State should be reactive');
 
@@ -3040,7 +3040,7 @@ export default ({ test, assert }) => {
     // Tests lines 291-292: auto-detect reactive state in _process
     // Import reactive from Component.js (already exported there)
     const { reactive } = await import('../src/components/Component.js');
-    
+
     class ProcessReactiveComponent extends Component(HTMLElement) {
       static tag = 'test-process-reactive';
 
@@ -3055,10 +3055,10 @@ export default ({ test, assert }) => {
     document.body.appendChild(container);
 
     const component = document.createElement('test-process-reactive');
-    
+
     // Create reactive state using reactive() directly, not this.reactive()
     component.state = reactive({ value: 'test' });
-    
+
     container.appendChild(component);
 
     await component.rendered;
@@ -3073,14 +3073,14 @@ export default ({ test, assert }) => {
   test('Component - skip template inside veda-if component', async () => {
     // Tests lines 310-316: skip <template> inside veda-if/veda-loop
     // The code checks if template's parent is VEDA-IF or VEDA-LOOP and skips it
-    
+
     // This test is complex because it requires veda-if to properly process the template
     // The skip logic prevents parent component from processing framework component templates
     // For now, we verify the logic works by checking that framework components exist
-    
+
     const IfComponent = (await import('../src/components/IfComponent.js')).default;
     const IfClass = IfComponent(HTMLElement);
-    
+
     if (!customElements.get('veda-if-templateskip2')) {
       customElements.define('veda-if-templateskip2', IfClass);
     }
