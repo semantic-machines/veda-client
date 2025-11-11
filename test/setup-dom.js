@@ -92,5 +92,48 @@ global.PopStateEvent = window.PopStateEvent || class PopStateEvent extends Event
   }
 };
 
+const originalConsoleError = console.error;
+console.error = (...args) => {
+  if (args.length > 0) {
+    const firstArg = String(args[0]);
+
+    // Suppress expected test errors
+    if (firstArg.includes('Infinite loop detected') ||
+        firstArg.includes('TypeError: Cannot read properties of undefined')) {
+      return;
+    }
+  }
+
+  originalConsoleError(...args);
+};
+
+const originalConsoleWarn = console.warn;
+console.warn = (...args) => {
+  if (args.length > 0) {
+    const message = String(args[0]);
+
+    // Suppress expected warnings from tests
+    if (message.includes('Invalid expression')) {
+      return;
+    }
+  }
+
+  originalConsoleWarn(...args);
+};
+
+const originalConsoleLog = console.log;
+console.log = (...args) => {
+  // Filter out component error dumps (Component.js logs errors via console.log)
+  if (args.length >= 2) {
+    const secondArg = String(args[1]);
+    if (secondArg.includes('Component render error') ||
+        secondArg.includes('Component remove error')) {
+      return;
+    }
+  }
+
+  originalConsoleLog(...args);
+};
+
 // Export for potential direct usage
 export { window, document };

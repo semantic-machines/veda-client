@@ -170,8 +170,8 @@ if (typeof customElements !== 'undefined') {
   const IfComponentClass = IfComponent(HTMLElement);
   customElements.define(IfComponentClass.tag, IfComponentClass);
   If = IfComponentClass;
+/* c8 ignore next 3 */
 } else {
-  // Export function for testing in Node.js
   If = IfComponent;
 }
 

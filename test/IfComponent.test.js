@@ -7,11 +7,8 @@ import '../test/setup-dom.js';
 export default ({ test, assert }) => {
 
   test('If component - module exports correctly', () => {
-    // Verify the IfComponent function is exported
     assert.ok(IfComponentFunc, 'IfComponent function should be exported as default');
     assert.ok(typeof IfComponentFunc === 'function', 'IfComponentFunc should be a function');
-
-    // Verify If is exported
     assert.ok(If, 'If should be exported');
   });
 
@@ -87,19 +84,57 @@ export default ({ test, assert }) => {
     assert.equal(changes[1], false, 'Second value should be false');
   });
 
-  test('IfComponent - hides content when condition is false', async () => {
-    // Tests lines 131-139: hiding content
-    // Note: Lines 131-139 are covered when If component hides previously shown content
-    // This is integration test complexity - we verify the logic exists
-    
-    assert.ok(true, 'Lines 131-139 tested via integration scenarios in Component.test.js');
-    
-    // The hide logic (lines 131-139) requires:
-    // 1. Content to be shown initially (show=true, hasValidContent=true)
-    // 2. Then condition changes to false (show=false)
-    // 3. This triggers removeChild for each node (lines 131-135)
-    // 4. Sets currentContent to null (line 136)
-    // 5. Appends placeholder (line 138)
+  test('IfComponent - hides and restores content when condition toggles', async () => {
+    class IfToggleComponent extends Component(HTMLElement) {
+      static tag = 'test-if-toggle';
+
+      constructor() {
+        super();
+        this.state = this.reactive({ show: true });
+      }
+
+      render() {
+        return html`
+          <veda-if condition="{this.state.show}">
+            <span class="content">Conditional content</span>
+          </veda-if>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-if-toggle')) {
+      customElements.define('test-if-toggle', IfToggleComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-if-toggle');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    const ifElement = component.querySelector('veda-if');
+    let content = component.querySelector('.content');
+    assert.ok(content, 'Content should be rendered while condition is true');
+
+    component.state.show = false;
+    await flushEffects();
+
+    content = component.querySelector('.content');
+    assert.equal(content, null, 'Content should be removed when condition becomes false');
+
+    const placeholder = Array.from(ifElement.childNodes).find((node) => node.nodeType === Node.COMMENT_NODE);
+    assert.ok(placeholder && placeholder.nodeValue === 'veda-if', 'Placeholder comment should be inserted when hidden');
+
+    component.state.show = true;
+    await flushEffects();
+
+    content = component.querySelector('.content');
+    assert.ok(content, 'Content should be restored when condition becomes true again');
+
+    container.remove();
   });
 
   test('IfComponent - handles missing parent context', async () => {
@@ -110,7 +145,7 @@ export default ({ test, assert }) => {
 
     // Use already registered veda-if or create new one
     const tagName = customElements.get('veda-if') ? 'veda-if' : 'veda-if-orphan2';
-    
+
     if (!customElements.get(tagName)) {
       const IfClass = IfComponentFunc(HTMLElement);
       customElements.define(tagName, IfClass);
@@ -142,7 +177,7 @@ export default ({ test, assert }) => {
 
     // Use already registered veda-if or create new one
     const tagName = customElements.get('veda-if') ? 'veda-if' : 'veda-if-errortest2';
-    
+
     if (!customElements.get(tagName)) {
       const IfClass = IfComponentFunc(HTMLElement);
       customElements.define(tagName, IfClass);
@@ -184,4 +219,48 @@ export default ({ test, assert }) => {
     container.remove();
   });
 
+  test('IfComponent - handles missing condition attribute (lines 67-69)', async () => {
+    const originalWarn = console.warn;
+    let warnMessage = '';
+    console.warn = (...args) => { warnMessage = args.join(' '); };
+
+    const tagName = customElements.get('veda-if') ? 'veda-if' : 'veda-if-nocond';
+    
+    if (!customElements.get(tagName)) {
+      const IfClass = IfComponentFunc(HTMLElement);
+      customElements.define(tagName, IfClass);
+    }
+
+    class NoConditionComponent extends Component(HTMLElement) {
+      static tag = 'test-if-no-condition';
+
+      render() {
+        return html`
+          <div>
+            <${tagName}>
+              <span>Content without condition</span>
+            </${tagName}>
+          </div>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-if-no-condition')) {
+      customElements.define('test-if-no-condition', NoConditionComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-if-no-condition');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    assert.ok(warnMessage.includes('requires "condition" attribute'), 'Should warn about missing condition attribute');
+
+    console.warn = originalWarn;
+    container.remove();
+  });
 };
