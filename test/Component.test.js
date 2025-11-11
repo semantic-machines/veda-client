@@ -3225,7 +3225,7 @@ export default ({ test, assert }) => {
   test('Component - skip template inside veda-if (lines 310-316)', async () => {
     // Test that walker skips <template> with veda-if parent
     // We need to ensure the template exists DURING _process walk
-    
+
     class ComponentWithIfTemplate extends Component(HTMLElement) {
       static tag = 'test-component-if-template';
 
@@ -3262,7 +3262,7 @@ export default ({ test, assert }) => {
     // The template should be preserved for veda-if to handle
     const vedaIf = component.querySelector('veda-if');
     assert(vedaIf !== null, 'Should have veda-if element');
-    
+
     // Verify walker didn't break on the template
     assert(component.querySelector('p') !== null, 'Should process elements after veda-if');
 
@@ -3271,7 +3271,7 @@ export default ({ test, assert }) => {
 
   test('Component - skip template inside veda-loop (lines 310-316)', async () => {
     // Test that walker skips <template> with veda-loop parent
-    
+
     class ComponentWithLoopTemplate extends Component(HTMLElement) {
       static tag = 'test-component-loop-template';
 
@@ -3307,7 +3307,7 @@ export default ({ test, assert }) => {
     // The template should be preserved for veda-loop to handle
     const vedaLoop = component.querySelector('veda-loop');
     assert(vedaLoop !== null, 'Should have veda-loop element');
-    
+
     // Verify walker didn't break on the template
     const paragraphs = component.querySelectorAll('p');
     assert(paragraphs.length === 2, 'Should process elements before and after veda-loop');
@@ -3400,7 +3400,7 @@ export default ({ test, assert }) => {
     // Wait for all nested components
     const middle = component.querySelector('test-middle-parent');
     if (middle && middle.rendered) await middle.rendered;
-    
+
     const deepest = component.querySelector('test-deepest-child');
     if (deepest && deepest.rendered) await deepest.rendered;
 

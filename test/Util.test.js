@@ -77,6 +77,10 @@ export default ({test, assert}) => {
     const deltaIdentical = diff(obj1, obj2);
     assert(deltaIdentical.length === 0, 'Идентичные объекты не должны иметь различий');
 
+    // Проверка одного и того же объекта (line 59)
+    const deltaSameObject = diff(obj1, obj1);
+    assert(deltaSameObject.length === 0, 'Один и тот же объект не должен иметь различий');
+
     // Проверка примитивов
     assert(eq(1, 1));
     assert(eq('test', 'test'));
