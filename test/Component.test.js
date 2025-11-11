@@ -1,3 +1,4 @@
+import './setup-dom.js';
 import Component, { html, raw, safe, reactive, effect } from '../src/components/Component.js';
 import { flushEffects } from '../src/Effect.js';
 import Model from '../src/Model.js';

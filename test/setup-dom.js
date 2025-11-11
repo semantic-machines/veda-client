@@ -22,6 +22,9 @@ const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', 
 const { window } = dom;
 const { document } = window;
 
+// Save Node.js Event before overwriting (needed for WebSocket)
+const NodeEvent = global.Event;
+
 // Set global variables
 global.window = window;
 global.document = document;
@@ -34,13 +37,19 @@ global.Text = window.Text;
 global.Comment = window.Comment;
 global.NodeFilter = window.NodeFilter;
 
-// Events
+// Events - use jsdom events for DOM, but keep Node.js Event for WebSocket
 global.Event = window.Event;
 global.CustomEvent = window.CustomEvent;
 global.MouseEvent = window.MouseEvent;
 global.KeyboardEvent = window.KeyboardEvent;
 global.FocusEvent = window.FocusEvent;
 global.InputEvent = window.InputEvent;
+
+// Restore Node.js Event for WebSocket compatibility
+// WebSocket needs the original Node.js Event class, not jsdom's
+if (NodeEvent) {
+  global.Event = NodeEvent;
+}
 
 // Other important globals
 // Note: navigator, location, history are read-only in jsdom, use window.* directly

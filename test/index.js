@@ -1,4 +1,4 @@
-// Setup DOM environment first
+// Setup DOM environment first (before any tests)
 import './setup-dom.js';
 
 import ImportedWebSocket from 'ws';

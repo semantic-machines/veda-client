@@ -8,7 +8,6 @@
   "type": "module",
   "scripts": {
     "test": "tsc --noEmit && time -p node --expose-gc test",
-    "test:components": "tsc --noEmit && time -p c8 node --expose-gc test/components-only.js",
     "debug": "node --inspect-brk test",
     "c8": "tsc --noEmit && time -p c8 node --expose-gc test",
     "build": "node build.mjs",
