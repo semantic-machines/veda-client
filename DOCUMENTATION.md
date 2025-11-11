@@ -44,8 +44,7 @@ Veda Client is a lightweight, reactive web framework for building semantic web a
 Components are Web Components extended with reactivity and templating:
 
 ```javascript
-import Component, { html } from './src/components/Component.js';
-import { reactive } from './src/Reactive.js';
+import Component, { html, reactive } from './src/components/Component.js';
 
 class MyComponent extends Component(HTMLElement) {
   static tag = 'my-component';
@@ -139,8 +138,7 @@ node build.mjs
 ### Your First Component
 
 ```javascript
-import Component, { html } from './src/components/Component.js';
-import { reactive } from './src/Reactive.js';
+import Component, { html, reactive } from './src/components/Component.js';
 
 class HelloWorld extends Component(HTMLElement) {
   static tag = 'hello-world';
@@ -225,13 +223,15 @@ get filteredData() {
 }
 ```
 
-Use in templates:
+Use in templates with Loop:
 
 ```javascript
 render() {
   return html`
     <ul>
-      {this.filteredData.map(item => html`<li>${item.name}</li>`)}
+      <${Loop} items="{this.filteredData}" item-key="id">
+        <li>{this.model.name}</li>
+      </${Loop}>
     </ul>
   `;
 }
@@ -707,8 +707,7 @@ disconnectedCallback() {
 ### Counter
 
 ```javascript
-import Component, { html } from './src/components/Component.js';
-import { reactive } from './src/Reactive.js';
+import Component, { html, reactive } from './src/components/Component.js';
 
 class Counter extends Component(HTMLElement) {
   static tag = 'app-counter';
@@ -738,8 +737,7 @@ customElements.define(Counter.tag, Counter);
 ### Todo List
 
 ```javascript
-import Component, { html } from './src/components/Component.js';
-import { reactive } from './src/Reactive.js';
+import Component, { html, reactive } from './src/components/Component.js';
 import { Loop } from './src/components/LoopComponent.js';
 
 class TodoList extends Component(HTMLElement) {
@@ -755,17 +753,32 @@ class TodoList extends Component(HTMLElement) {
 
   handleAdd = () => {
     if (this.state.input.trim()) {
-      this.state.todos.push({
+      this.state.todos.push(reactive({
         id: Date.now(),
         text: this.state.input,
         done: false
-      });
+      }));
       this.state.input = '';
     }
   }
 
-  handleToggle = (todo) => {
-    todo.done = !todo.done;
+  handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      this.handleAdd();
+    }
+  }
+
+  handleInput = (e) => {
+    this.state.input = e.target.value;
+  }
+
+  handleToggle = (e, node) => {
+    // Access the todo item via the Loop's model context
+    // which is set on the parent element
+    const li = node.closest('li');
+    if (li && li.model) {
+      li.model.done = !li.model.done;
+    }
   }
 
   render() {
@@ -774,8 +787,8 @@ class TodoList extends Component(HTMLElement) {
         <input
           type="text"
           value="{this.state.input}"
-          oninput="{(e) => this.state.input = e.target.value}"
-          onkeypress="{(e) => e.key === 'Enter' && this.handleAdd()}" />
+          oninput="{handleInput}"
+          onkeypress="{handleKeyPress}" />
         <button onclick="{handleAdd}">Add</button>
 
         <ul>
@@ -784,7 +797,7 @@ class TodoList extends Component(HTMLElement) {
               <input
                 type="checkbox"
                 checked="{this.model.done}"
-                onchange="{() => this.handleToggle(this.model)}" />
+                onchange="{handleToggle}" />
               <span>{this.model.text}</span>
             </li>
           </${Loop}>
@@ -832,17 +845,21 @@ customElements.define(PersonCard.tag, PersonCard);
 ### Nested Lists with Filtering
 
 ```javascript
-import Component, { html } from './src/components/Component.js';
-import { reactive } from './src/Reactive.js';
+import Component, { html, reactive } from './src/components/Component.js';
 import { Loop } from './src/components/LoopComponent.js';
+import Model from './src/Model.js';
 
 class ProjectList extends Component(HTMLElement) {
   static tag = 'project-list';
 
   constructor() {
     super();
-    this.model = await Model.load('d:Organization1');
     this.state = reactive({ filter: 'high' });
+  }
+
+  async connectedCallback() {
+    this.model = await Model.load('d:Organization1');
+    await super.connectedCallback();
   }
 
   get projects() {
@@ -856,11 +873,15 @@ class ProjectList extends Component(HTMLElement) {
     );
   }
 
+  handleFilterChange = (e) => {
+    this.state.filter = e.target.value;
+  }
+
   render() {
     return html`
       <div>
         <select value="{this.state.filter}"
-                onchange="{(e) => this.state.filter = e.target.value}">
+                onchange="{handleFilterChange}">
           <option value="high">High</option>
           <option value="low">Low</option>
         </select>

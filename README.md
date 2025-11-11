@@ -15,8 +15,7 @@ A lightweight, reactive web framework for building semantic web applications.
 ## Quick Start
 
 ```javascript
-import Component, { html } from './src/components/Component.js';
-import { reactive } from './src/Reactive.js';
+import Component, { html, reactive } from './src/components/Component.js';
 
 class Counter extends Component(HTMLElement) {
   static tag = 'app-counter';
@@ -82,8 +81,7 @@ pnpm test
 ### Counter Example
 
 ```javascript
-import Component, { html } from './src/components/Component.js';
-import { reactive } from './src/Reactive.js';
+import Component, { html, reactive } from './src/components/Component.js';
 
 class Counter extends Component(HTMLElement) {
   constructor() {
@@ -109,8 +107,7 @@ class Counter extends Component(HTMLElement) {
 ### Todo List
 
 ```javascript
-import Component, { html } from './src/components/Component.js';
-import { reactive } from './src/Reactive.js';
+import Component, { html, reactive } from './src/components/Component.js';
 import { Loop } from './src/components/LoopComponent.js';
 
 class TodoList extends Component(HTMLElement) {
@@ -137,7 +134,7 @@ class TodoList extends Component(HTMLElement) {
     return html`
       <div>
         <input value="{this.state.input}"
-               oninput="{(e) => this.state.input = e.target.value}" />
+               oninput="{this.handleInput}" />
         <button onclick="{handleAdd}">Add</button>
 
         <ul>
@@ -147,6 +144,10 @@ class TodoList extends Component(HTMLElement) {
         </ul>
       </div>
     `;
+  }
+
+  handleInput = (e) => {
+    this.state.input = e.target.value;
   }
 }
 ```
