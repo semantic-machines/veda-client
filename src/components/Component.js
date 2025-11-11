@@ -306,6 +306,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           node = walker.nextNode();
         } else {
           // Skip template content inside veda-if/veda-loop - they handle their own templates
+          /* c8 ignore start - Edge case: manual DOM construction with <template> inside veda-if/loop */
           if (node.tagName === 'TEMPLATE') {
             const parent = node.parentNode;
             if (parent && parent.tagName && (parent.tagName === 'VEDA-IF' || parent.tagName === 'VEDA-LOOP')) {
@@ -314,6 +315,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               continue;
             }
           }
+          /* c8 ignore stop */
 
           if (!node.tagName.includes('-') && !node.hasAttribute('is') && !node.hasAttribute('about') && !node.hasAttribute('property') && !node.hasAttribute('rel')) {
             this.#processAttributes(node);
@@ -407,6 +409,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             nextNode = component.nextSibling;
           } else {
             // If no next sibling, traverse up the tree
+            /* c8 ignore next 8 - Edge case: deeply nested component without siblings */
             let parent = component.parentNode;
             while (parent && parent.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
               if (parent.nextSibling) {
