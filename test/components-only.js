@@ -15,6 +15,7 @@ import IfComponentTest from './IfComponent.test.js';
 import LoopComponentTest from './LoopComponent.test.js';
 import PropertyComponentTest from './PropertyComponent.test.js';
 import RelationComponentTest from './RelationComponent.test.js';
+import ValueComponentTest from './ValueComponent.test.js';
 import ExpressionParserTest from './ExpressionParser.test.js';
 
 const test = baretest('Component Tests');
@@ -26,6 +27,7 @@ const test = baretest('Component Tests');
   LoopComponentTest({ test, assert });
   PropertyComponentTest({ test, assert });
   RelationComponentTest({ test, assert });
+  ValueComponentTest({ test, assert });
   ExpressionParserTest({ test, assert });
 
   assert(await test.run());
