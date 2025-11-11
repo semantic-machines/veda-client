@@ -13,6 +13,7 @@ import assert from 'assert';
 import ComponentTest from './Component.test.js';
 import IfComponentTest from './IfComponent.test.js';
 import LoopComponentTest from './LoopComponent.test.js';
+import PropertyComponentTest from './PropertyComponent.test.js';
 import ExpressionParserTest from './ExpressionParser.test.js';
 
 const test = baretest('Component Tests');
@@ -22,6 +23,7 @@ const test = baretest('Component Tests');
   ComponentTest({ test, assert });
   IfComponentTest({ test, assert });
   LoopComponentTest({ test, assert });
+  PropertyComponentTest({ test, assert });
   ExpressionParserTest({ test, assert });
 
   assert(await test.run());
