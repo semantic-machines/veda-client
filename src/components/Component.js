@@ -532,11 +532,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               node.addEventListener(eventName, (e) => {
                 result.value.call(result.context, e, node);
               });
-            } else if (typeof result === 'function') {
-              // Expression resolved to simple function
-              node.addEventListener(eventName, (e) => {
-                result.call(this, e, node);
-              });
             } else if (/^\w+$/.test(expr)) {
               // Simple method name - search up component tree lazily on event
               node.addEventListener(eventName, (e) => {

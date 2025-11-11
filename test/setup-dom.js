@@ -1,91 +1,87 @@
 /**
- * LinkedOM setup for testing Web Components in Node.js
+ * JSDOM setup for testing Web Components in Node.js
  * This file sets up a global DOM environment for all tests
  *
- * LinkedOM is faster and lighter than JSDOM
+ * JSDOM provides a complete DOM implementation for comprehensive testing
  */
 
-import { parseHTML } from 'linkedom';
+import { JSDOM } from 'jsdom';
 
-// Create DOM from LinkedOM
-const {
-  window,
-  document,
-  customElements,
-  HTMLElement,
-  DocumentFragment,
-  Node,
-  Element,
-  Text,
-  Comment
-} = parseHTML('<!DOCTYPE html><html><body></body></html>');
+// Create a JSDOM instance with full DOM support
+const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', {
+  url: 'http://localhost/',
+  referrer: 'http://localhost/',
+  contentType: 'text/html',
+  includeNodeLocations: false,
+  storageQuota: 10000000,
+  pretendToBeVisual: true,
+  resources: 'usable',
+  runScripts: 'dangerously'
+});
+
+const { window } = dom;
+const { document } = window;
 
 // Set global variables
 global.window = window;
 global.document = document;
-global.HTMLElement = HTMLElement;
-global.customElements = customElements;
-global.DocumentFragment = DocumentFragment;
-global.Node = Node;
-global.Element = Element;
-global.Text = Text;
-global.Comment = Comment;
+global.HTMLElement = window.HTMLElement;
+global.customElements = window.customElements;
+global.DocumentFragment = window.DocumentFragment;
+global.Node = window.Node;
+global.Element = window.Element;
+global.Text = window.Text;
+global.Comment = window.Comment;
+global.NodeFilter = window.NodeFilter;
 
-// Don't override Event/CustomEvent - let Node.js handle them for WebSocket compatibility
+// Events
+global.Event = window.Event;
+global.CustomEvent = window.CustomEvent;
+global.MouseEvent = window.MouseEvent;
+global.KeyboardEvent = window.KeyboardEvent;
+global.FocusEvent = window.FocusEvent;
+global.InputEvent = window.InputEvent;
 
-// Add PopStateEvent for Router
-if (!global.PopStateEvent) {
-  global.PopStateEvent = class PopStateEvent extends Event {
-    constructor(type, eventInitDict = {}) {
-      super(type, eventInitDict);
-      this.state = eventInitDict.state || null;
-    }
-  };
-}
-
-// Add location and history mocks for Router tests
-if (!global.window.location) {
-  global.window.location = {
-    href: 'http://localhost/',
-    origin: 'http://localhost',
-    protocol: 'http:',
-    host: 'localhost',
-    hostname: 'localhost',
-    port: '',
-    hash: '',
-    pathname: '/',
-    search: ''
-  };
-  global.location = global.window.location;
-}
-
-if (!global.window.history) {
-  global.window.history = {
-    pushState: () => {},
-    replaceState: () => {},
-    back: () => {},
-    forward: () => {},
-    go: () => {}
-  };
-  global.history = global.window.history;
-}
-
-// Additional globals that might be needed
+// Other important globals
+// Note: navigator, location, history are read-only in jsdom, use window.* directly
 if (!global.navigator) {
-  global.navigator = {
-    userAgent: 'Node.js'
-  };
+  Object.defineProperty(global, 'navigator', {
+    value: window.navigator,
+    writable: false,
+    configurable: true
+  });
+}
+if (!global.location) {
+  Object.defineProperty(global, 'location', {
+    value: window.location,
+    writable: false,
+    configurable: true
+  });
+}
+if (!global.history) {
+  Object.defineProperty(global, 'history', {
+    value: window.history,
+    writable: false,
+    configurable: true
+  });
 }
 
-// requestAnimationFrame mock
-global.requestAnimationFrame = (callback) => {
-  return setTimeout(callback, 0);
+global.requestAnimationFrame = window.requestAnimationFrame;
+global.cancelAnimationFrame = window.cancelAnimationFrame;
+global.MutationObserver = window.MutationObserver;
+global.ResizeObserver = window.ResizeObserver || class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
 };
 
-global.cancelAnimationFrame = (id) => {
-  clearTimeout(id);
+// Add PopStateEvent for Router (should already be in jsdom, but just in case)
+global.PopStateEvent = window.PopStateEvent || class PopStateEvent extends Event {
+  constructor(type, eventInitDict = {}) {
+    super(type, eventInitDict);
+    this.state = eventInitDict.state || null;
+  }
 };
 
 // Export for potential direct usage
-export { window, document, customElements };
-
+export { window, document };

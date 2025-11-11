@@ -8,6 +8,7 @@
   "type": "module",
   "scripts": {
     "test": "tsc --noEmit && time -p node --expose-gc test",
+    "test:components": "tsc --noEmit && time -p c8 node --expose-gc test/components-only.js",
     "debug": "node --inspect-brk test",
     "c8": "tsc --noEmit && time -p c8 node --expose-gc test",
     "build": "node build.mjs",
@@ -33,6 +34,7 @@
     "eslint": "^9.37.0",
     "eslint-plugin-sonarjs": "3.0.5",
     "globals": "^15.15.0",
+    "jsdom": "^27.1.0",
     "linkedom": "^0.18.12",
     "typescript": "^5.9.3"
   },
