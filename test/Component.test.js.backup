@@ -7,19 +7,26 @@ export default ({ test, assert }) => {
 
   // ==================== HELPER FUNCTIONS ====================
 
-  test('html() tagged template - escaping and safe values', () => {
-    // Combines: escapes values, preserves safe markup, handles arrays
-    const xss = '<script>alert("xss")</script>';
-    const result1 = html`<div>${xss}</div>`;
-    assert(result1.includes('&lt;script&gt;') && !result1.includes('<script>'), 'Should escape HTML');
+  test('html() - tagged template function escapes values', () => {
+    const name = '<script>alert("xss")</script>';
+    const result = html`<div>${name}</div>`;
 
+    assert(result.includes('&lt;script&gt;'), 'Should escape HTML');
+    assert(!result.includes('<script>'), 'Should not include raw script tag');
+  });
+
+  test('html() - preserves already marked safe values', () => {
     const inner = html`<span>Safe</span>`;
     const outer = html`<div>${inner}</div>`;
-    assert(outer.includes('<span>Safe</span>'), 'Should preserve safe markup');
 
+    assert(outer.includes('<span>Safe</span>'), 'Should preserve safe markup');
+  });
+
+  test('html() - handles arrays', () => {
     const items = ['<b>one</b>', '<b>two</b>'];
-    const result2 = html`<div>${items}</div>`;
-    assert(result2.includes('&lt;b&gt;'), 'Should escape array items');
+    const result = html`<div>${items}</div>`;
+
+    assert(result.includes('&lt;b&gt;'), 'Should escape array items');
   });
 
   test('raw() - does not escape values', () => {
@@ -29,19 +36,27 @@ export default ({ test, assert }) => {
     assert(result.includes('<span>Raw HTML</span>'), 'Should preserve raw markup');
   });
 
-  test('safe() - escapes, removes expressions, handles arrays', () => {
-    // Escapes dangerous characters
+  test('safe() - escapes dangerous characters', () => {
     const dangerous = '<script>alert("xss")</script>';
-    assert(safe(dangerous) === '&lt;script&gt;alert(&quot;xss&quot;)&lt;&#x2F;script&gt;', 'Should escape all dangerous chars');
+    const result = safe(dangerous);
 
-    // Removes reactive expressions
+    assert(result === '&lt;script&gt;alert(&quot;xss&quot;)&lt;&#x2F;script&gt;', 'Should escape all dangerous chars');
+  });
+
+  test('safe() - removes reactive expressions', () => {
     const text = 'Hello {this.name} world';
-    assert(safe(text) === 'Hello  world', 'Should remove {expressions}');
+    const result = safe(text);
 
-    // Handles arrays recursively
+    assert(result === 'Hello  world', 'Should remove {expressions}');
+  });
+
+  test('safe() - handles arrays recursively', () => {
     const arr = ['<div>', '<span>'];
     const result = safe(arr);
-    assert(Array.isArray(result) && result[0] === '&lt;div&gt;' && result[1] === '&lt;span&gt;', 'Should handle arrays recursively');
+
+    assert(Array.isArray(result), 'Should return array');
+    assert(result[0] === '&lt;div&gt;', 'Should escape first item');
+    assert(result[1] === '&lt;span&gt;', 'Should escape second item');
   });
 
   // ==================== COMPONENT LIFECYCLE ====================
@@ -1787,6 +1802,34 @@ export default ({ test, assert }) => {
     }
 
     container.remove();
+  });
+
+  test('Component - safe() function strips expressions', () => {
+    const result = safe('<div>Hello {this.name}</div>');
+    // safe() does HTML escaping AND strips expressions
+    assert(result === '&lt;div&gt;Hello &lt;&#x2F;div&gt;', 'Should escape HTML and strip expressions');
+
+    const result2 = safe(['class1 {dynamic}', 'class2']);
+    assert(Array.isArray(result2), 'Should return array for array input');
+    assert(result2[0] === 'class1 ', 'Should strip expressions from array items');
+    assert(result2[1] === 'class2', 'Should keep non-expression items');
+  });
+
+  test('Component - raw() tagged template', () => {
+    const name = 'World';
+    const result = raw`Hello ${name}!`;
+
+    // raw() returns marker + string
+    assert(typeof result === 'string', 'Should return string');
+    assert(result.includes('Hello World!'), 'Should include interpolated value');
+  });
+
+  test('Component - raw() with array values', () => {
+    const classes = ['class1', 'class2'];
+    const result = raw`<div class="${classes}"></div>`;
+
+    assert(typeof result === 'string', 'Should return string');
+    assert(result.includes('class1 class2'), 'Should join array with spaces');
   });
 
   test('Component - expression evaluation error handling', async () => {
