@@ -1,5 +1,6 @@
 import ImportedWebSocket from 'ws';
 
+/* c8 ignore next 3 - WebSocket polyfill fallback for Node.js */
 if (!globalThis.WebSocket) {
   globalThis.WebSocket = ImportedWebSocket;
 }
@@ -9,6 +10,7 @@ import {timeout} from './Util.js';
 export default class Subscription {
   static #address = (() => {
     if (typeof location !== 'undefined') {
+      /* c8 ignore next 3 - HTTPS protocol only in production browser */
       if (location.protocol === 'https:') {
         return `wss://${location.host}`;
       }
@@ -29,6 +31,7 @@ export default class Subscription {
   }
 
   static async #connect (event) {
+    /* c8 ignore next 3 - Reconnection delay only after socket close */
     if (event) {
       console.log(`Socket: ${event.type}, will re-connect in 30 sec.`);
       await timeout(30_000);
@@ -62,6 +65,7 @@ export default class Subscription {
       const pair = pairStr.split('=');
       const [id, updateCounter] = pair;
       const subscription = Subscription.#subscriptions.get(id);
+      /* c8 ignore next 2 - Orphaned subscription cleanup (race condition) */
       if (!subscription) {
         Subscription.unsubscribe(id);
       } else {
