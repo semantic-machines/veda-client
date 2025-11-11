@@ -1914,26 +1914,26 @@ export default ({ test, assert }) => {
     container.remove();
   });
 
-  test('Component - reactive class attribute', async () => {
-    class ReactiveClassComponent extends Component(HTMLElement) {
-      static tag = 'test-reactive-class';
+  test('Component - reactive attributes (class, title, data-*)', async () => {
+    class ReactiveAttributesComponent extends Component(HTMLElement) {
+      static tag = 'test-reactive-attrs-combined';
 
       constructor() {
         super();
-        this.state = this.reactive({ className: 'initial' });
+        this.state = this.reactive({ className: 'initial', tooltip: 'Initial', value: '123' });
       }
 
       render() {
-        return html`<div class="base {this.state.className}">Content</div>`;
+        return html`<div class="base {this.state.className}" title="{this.state.tooltip}" data-value="{this.state.value}">Content</div>`;
       }
     }
 
-    customElements.define('test-reactive-class', ReactiveClassComponent);
+    customElements.define('test-reactive-attrs-combined', ReactiveAttributesComponent);
 
     const container = document.createElement('div');
     document.body.appendChild(container);
 
-    const component = document.createElement('test-reactive-class');
+    const component = document.createElement('test-reactive-attrs-combined');
     container.appendChild(component);
 
     await component.rendered;
@@ -1942,83 +1942,17 @@ export default ({ test, assert }) => {
     const div = component.querySelector('div');
     assert(div !== null, 'Div should exist');
     assert(div.className === 'base initial', 'Should have initial classes');
-
-    component.state.className = 'active';
-    await flushEffects();
-
-    assert(div.className === 'base active', 'Should have updated classes');
-
-    container.remove();
-  });
-
-  test('Component - reactive title attribute', async () => {
-    class ReactiveTitleComponent extends Component(HTMLElement) {
-      static tag = 'test-reactive-title';
-
-      constructor() {
-        super();
-        this.state = this.reactive({ tooltip: 'Initial' });
-      }
-
-      render() {
-        return html`<div title="{this.state.tooltip}">Hover me</div>`;
-      }
-    }
-
-    customElements.define('test-reactive-title', ReactiveTitleComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-reactive-title');
-    container.appendChild(component);
-
-    await component.rendered;
-    await flushEffects();
-
-    const div = component.querySelector('div');
-    assert(div !== null, 'Div should exist');
     assert(div.getAttribute('title') === 'Initial', 'Should have initial title');
-
-    component.state.tooltip = 'Updated';
-    await flushEffects();
-
-    assert(div.getAttribute('title') === 'Updated', 'Should have updated title');
-
-    container.remove();
-  });
-
-  test('Component - reactive data attribute', async () => {
-    class ReactiveDataComponent extends Component(HTMLElement) {
-      static tag = 'test-reactive-data';
-
-      constructor() {
-        super();
-        this.state = this.reactive({ value: '123' });
-      }
-
-      render() {
-        return html`<div data-value="{this.state.value}">Content</div>`;
-      }
-    }
-
-    customElements.define('test-reactive-data', ReactiveDataComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-reactive-data');
-    container.appendChild(component);
-
-    await component.rendered;
-    await flushEffects();
-
-    const div = component.querySelector('div');
     assert(div.getAttribute('data-value') === '123', 'Should have initial data-value');
 
+    // Update all attributes
+    component.state.className = 'active';
+    component.state.tooltip = 'Updated';
     component.state.value = '456';
     await flushEffects();
 
+    assert(div.className === 'base active', 'Should have updated classes');
+    assert(div.getAttribute('title') === 'Updated', 'Should have updated title');
     assert(div.getAttribute('data-value') === '456', 'Should have updated data-value');
 
     container.remove();
