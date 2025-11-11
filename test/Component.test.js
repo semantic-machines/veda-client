@@ -990,8 +990,9 @@ export default ({ test, assert }) => {
 
     await component.rendered;
 
-    // Should not crash the test, error is caught and logged
-    assert(true, 'Error should be caught');
+    // Component should be rendered even if render() throws
+    assert(component.isConnected, 'Component should remain connected despite render error');
+    assert(component.innerHTML === '', 'Component should have empty content after render error');
 
     container.remove();
   });
@@ -1719,8 +1720,9 @@ export default ({ test, assert }) => {
 
     await component.rendered;
 
-    // Should not crash, error is caught
-    assert(true, 'Error in added() should be caught');
+    // Component should remain connected despite error in added()
+    // but might not render if error occurs before update()
+    assert(component.isConnected, 'Component should remain connected despite added() error');
 
     container.remove();
   });
@@ -1750,8 +1752,8 @@ export default ({ test, assert }) => {
 
     container.removeChild(component);
 
-    // Should not crash, error is caught
-    assert(true, 'Error in removed() should be caught');
+    // Component should be removed cleanly despite error in removed()
+    assert(!component.isConnected, 'Component should be disconnected despite removed() error');
 
     container.remove();
   });
@@ -1883,9 +1885,9 @@ export default ({ test, assert }) => {
     const button = component.querySelector('button');
     assert(button !== null, 'Button should exist');
 
-    // In real browser, error would be caught by browser
-    // In test environment, we just verify handler is attached
-    assert(true, 'Handler attached successfully');
+    // Handler is registered, component renders successfully
+    // Error in handler would only be caught during click in browser
+    assert(component.isConnected, 'Component should be rendered with error-throwing handler');
 
     container.remove();
   });
@@ -1950,7 +1952,7 @@ export default ({ test, assert }) => {
     console.warn = originalWarn;
 
     // Missing brace won't match regex, so no error - just verify component renders
-    assert(true, 'Component should render even with malformed expression');
+    assert(component.querySelector('button') !== null, 'Component should render button even with malformed expression');
 
     container.remove();
   });
@@ -3119,9 +3121,8 @@ export default ({ test, assert }) => {
     assert(vedaIf !== null, 'Should have veda-if component');
 
     // Note: Lines 310-316 are covered when the walker encounters a template inside veda-if/veda-loop
-    // The actual rendering result depends on IfComponent's internal implementation
-    // We just verify the framework component is present
-    assert(true, 'Template skip logic executed');
+    // The template skip logic is tested - we verify the component renders without errors
+    assert(component.isConnected, 'Template skip logic should work without errors');
 
     container.remove();
   });
@@ -3179,6 +3180,123 @@ export default ({ test, assert }) => {
     const sibling = component.querySelector('.sibling');
     assert(sibling !== null, 'Should process sibling after nested component');
     assert(sibling.textContent === 'After', 'Should have correct sibling content');
+
+    container.remove();
+  });
+
+  test('Component - auto-detect reactive state (lines 291-292)', async () => {
+    // Test auto-detection of reactive state when state is assigned directly
+    const {reactive: makeReactive} = await import('../src/Reactive.js');
+
+    class DirectReactiveComponent extends Component(HTMLElement) {
+      static tag = 'test-direct-reactive';
+
+      constructor() {
+        super();
+        // Directly assign reactive object WITHOUT using this.reactive()
+        this.state = makeReactive({ value: 'test' });
+      }
+
+      render() {
+        // This triggers _process which should auto-detect reactive state (lines 291-292)
+        return html`<div>{this.state.value}</div>`;
+      }
+    }
+
+    customElements.define('test-direct-reactive', DirectReactiveComponent);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-direct-reactive');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    assert(component.querySelector('div').textContent === 'test', 'Should detect and render direct reactive state');
+
+    container.remove();
+  });
+
+  test('Component - skip template inside veda-if (lines 310-316)', async () => {
+    // Test that <template> inside veda-if is not processed by parent component
+    class IfTemplateComponent extends Component(HTMLElement) {
+      static tag = 'test-if-template-skip';
+
+      constructor() {
+        super();
+        this.state = this.reactive({ show: true });
+      }
+
+      render() {
+        return html`
+          <div>
+            <veda-if condition="{this.state.show}">
+              <template>
+                <span class="conditional">Content</span>
+              </template>
+            </veda-if>
+          </div>
+        `;
+      }
+    }
+
+    customElements.define('test-if-template-skip', IfTemplateComponent);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-if-template-skip');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    // veda-if should handle its own template
+    const span = component.querySelector('.conditional');
+    assert(span !== null, 'veda-if should process its own template');
+
+    container.remove();
+  });
+
+  test('Component - skip template inside veda-loop (lines 310-316)', async () => {
+    // Test that <template> inside veda-loop is not processed by parent component
+    class LoopTemplateComponent extends Component(HTMLElement) {
+      static tag = 'test-loop-template-skip';
+
+      constructor() {
+        super();
+        this.state = this.reactive({ items: [{ id: 1, name: 'Item' }] });
+      }
+
+      render() {
+        return html`
+          <div>
+            <veda-loop items="{this.state.items}" item-key="id">
+              <template>
+                <span class="loop-item">{this.model.name}</span>
+              </template>
+            </veda-loop>
+          </div>
+        `;
+      }
+    }
+
+    customElements.define('test-loop-template-skip', LoopTemplateComponent);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-loop-template-skip');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    // veda-loop should handle its own template
+    const span = component.querySelector('.loop-item');
+    assert(span !== null, 'veda-loop should process its own template');
 
     container.remove();
   });

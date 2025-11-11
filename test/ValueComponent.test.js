@@ -71,5 +71,90 @@ export default function ({ test, assert }) {
     assert(typeof ValueClass.prototype.render === 'function', 'Should have render method');
     assert(typeof ValueClass.prototype.renderValue === 'function', 'Should have renderValue method');
   });
+
+  test('ValueComponent - renders with shadow DOM (line 29)', async () => {
+    // Test line 29: shadow attribute
+    const ValueClass = ValueComponent(HTMLElement);
+    if (!customElements.get('test-value-shadow')) {
+      customElements.define('test-value-shadow', ValueClass);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const element = document.createElement('test-value-shadow');
+    element.setAttribute('property', 'rdfs:label');
+    element.setAttribute('shadow', ''); // Enable shadow DOM
+
+    const model = new Model();
+    model['rdfs:label'] = ['Shadow Content'];
+    element.model = model;
+
+    container.appendChild(element);
+
+    await element.rendered;
+    await flushEffects();
+
+    // Check that shadowRoot was created
+    assert(element.shadowRoot !== null, 'Should create shadow DOM');
+    assert(element.shadowRoot.textContent === 'Shadow Content', 'Should render content in shadow DOM');
+
+    container.remove();
+  });
+
+  test('ValueComponent - handles model without value (lines 32-34)', async () => {
+    // Test lines 32-34: model.hasValue() check
+    const ValueClass = ValueComponent(HTMLElement);
+    if (!customElements.get('test-value-no-value')) {
+      customElements.define('test-value-no-value', ValueClass);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const element = document.createElement('test-value-no-value');
+    element.setAttribute('property', 'rdfs:label');
+
+    const model = new Model();
+    // Don't set 'rdfs:label' - model.hasValue() will return false
+    element.model = model;
+
+    container.appendChild(element);
+
+    await element.rendered;
+    await flushEffects();
+
+    // Should render empty content
+    assert(element.textContent === '', 'Should render empty when model has no value');
+
+    container.remove();
+  });
+
+  test('ValueComponent - handles single non-array value (line 33)', async () => {
+    // Test line 33: handle non-array value
+    const ValueClass = ValueComponent(HTMLElement);
+    if (!customElements.get('test-value-single')) {
+      customElements.define('test-value-single', ValueClass);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const element = document.createElement('test-value-single');
+    element.setAttribute('property', 'rdfs:label');
+
+    const model = new Model();
+    model['rdfs:label'] = 'Single Value'; // Not an array
+    element.model = model;
+
+    container.appendChild(element);
+
+    await element.rendered;
+    await flushEffects();
+
+    assert(element.textContent === 'Single Value', 'Should handle single non-array value');
+
+    container.remove();
+  });
 };
 

@@ -279,20 +279,28 @@ export default ({test, assert}) => {
     const EmitterClass = Emitter();
     const emitter = new EmitterClass();
 
-    // Should not throw
-    emitter.emit('nonExistent');
+    let errorThrown = false;
+    try {
+      emitter.emit('nonExistent');
+    } catch (e) {
+      errorThrown = true;
+    }
 
-    assert.ok(true, 'Emitting non-existent event should not throw');
+    assert.ok(!errorThrown, 'Emitting non-existent event should not throw');
   });
 
   test('Emitter - off on non-existent event does not throw', () => {
     const EmitterClass = Emitter();
     const emitter = new EmitterClass();
 
-    // Should not throw
-    emitter.off('nonExistent');
+    let errorThrown = false;
+    try {
+      emitter.off('nonExistent');
+    } catch (e) {
+      errorThrown = true;
+    }
 
-    assert.ok(true, 'Removing handlers for non-existent event should not throw');
+    assert.ok(!errorThrown, 'Removing handlers for non-existent event should not throw');
   });
 
   test('Emitter - one() with multiple events', () => {

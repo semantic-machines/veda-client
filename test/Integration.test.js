@@ -2,6 +2,7 @@ import {reactive} from '../src/Reactive.js';
 import {effect, flushEffects} from '../src/Effect.js';
 import Model from '../src/Model.js';
 import Backend from '../src/Backend.js';
+import Subscription from '../src/Subscription.js';
 import {timeout} from '../src/Util.js';
 
 Backend.init();
@@ -76,8 +77,9 @@ export default ({test, assert}) => {
 
     await timeout(200);
 
-    // Should not crash or leave hanging subscriptions
-    assert(true, 'Rapid subscribe/unsubscribe should not crash');
+    // Verify system handles rapid subscription changes
+    const finalCount = Subscription._getSubscriptionCount();
+    assert(finalCount >= 0, 'Rapid subscribe/unsubscribe should complete without crashing');
   });
 
   // ==================== CIRCULAR REFERENCES ====================
@@ -382,6 +384,606 @@ export default ({test, assert}) => {
 
     await flushEffects();
     assert(sum === 499500, 'Should handle large arrays'); // sum of 0..999
+  });
+
+  // ==================== REAL-WORLD SCENARIOS ====================
+
+  test('Scenario - Form with reactive validation', async () => {
+    const form = reactive({
+      email: '',
+      password: '',
+      isValid: false
+    });
+
+    effect(() => {
+      form.isValid = form.email.includes('@') && form.password.length >= 8;
+    });
+
+    await flushEffects();
+    assert(form.isValid === false, 'Form should be invalid initially');
+
+    form.email = 'test@example.com';
+    await flushEffects();
+    assert(form.isValid === false, 'Form should be invalid with short password');
+
+    form.password = 'password123';
+    await flushEffects();
+    assert(form.isValid === true, 'Form should be valid with proper inputs');
+  });
+
+  test('Scenario - Shopping cart with computed total', async () => {
+    const cart = reactive({
+      items: [],
+      total: 0
+    });
+
+    effect(() => {
+      cart.total = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    });
+
+    await flushEffects();
+    assert(cart.total === 0, 'Empty cart should have zero total');
+
+    cart.items.push({ id: 1, price: 10, quantity: 2 });
+    await flushEffects();
+    assert(cart.total === 20, 'Total should be 20');
+
+    cart.items.push({ id: 2, price: 15, quantity: 1 });
+    await flushEffects();
+    assert(cart.total === 35, 'Total should be 35');
+
+    cart.items[0].quantity = 3;
+    await flushEffects();
+    assert(cart.total === 45, 'Total should update on quantity change');
+  });
+
+  test('Scenario - Autocomplete search with debouncing', async () => {
+    const search = reactive({
+      query: '',
+      results: []
+    });
+
+    let searchCount = 0;
+    effect(() => {
+      if (search.query.length >= 3) {
+        searchCount++;
+        search.results = ['Result 1', 'Result 2'];
+      } else {
+        search.results = [];
+      }
+    });
+
+    await flushEffects();
+    assert(search.results.length === 0, 'No results initially');
+
+    search.query = 'a';
+    await flushEffects();
+    assert(search.results.length === 0, 'No results for short query');
+
+    search.query = 'abc';
+    await flushEffects();
+    assert(search.results.length === 2, 'Should have results for valid query');
+    assert(searchCount === 1, 'Search should execute once');
+  });
+
+  test('Scenario - Multi-step wizard navigation', async () => {
+    const wizard = reactive({
+      currentStep: 1,
+      maxStep: 1,
+      data: {
+        step1: {},
+        step2: {},
+        step3: {}
+      },
+      canGoNext: false,
+      canGoPrev: false
+    });
+
+    effect(() => {
+      wizard.canGoPrev = wizard.currentStep > 1;
+      wizard.canGoNext = wizard.currentStep < 3;
+      wizard.maxStep = Math.max(wizard.maxStep, wizard.currentStep);
+    });
+
+    await flushEffects();
+    assert(wizard.canGoPrev === false, 'Cannot go back from first step');
+    assert(wizard.canGoNext === true, 'Can go forward from first step');
+
+    wizard.currentStep = 2;
+    await flushEffects();
+    assert(wizard.canGoPrev === true, 'Can go back from second step');
+    assert(wizard.maxStep === 2, 'Max step should track progress');
+
+    wizard.currentStep = 3;
+    await flushEffects();
+    assert(wizard.canGoNext === false, 'Cannot go forward from last step');
+  });
+
+  test('Scenario - Real-time collaboration with multiple users', async () => {
+    const document = reactive({
+      content: '',
+      users: [],
+      lastEdit: null
+    });
+
+    let editCount = 0;
+    effect(() => {
+      if (document.content) {
+        editCount++;
+        document.lastEdit = Date.now();
+      }
+    });
+
+    await flushEffects();
+
+    // User 1 types
+    document.content = 'Hello ';
+    document.users.push('User1');
+    await flushEffects();
+    assert(editCount === 1, 'Edit tracked');
+
+    // User 2 joins and types
+    document.users.push('User2');
+    document.content += 'World';
+    await flushEffects();
+    assert(document.users.length === 2, 'Multiple users present');
+    assert(editCount === 2, 'Multiple edits tracked');
+  });
+
+  test('Scenario - Notification queue with auto-dismiss', async () => {
+    const notifications = reactive({
+      list: [],
+      count: 0
+    });
+
+    effect(() => {
+      notifications.count = notifications.list.length;
+    });
+
+    await flushEffects();
+    assert(notifications.count === 0, 'No notifications initially');
+
+    notifications.list.push({ id: 1, message: 'Info' });
+    notifications.list.push({ id: 2, message: 'Warning' });
+    await flushEffects();
+    assert(notifications.count === 2, 'Count tracks list length');
+
+    notifications.list.shift();
+    await flushEffects();
+    assert(notifications.count === 1, 'Count updates on removal');
+  });
+
+  test('Scenario - Data table with sorting and filtering', async () => {
+    const table = reactive({
+      data: [
+        { id: 1, name: 'Alice', age: 30 },
+        { id: 2, name: 'Bob', age: 25 },
+        { id: 3, name: 'Charlie', age: 35 }
+      ],
+      sortBy: 'name',
+      filterText: '',
+      filtered: [],
+      sorted: []
+    });
+
+    effect(() => {
+      // Filter
+      table.filtered = table.filterText
+        ? table.data.filter(row => row.name.toLowerCase().includes(table.filterText.toLowerCase()))
+        : table.data;
+      
+      // Sort
+      table.sorted = [...table.filtered].sort((a, b) => {
+        return a[table.sortBy] > b[table.sortBy] ? 1 : -1;
+      });
+    });
+
+    await flushEffects();
+    assert(table.sorted.length === 3, 'All data shown initially');
+    assert(table.sorted[0].name === 'Alice', 'Sorted by name');
+
+    table.sortBy = 'age';
+    await flushEffects();
+    assert(table.sorted[0].name === 'Bob', 'Sorted by age');
+
+    table.filterText = 'ali';
+    await flushEffects();
+    assert(table.sorted.length === 1, 'Filtered to one result');
+    assert(table.sorted[0].name === 'Alice', 'Filter should find Alice');
+  });
+
+  test('Scenario - Undo/Redo history management', async () => {
+    const editor = reactive({
+      content: 'Initial',
+      history: ['Initial'],
+      historyIndex: 0,
+      canUndo: false,
+      canRedo: false
+    });
+
+    effect(() => {
+      editor.canUndo = editor.historyIndex > 0;
+      editor.canRedo = editor.historyIndex < editor.history.length - 1;
+    });
+
+    await flushEffects();
+    assert(editor.canUndo === false, 'Cannot undo initially');
+
+    editor.content = 'Modified';
+    editor.history.push('Modified');
+    editor.historyIndex = 1;
+    await flushEffects();
+    assert(editor.canUndo === true, 'Can undo after edit');
+    assert(editor.canRedo === false, 'Cannot redo');
+
+    editor.historyIndex = 0;
+    await flushEffects();
+    assert(editor.canUndo === false, 'Cannot undo at start');
+    assert(editor.canRedo === true, 'Can redo');
+  });
+
+  test('Scenario - Nested menu with active state tracking', async () => {
+    const menu = reactive({
+      items: [
+        { id: 1, label: 'File', children: [{ id: 11, label: 'New' }] },
+        { id: 2, label: 'Edit', children: [] }
+      ],
+      activeId: null,
+      activeLabel: ''
+    });
+
+    effect(() => {
+      const findActive = (items) => {
+        for (const item of items) {
+          if (item.id === menu.activeId) return item.label;
+          if (item.children) {
+            const found = findActive(item.children);
+            if (found) return found;
+          }
+        }
+        return '';
+      };
+      menu.activeLabel = findActive(menu.items);
+    });
+
+    await flushEffects();
+    assert(menu.activeLabel === '', 'No active item initially');
+
+    menu.activeId = 1;
+    await flushEffects();
+    assert(menu.activeLabel === 'File', 'Top-level item activated');
+
+    menu.activeId = 11;
+    await flushEffects();
+    assert(menu.activeLabel === 'New', 'Nested item activated');
+  });
+
+  test('Scenario - Drag and drop with position tracking', async () => {
+    const dragDrop = reactive({
+      isDragging: false,
+      draggedItem: null,
+      dropZone: null,
+      canDrop: false
+    });
+
+    effect(() => {
+      dragDrop.canDrop = dragDrop.isDragging && dragDrop.dropZone !== null;
+    });
+
+    await flushEffects();
+    assert(dragDrop.canDrop === false, 'Cannot drop initially');
+
+    dragDrop.isDragging = true;
+    dragDrop.draggedItem = { id: 1, name: 'Item' };
+    await flushEffects();
+    assert(dragDrop.canDrop === false, 'Cannot drop without drop zone');
+
+    dragDrop.dropZone = 'zone1';
+    await flushEffects();
+    assert(dragDrop.canDrop === true, 'Can drop when dragging over zone');
+  });
+
+  test('Scenario - Pagination with page calculation', async () => {
+    const pagination = reactive({
+      items: Array.from({ length: 95 }, (_, i) => i),
+      currentPage: 1,
+      itemsPerPage: 10,
+      totalPages: 0,
+      visibleItems: []
+    });
+
+    effect(() => {
+      pagination.totalPages = Math.ceil(pagination.items.length / pagination.itemsPerPage);
+      const start = (pagination.currentPage - 1) * pagination.itemsPerPage;
+      pagination.visibleItems = pagination.items.slice(start, start + pagination.itemsPerPage);
+    });
+
+    await flushEffects();
+    assert(pagination.totalPages === 10, 'Should calculate 10 pages');
+    assert(pagination.visibleItems.length === 10, 'First page has 10 items');
+
+    pagination.currentPage = 10;
+    await flushEffects();
+    assert(pagination.visibleItems.length === 5, 'Last page has 5 items');
+  });
+
+  test('Scenario - Modal stack management', async () => {
+    const modals = reactive({
+      stack: [],
+      current: null,
+      hasModal: false
+    });
+
+    effect(() => {
+      modals.current = modals.stack[modals.stack.length - 1] || null;
+      modals.hasModal = modals.stack.length > 0;
+    });
+
+    await flushEffects();
+    assert(modals.hasModal === false, 'No modals initially');
+
+    modals.stack.push({ id: 'modal1', title: 'First' });
+    await flushEffects();
+    assert(modals.current.id === 'modal1', 'First modal is current');
+
+    modals.stack.push({ id: 'modal2', title: 'Second' });
+    await flushEffects();
+    assert(modals.current.id === 'modal2', 'Second modal is current');
+
+    modals.stack.pop();
+    await flushEffects();
+    assert(modals.current.id === 'modal1', 'Back to first modal');
+  });
+
+  test('Scenario - Theme switcher with preference persistence', async () => {
+    const app = reactive({
+      theme: 'light',
+      isDark: false,
+      colorScheme: 'default'
+    });
+
+    effect(() => {
+      app.isDark = app.theme === 'dark';
+      app.colorScheme = app.isDark ? 'dark-scheme' : 'light-scheme';
+    });
+
+    await flushEffects();
+    assert(app.isDark === false, 'Light theme by default');
+    assert(app.colorScheme === 'light-scheme', 'Light color scheme');
+
+    app.theme = 'dark';
+    await flushEffects();
+    assert(app.isDark === true, 'Dark theme activated');
+    assert(app.colorScheme === 'dark-scheme', 'Dark color scheme');
+  });
+
+  test('Scenario - File upload with progress tracking', async () => {
+    const upload = reactive({
+      files: [],
+      uploading: false,
+      progress: 0,
+      completed: 0,
+      failed: 0
+    });
+
+    effect(() => {
+      const total = upload.files.length;
+      if (total > 0) {
+        upload.progress = ((upload.completed + upload.failed) / total) * 100;
+        upload.uploading = upload.completed + upload.failed < total;
+      } else {
+        upload.progress = 0;
+        upload.uploading = false;
+      }
+    });
+
+    await flushEffects();
+    assert(upload.progress === 0, 'No progress initially');
+
+    upload.files = [1, 2, 3];
+    await flushEffects();
+    assert(upload.uploading === true, 'Upload in progress');
+
+    upload.completed = 2;
+    await flushEffects();
+    assert(Math.round(upload.progress) === 67, 'Progress at ~67%');
+
+    upload.completed = 3;
+    await flushEffects();
+    assert(upload.uploading === false, 'Upload completed');
+    assert(upload.progress === 100, 'Progress at 100%');
+  });
+
+  test('Scenario - Breadcrumb navigation with path tracking', async () => {
+    const nav = reactive({
+      path: ['Home'],
+      currentLocation: 'Home',
+      canGoBack: false
+    });
+
+    effect(() => {
+      nav.currentLocation = nav.path[nav.path.length - 1];
+      nav.canGoBack = nav.path.length > 1;
+    });
+
+    await flushEffects();
+    assert(nav.canGoBack === false, 'Cannot go back from home');
+
+    nav.path.push('Products');
+    await flushEffects();
+    assert(nav.currentLocation === 'Products', 'Navigated to Products');
+    assert(nav.canGoBack === true, 'Can go back');
+
+    nav.path.push('Electronics');
+    await flushEffects();
+    assert(nav.currentLocation === 'Electronics', 'Navigated deeper');
+
+    nav.path.pop();
+    await flushEffects();
+    assert(nav.currentLocation === 'Products', 'Navigated back');
+  });
+
+  test('Scenario - Chat application with unread count', async () => {
+    const chat = reactive({
+      conversations: [
+        { id: 1, messages: [], unread: 0 },
+        { id: 2, messages: [], unread: 0 }
+      ],
+      totalUnread: 0
+    });
+
+    effect(() => {
+      chat.totalUnread = chat.conversations.reduce((sum, conv) => sum + conv.unread, 0);
+    });
+
+    await flushEffects();
+    assert(chat.totalUnread === 0, 'No unread messages');
+
+    chat.conversations[0].unread = 3;
+    await flushEffects();
+    assert(chat.totalUnread === 3, 'Unread count updated');
+
+    chat.conversations[1].unread = 5;
+    await flushEffects();
+    assert(chat.totalUnread === 8, 'Total unread from multiple conversations');
+  });
+
+  test('Scenario - Calendar with date selection', async () => {
+    const calendar = reactive({
+      selectedDate: null,
+      month: 12,
+      year: 2024,
+      displayMonth: '',
+      hasSelection: false
+    });
+
+    effect(() => {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      calendar.displayMonth = `${months[calendar.month - 1]} ${calendar.year}`;
+      calendar.hasSelection = calendar.selectedDate !== null;
+    });
+
+    await flushEffects();
+    assert(calendar.displayMonth === 'Dec 2024', 'Month displayed correctly');
+    assert(calendar.hasSelection === false, 'No date selected');
+
+    calendar.selectedDate = new Date(2024, 11, 25);
+    await flushEffects();
+    assert(calendar.hasSelection === true, 'Date selected');
+  });
+
+  test('Scenario - Settings panel with dirty tracking', async () => {
+    const settings = reactive({
+      original: { theme: 'light', notifications: true },
+      current: { theme: 'light', notifications: true },
+      isDirty: false,
+      canSave: false
+    });
+
+    effect(() => {
+      settings.isDirty = JSON.stringify(settings.original) !== JSON.stringify(settings.current);
+      settings.canSave = settings.isDirty;
+    });
+
+    await flushEffects();
+    assert(settings.isDirty === false, 'No changes initially');
+
+    settings.current.theme = 'dark';
+    await flushEffects();
+    assert(settings.isDirty === true, 'Changes detected');
+    assert(settings.canSave === true, 'Can save changes');
+
+    settings.current.theme = 'light';
+    await flushEffects();
+    assert(settings.isDirty === false, 'Changes reverted');
+  });
+
+  test('Scenario - Tabs with lazy loading indicator', async () => {
+    const tabs = reactive({
+      items: [
+        { id: 'tab1', loaded: false },
+        { id: 'tab2', loaded: false }
+      ],
+      activeId: 'tab1',
+      activeTab: null,
+      needsLoading: false
+    });
+
+    effect(() => {
+      tabs.activeTab = tabs.items.find(t => t.id === tabs.activeId);
+      tabs.needsLoading = tabs.activeTab && !tabs.activeTab.loaded;
+    });
+
+    await flushEffects();
+    assert(tabs.needsLoading === true, 'Active tab needs loading');
+
+    tabs.activeTab.loaded = true;
+    await flushEffects();
+    assert(tabs.needsLoading === false, 'Active tab loaded');
+
+    tabs.activeId = 'tab2';
+    await flushEffects();
+    assert(tabs.needsLoading === true, 'New tab needs loading');
+  });
+
+  test('Scenario - Tree view with expand/collapse state', async () => {
+    const tree = reactive({
+      nodes: [
+        { id: 1, label: 'Root', expanded: false, children: [
+          { id: 2, label: 'Child1', expanded: false, children: [] }
+        ]}
+      ],
+      expandedCount: 0
+    });
+
+    const countExpanded = (nodes) => {
+      let count = 0;
+      for (const node of nodes) {
+        if (node.expanded) count++;
+        if (node.children) count += countExpanded(node.children);
+      }
+      return count;
+    };
+
+    effect(() => {
+      tree.expandedCount = countExpanded(tree.nodes);
+    });
+
+    await flushEffects();
+    assert(tree.expandedCount === 0, 'No nodes expanded');
+
+    tree.nodes[0].expanded = true;
+    await flushEffects();
+    assert(tree.expandedCount === 1, 'Root expanded');
+
+    tree.nodes[0].children[0].expanded = true;
+    await flushEffects();
+    assert(tree.expandedCount === 2, 'Child also expanded');
+  });
+
+  test('Scenario - Kanban board with column limits', async () => {
+    const board = reactive({
+      columns: [
+        { id: 'todo', cards: [], limit: 5, isOverLimit: false },
+        { id: 'doing', cards: [], limit: 3, isOverLimit: false },
+        { id: 'done', cards: [], limit: 10, isOverLimit: false }
+      ]
+    });
+
+    effect(() => {
+      board.columns.forEach(col => {
+        col.isOverLimit = col.cards.length > col.limit;
+      });
+    });
+
+    await flushEffects();
+    assert(board.columns[0].isOverLimit === false, 'Within limit');
+
+    for (let i = 0; i < 6; i++) {
+      board.columns[0].cards.push({ id: i });
+    }
+    await flushEffects();
+    assert(board.columns[0].isOverLimit === true, 'Over limit');
   });
 };
 

@@ -493,8 +493,8 @@ export default function ({ test, assert }) {
     // Remove component
     container.removeChild(component);
 
-    // No error should occur
-    assert(true, 'Should disconnect cleanly');
+    // Verify no errors occurred during disconnect
+    assert(container.children.length === 0, 'Should disconnect cleanly without errors');
   });
 
   test('LoopComponent - handles multiple children in template', async () => {
@@ -834,6 +834,205 @@ export default function ({ test, assert }) {
     assert.strictEqual(items.length, 2, 'Should render both items');
     assert.strictEqual(items[0].textContent.trim(), 'First', 'First item with id');
     assert.strictEqual(items[1].textContent.trim(), 'Second', 'Second item without id field (tests line 181 fallback)');
+
+    container.remove();
+  });
+
+  // ==================== STRESS TESTS ====================
+
+  test('LoopComponent - stress test with 1000 items', async () => {
+    class StressTestLoop extends Component(HTMLElement) {
+      static tag = 'test-stress-loop-1000';
+
+      constructor() {
+        super();
+        // Create 1000 items
+        this.state = this.reactive({
+          items: Array.from({ length: 1000 }, (_, i) => ({ id: i, value: `Item ${i}` }))
+        });
+      }
+
+      render() {
+        return html`
+          <veda-loop items="{this.state.items}" item-key="id">
+            <div class="item">{this.model.value}</div>
+          </veda-loop>
+        `;
+      }
+    }
+
+    customElements.define('test-stress-loop-1000', StressTestLoop);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const startTime = Date.now();
+    const component = document.createElement('test-stress-loop-1000');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    const renderTime = Date.now() - startTime;
+
+    const loop = component.querySelector('veda-loop');
+    const items = Array.from(loop.children);
+
+    assert.strictEqual(items.length, 1000, 'Should render all 1000 items');
+    assert(items[0].textContent === 'Item 0', 'First item correct');
+    assert(items[999].textContent === 'Item 999', 'Last item correct');
+    assert(renderTime < 5000, `Should render in reasonable time (${renderTime}ms)`);
+
+    container.remove();
+  });
+
+  test('LoopComponent - stress test with rapid updates', async () => {
+    class RapidUpdateLoop extends Component(HTMLElement) {
+      static tag = 'test-rapid-update-loop';
+
+      constructor() {
+        super();
+        this.state = this.reactive({
+          items: Array.from({ length: 100 }, (_, i) => ({ id: i, value: `Item ${i}` }))
+        });
+      }
+
+      render() {
+        return html`
+          <veda-loop items="{this.state.items}" item-key="id">
+            <div class="item">{this.model.value}</div>
+          </veda-loop>
+        `;
+      }
+    }
+
+    customElements.define('test-rapid-update-loop', RapidUpdateLoop);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-rapid-update-loop');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    // Rapidly modify the array (add/remove operations)
+    const startTime = Date.now();
+    for (let i = 0; i < 10; i++) {
+      component.state.items.push({ id: 100 + i, value: `New ${i}` });
+      component.state.items.shift();
+    }
+    await flushEffects();
+    const updateTime = Date.now() - startTime;
+
+    const loop = component.querySelector('veda-loop');
+    const items = Array.from(loop.children);
+
+    assert.strictEqual(items.length, 100, 'Should maintain 100 items');
+    assert(updateTime < 3000, `Rapid updates should be efficient (${updateTime}ms)`);
+
+    container.remove();
+  });
+
+  test('LoopComponent - stress test with large item reordering', async () => {
+    class ReorderStressLoop extends Component(HTMLElement) {
+      static tag = 'test-reorder-stress-loop';
+
+      constructor() {
+        super();
+        this.state = this.reactive({
+          items: Array.from({ length: 500 }, (_, i) => ({ id: i, value: i }))
+        });
+      }
+
+      render() {
+        return html`
+          <veda-loop items="{this.state.items}" item-key="id">
+            <div class="item">{this.model.value}</div>
+          </veda-loop>
+        `;
+      }
+    }
+
+    customElements.define('test-reorder-stress-loop', ReorderStressLoop);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-reorder-stress-loop');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    // Reverse all items
+    const startTime = Date.now();
+    component.state.items = component.state.items.reverse();
+    await flushEffects();
+    const reorderTime = Date.now() - startTime;
+
+    const loop = component.querySelector('veda-loop');
+    const items = Array.from(loop.children);
+
+    assert.strictEqual(items.length, 500, 'All items still rendered');
+    assert(items[0].textContent === '499', 'First item is now last');
+    assert(items[499].textContent === '0', 'Last item is now first');
+    assert(reorderTime < 3000, `Reordering should be efficient (${reorderTime}ms)`);
+
+    container.remove();
+  });
+
+  test('LoopComponent - stress test with bulk add/remove', async () => {
+    class BulkOperationsLoop extends Component(HTMLElement) {
+      static tag = 'test-bulk-ops-loop';
+
+      constructor() {
+        super();
+        this.state = this.reactive({
+          items: []
+        });
+      }
+
+      render() {
+        return html`
+          <veda-loop items="{this.state.items}" item-key="id">
+            <div class="item">{this.model.id}</div>
+          </veda-loop>
+        `;
+      }
+    }
+
+    customElements.define('test-bulk-ops-loop', BulkOperationsLoop);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-bulk-ops-loop');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    // Add 1000 items at once
+    const startAdd = Date.now();
+    component.state.items = Array.from({ length: 1000 }, (_, i) => ({ id: i }));
+    await flushEffects();
+    const addTime = Date.now() - startAdd;
+
+    let loop = component.querySelector('veda-loop');
+    assert.strictEqual(loop.children.length, 1000, 'Should add 1000 items');
+
+    // Remove all items
+    const startRemove = Date.now();
+    component.state.items = [];
+    await flushEffects();
+    const removeTime = Date.now() - startRemove;
+
+    loop = component.querySelector('veda-loop');
+    assert.strictEqual(loop.children.length, 0, 'Should remove all items');
+    assert(addTime < 3000, `Bulk add should be efficient (${addTime}ms)`);
+    assert(removeTime < 1000, `Bulk remove should be efficient (${removeTime}ms)`);
 
     container.remove();
   });
