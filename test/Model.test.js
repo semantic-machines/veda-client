@@ -1000,7 +1000,7 @@ export default ({ test, assert }) => {
     Backend.put_individual = originalPutIndividual;
     Backend.remove_individual = originalRemoveIndividual;
     Backend.user_uri = originalUserUri;
-    
+
     assert(true, 'Backend methods restored');
   });
 };

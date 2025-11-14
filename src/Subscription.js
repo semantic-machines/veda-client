@@ -64,9 +64,11 @@ export default class Subscription {
         Subscription._socket.send(msg);
         Subscription._buffer.length = 0;
       }
+    /* c8 ignore start - Retry send when socket not ready (covered by integration tests) */
     } else {
       Subscription._send();
     }
+    /* c8 ignore stop */
   }
 
   static _receive ({data: msg}) {

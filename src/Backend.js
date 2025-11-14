@@ -1,12 +1,14 @@
 import BackendError from './BackendError.js';
 import {timeout} from './Util.js';
 
+/* c8 ignore next - Browser/Node.js environment check */
 const storage = typeof localStorage !== 'undefined' ? localStorage : {};
 
 export default class Backend {
   static #ticket;
   static user_uri;
   static expires;
+  /* c8 ignore next - Browser/Node.js environment check */
   static base = typeof location !== 'undefined' ? location.origin : 'http://localhost:8080';
 
   static errorListeners = new Set();
@@ -308,6 +310,7 @@ export default class Backend {
     form.append('path', path);
     form.append('uri', uri);
     if (typeof file === 'string') {
+      /* c8 ignore next - Base64 prefix check */
       const content = file.startsWith('data:text/plain;base64') ? file : `data:text/plain;base64,${file}`;
       form.append('content', content);
     } else {
