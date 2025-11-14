@@ -2548,6 +2548,241 @@ export default ({ test, assert }) => {
     container.remove();
   });
 
+  test('Component - nullish coalescing in reactive attribute (line 503)', async () => {
+    // Test that ?? '' in line 503 handles undefined/null from ExpressionParser.evaluate
+    class TestComponent extends Component(HTMLElement) {
+      static tag = 'test-nullish-reactive-attr';
+      state = reactive({ value: undefined });
+      render() {
+        return html`<div data-test="{this.state.nonExistent}">Content</div>`;
+      }
+    }
+
+    if (!customElements.get('test-nullish-reactive-attr')) {
+      customElements.define('test-nullish-reactive-attr', TestComponent);
+    }
+
+    const component = document.createElement('test-nullish-reactive-attr');
+    document.body.appendChild(component);
+    await component.rendered;
+    await flushEffects();
+
+    const div = component.querySelector('div');
+    // When ExpressionParser.evaluate returns undefined, ?? '' should provide empty string
+    assert(div.getAttribute('data-test') === '', 'Should use empty string when expression returns undefined (line 503)');
+
+    component.remove();
+  });
+
+  test('Component - nullish coalescing in non-reactive attribute (line 514)', async () => {
+    // Test that ?? '' in line 514 handles undefined/null from this.#evaluate
+    class TestComponent extends Component(HTMLElement) {
+      static tag = 'test-nullish-non-reactive-attr';
+      // No reactive state
+      render() {
+        return html`<div data-test="{this.nonExistentProp}">Content</div>`;
+      }
+    }
+
+    if (!customElements.get('test-nullish-non-reactive-attr')) {
+      customElements.define('test-nullish-non-reactive-attr', TestComponent);
+    }
+
+    const component = document.createElement('test-nullish-non-reactive-attr');
+    document.body.appendChild(component);
+    await component.rendered;
+
+    const div = component.querySelector('div');
+    // When this.#evaluate returns undefined, ?? '' should provide empty string
+    assert(div.getAttribute('data-test') === '', 'Should use empty string when #evaluate returns undefined (line 514)');
+
+    component.remove();
+  });
+
+  test('Component - nullish coalescing in reactive boolean attribute (line 590)', async () => {
+    // Test that ?? '' in line 590 handles undefined/null for boolean attributes
+    class TestComponent extends Component(HTMLElement) {
+      static tag = 'test-nullish-reactive-bool';
+      state = reactive({ checked: undefined });
+      render() {
+        return html`<input type="checkbox" checked="{this.state.nonExistent}">`;
+      }
+    }
+
+    if (!customElements.get('test-nullish-reactive-bool')) {
+      customElements.define('test-nullish-reactive-bool', TestComponent);
+    }
+
+    const component = document.createElement('test-nullish-reactive-bool');
+    document.body.appendChild(component);
+    await component.rendered;
+    await flushEffects();
+
+    const input = component.querySelector('input');
+    // When ExpressionParser.evaluate returns undefined, ?? '' provides ''
+    // Line 595: boolValue = value === 'true' || value === '' || value === attrName
+    // Since value === '', boolValue is true
+    assert(input.checked === true, 'Should be checked when expression returns undefined -> empty string (line 590)');
+
+    component.remove();
+  });
+
+  test('Component - nullish coalescing in non-reactive boolean attribute (line 612)', async () => {
+    // Test that ?? '' in line 612 handles undefined/null for boolean attributes
+    class TestComponent extends Component(HTMLElement) {
+      static tag = 'test-nullish-non-reactive-bool';
+      // No reactive state
+      render() {
+        return html`<input type="checkbox" checked="{this.nonExistentProp}">`;
+      }
+    }
+
+    if (!customElements.get('test-nullish-non-reactive-bool')) {
+      customElements.define('test-nullish-non-reactive-bool', TestComponent);
+    }
+
+    const component = document.createElement('test-nullish-non-reactive-bool');
+    document.body.appendChild(component);
+    await component.rendered;
+
+    const input = component.querySelector('input');
+    // When this.#evaluate returns undefined, ?? '' provides ''
+    // Line 616: boolValue = value === 'true' || value === '' || value === attrName
+    // Since value === '', boolValue is true
+    assert(input.checked === true, 'Should be checked when #evaluate returns undefined -> empty string (line 612)');
+
+    component.remove();
+  });
+
+  test('Component - evalContext branch in reactive attr (lines 499)', async () => {
+    // Test line 499: const evalContext = this._currentEvalContext || this;
+    // When inside veda-if, _currentEvalContext is set and we should use it
+    class TestComponent extends Component(HTMLElement) {
+      static tag = 'test-eval-context-499';
+      state = reactive({ show: true });
+      render() {
+        return html`
+          <veda-if condition="{this.state.show}">
+            <div data-test="{this.nonExistent}">Content</div>
+          </veda-if>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-eval-context-499')) {
+      customElements.define('test-eval-context-499', TestComponent);
+    }
+
+    const component = document.createElement('test-eval-context-499');
+    document.body.appendChild(component);
+    await component.rendered;
+    await flushEffects();
+
+    const div = component.querySelector('div');
+    // Should use evalContext (line 499) and handle undefined with ?? ''
+    assert(div !== null, 'Should render div inside veda-if');
+    assert(div.getAttribute('data-test') === '', 'Should use empty string when evalContext expression is undefined (line 499)');
+
+    component.remove();
+  });
+
+  test('Component - evalContext branch in reactive bool attr (line 586)', async () => {
+    // Test line 586: const evalContext = this._currentEvalContext || this;
+    // When inside veda-if with boolean attribute
+    class TestComponent extends Component(HTMLElement) {
+      static tag = 'test-eval-context-586';
+      state = reactive({ show: true });
+      render() {
+        return html`
+          <veda-if condition="{this.state.show}">
+            <input type="checkbox" checked="{this.nonExistent}">
+          </veda-if>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-eval-context-586')) {
+      customElements.define('test-eval-context-586', TestComponent);
+    }
+
+    const component = document.createElement('test-eval-context-586');
+    document.body.appendChild(component);
+    await component.rendered;
+    await flushEffects();
+
+    const input = component.querySelector('input');
+    // Should use evalContext (line 586) and handle undefined with ?? '' (line 590)
+    // Line 595: boolValue = value === 'true' || value === '' || value === attrName
+    // Since value === '', boolValue is true
+    assert(input !== null, 'Should render input inside veda-if');
+    assert(input.checked === true, 'Should be checked when evalContext expression is undefined -> empty string (lines 586, 590)');
+
+    component.remove();
+  });
+
+  test('Component - contextForReactivity branch (line 577)', async () => {
+    // Test line 577: const contextForReactivity = this._currentEvalContext || this;
+    // This is used to check reactivity in veda-if/veda-loop contexts
+    class TestComponent extends Component(HTMLElement) {
+      static tag = 'test-context-reactivity-577';
+      state = reactive({ show: true });
+      render() {
+        return html`
+          <veda-if condition="{this.state.show}">
+            <button disabled="{this.state.isDisabled}">Click</button>
+          </veda-if>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-context-reactivity-577')) {
+      customElements.define('test-context-reactivity-577', TestComponent);
+    }
+
+    const component = document.createElement('test-context-reactivity-577');
+    document.body.appendChild(component);
+    await component.rendered;
+    await flushEffects();
+
+    const button = component.querySelector('button');
+    assert(button !== null, 'Should render button inside veda-if');
+    // Should use contextForReactivity (line 577) to check if parent is reactive
+    
+    // Change state to test reactivity
+    component.state.isDisabled = true;
+    await flushEffects();
+    assert(button.disabled === true, 'Should be disabled after state change (using contextForReactivity line 577)');
+
+    component.remove();
+  });
+
+  test('Component - boolValue calculation with empty string (line 616)', async () => {
+    // Test line 616: const boolValue = value === 'true' || value === '' || value === attrName;
+    // When value is '' (from ?? ''), boolValue should be true
+    class TestComponent extends Component(HTMLElement) {
+      static tag = 'test-bool-value-616';
+      render() {
+        // When this.nonExistent is undefined, ?? '' provides '', making boolValue true
+        return html`<input type="checkbox" checked="{this.nonExistent}">`;
+      }
+    }
+
+    if (!customElements.get('test-bool-value-616')) {
+      customElements.define('test-bool-value-616', TestComponent);
+    }
+
+    const component = document.createElement('test-bool-value-616');
+    document.body.appendChild(component);
+    await component.rendered;
+
+    const input = component.querySelector('input');
+    // Line 616: boolValue = value === 'true' || value === '' || value === attrName
+    // When value is '', the second part (value === '') should be true
+    assert(input.checked === true, 'Should be checked when value is empty string (line 616)');
+
+    component.remove();
+  });
+
 };
 
 
