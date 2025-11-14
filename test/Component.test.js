@@ -295,62 +295,20 @@ export default ({ test, assert }) => {
 
   // ==================== EVENT HANDLERS ====================
 
-  test('Component - event handler binding with method name', async () => {
+  test('Component - event handler binding (method name, event/node params, multiple types)', async () => {
     let clicked = false;
-
-    class TestComponent extends Component(HTMLElement) {
-
-      handleClick = () => {
-        clicked = true;
-      }
-
-      render() {
-        return html`<button onclick="{handleClick}">Click me</button>`;
-      }
-    }
-
-    const { component, container, cleanup } = await createTestComponent(TestComponent);
-
-    const button = component.querySelector('button');
-    button.click();
-
-    assert(clicked === true, 'Click handler should be called');
-    cleanup();
-  });
-
-  test('Component - event handler receives event and node', async () => {
     let receivedEvent = null;
     let receivedNode = null;
-
-    class TestComponent extends Component(HTMLElement) {
-
-      handleClick = (event, node) => {
-        receivedEvent = event;
-        receivedNode = node;
-      }
-
-      render() {
-        return html`<button onclick="{handleClick}">Click</button>`;
-      }
-    }
-
-    const { component, container, cleanup } = await createTestComponent(TestComponent);
-
-    const button = component.querySelector('button');
-    button.click();
-
-    assert(receivedEvent !== null, 'Should receive event');
-    assert(receivedEvent.type === 'click', 'Event type should be click');
-    assert(receivedNode === button, 'Should receive button node');
-    cleanup();
-  });
-
-  test('Component - multiple event types', async () => {
     const events = [];
 
     class TestComponent extends Component(HTMLElement) {
 
-      handleClick = () => events.push('click');
+      handleClick = (event, node) => {
+        clicked = true;
+        receivedEvent = event;
+        receivedNode = node;
+      }
+
       handleMouseover = () => events.push('mouseover');
 
       render() {
@@ -358,21 +316,20 @@ export default ({ test, assert }) => {
           <button
             onclick="{handleClick}"
             onmouseover="{handleMouseover}">
-            Button
+            Click me
           </button>
         `;
       }
     }
 
-    const { component, container, cleanup } = await createTestComponent(TestComponent);
+    const { component, cleanup } = await createTestComponent(TestComponent);
 
     const button = component.querySelector('button');
-
     button.click();
-    // Skip mouseover and focus - linkedom event issues
 
-    assert(events.length >= 1, 'Click event should fire');
-    assert(events[0] === 'click', 'First event should be click');
+    assert(clicked === true, 'Click handler should be called');
+    assert(receivedEvent !== null && receivedEvent.type === 'click', 'Should receive click event');
+    assert(receivedNode === button, 'Should receive button node');
     cleanup();
   });
 
@@ -459,33 +416,47 @@ export default ({ test, assert }) => {
     cleanup();
   });
 
-  test('Component - multiple reactive expressions in text', async () => {
+  test('Component - multiple reactive expressions in text (2 and 3 expressions)', async () => {
     class TestComponent extends Component(HTMLElement) {
 
       constructor() {
         super();
         this.state = this.reactive({
           first: 'John',
-          last: 'Doe'
+          last: 'Doe',
+          a: 'A',
+          b: 'B',
+          c: 'C'
         });
       }
 
       render() {
-        return html`<div>Name: {this.state.first} {this.state.last}</div>`;
+        return html`
+          <div class="two">Name: {this.state.first} {this.state.last}</div>
+          <div class="three">{this.state.a}-{this.state.b}-{this.state.c}</div>
+        `;
       }
     }
 
-    const { component, container, cleanup } = await createTestComponent(TestComponent);
+    const { component, cleanup } = await createTestComponent(TestComponent);
     await flushEffects();
 
-    assert(component.textContent.includes('John'), 'Should include first name');
-    assert(component.textContent.includes('Doe'), 'Should include last name');
+    // Test 2 expressions
+    const twoDiv = component.querySelector('.two');
+    assert(twoDiv.textContent.includes('John') && twoDiv.textContent.includes('Doe'), 'Should include both names');
 
     component.state.first = 'Jane';
     await flushEffects();
+    assert(twoDiv.textContent.includes('Jane') && twoDiv.textContent.includes('Doe'), 'Should update first name');
 
-    assert(component.textContent.includes('Jane'), 'Should update first name');
-    assert(component.textContent.includes('Doe'), 'Last name should stay');
+    // Test 3 expressions
+    const threeDiv = component.querySelector('.three');
+    assert(threeDiv.textContent === 'A-B-C', 'Should render 3 expressions');
+
+    component.state.b = 'X';
+    await flushEffects();
+    assert(threeDiv.textContent === 'A-X-C', 'Should update middle expression');
+
     cleanup();
   });
 
@@ -627,20 +598,7 @@ export default ({ test, assert }) => {
     cleanup();
   });
 
-  test('Component - async render() method', async () => {
-    class TestComponent extends Component(HTMLElement) {
-      async render() {
-        await new Promise(resolve => setTimeout(resolve, 10));
-        return html`<div>Async content</div>`;
-      }
-    }
-
-    const { component, container, cleanup } = await createTestComponent(TestComponent);
-    assert(component.textContent.includes('Async content'), 'Should render async content');
-    cleanup();
-  });
-
-  test('Component - async lifecycle hooks', async () => {
+  test('Component - async render() and lifecycle hooks', async () => {
     const calls = [];
 
     class TestComponent extends Component(HTMLElement) {
@@ -654,9 +612,10 @@ export default ({ test, assert }) => {
         calls.push('pre');
       }
 
-      render() {
+      async render() {
+        await new Promise(resolve => setTimeout(resolve, 10));
         calls.push('render');
-        return html`<div>Test</div>`;
+        return html`<div>Async content</div>`;
       }
 
       async post() {
@@ -665,8 +624,9 @@ export default ({ test, assert }) => {
       }
     }
 
-    const { component, container, cleanup } = await createTestComponent(TestComponent);
+    const { component, cleanup } = await createTestComponent(TestComponent);
 
+    assert(component.textContent.includes('Async content'), 'Should render async content');
     assert(calls.includes('added'), 'added should be called');
     assert(calls.includes('pre'), 'pre should be called');
     assert(calls.includes('render'), 'render should be called');
@@ -675,78 +635,94 @@ export default ({ test, assert }) => {
     cleanup();
   });
 
-  test('Component - populate with model attribute', async () => {
+  test('Component - model integration (populate from about, set about from model)', async () => {
     class TestComponent extends Component(HTMLElement) {
-
       render() {
         return html`<div>{this.model?.id || 'no-id'}</div>`;
       }
     }
 
-    customElements.define('test-populate-model', TestComponent);
+    customElements.define('test-model-integration', TestComponent);
 
     const container = document.createElement('div');
     document.body.appendChild(container);
 
-    const component = document.createElement('test-populate-model');
-    component.setAttribute('about', 'test:123');
-    container.appendChild(component);
+    // Test 1: Populate from about attribute
+    const comp1 = document.createElement('test-model-integration');
+    comp1.setAttribute('about', 'test:123');
+    container.appendChild(comp1);
 
-    await component.rendered;
+    await comp1.rendered;
 
-    assert(component.model !== undefined, 'Model should be created from about attribute');
-    assert(component.model.id === 'test:123', 'Model id should match about attribute');
+    assert(comp1.model !== undefined, 'Model should be created from about attribute');
+    assert(comp1.model.id === 'test:123', 'Model id should match about attribute');
 
-    container.remove();
-  });
-
-  test('Component - model property sets about attribute', async () => {
-    class TestComponent extends Component(HTMLElement) {
-
-      render() {
-        return html`<div>Test</div>`;
-      }
-    }
-
-    customElements.define('test-model-attr', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-model-attr');
+    // Test 2: Set about from model
+    const comp2 = document.createElement('test-model-integration');
     const mockModel = new Model('test:456');
-    component.model = mockModel;
+    comp2.model = mockModel;
 
-    container.appendChild(component);
+    container.appendChild(comp2);
 
-    await component.rendered;
+    await comp2.rendered;
 
-    assert(component.getAttribute('about') === 'test:456', 'Should set about attribute from model');
+    assert(comp2.getAttribute('about') === 'test:456', 'Should set about attribute from model');
 
     container.remove();
   });
 
-  test('Component - render returns undefined (no template)', async () => {
-    class TestComponent extends Component(HTMLElement) {
-
+  test('Component - template fallbacks (undefined, template property, innerHTML)', async () => {
+    // Test 1: render returns undefined
+    class NoTemplateComponent extends Component(HTMLElement) {
       render() {
-        // Return undefined - no template
         return undefined;
       }
     }
 
-    const { component, container, cleanup } = await createTestComponent(TestComponent);
+    const { component: comp1, cleanup: cleanup1 } = await createTestComponent(NoTemplateComponent);
+    assert(comp1.childNodes.length === 0, 'Undefined render should have no children');
+    cleanup1();
 
-    // Should not crash, just not render anything
-    assert(component.childNodes.length === 0, 'Should have no children');
-    cleanup();
+    // Test 2: template property fallback
+    class TemplatePropertyComponent extends Component(HTMLElement) {
+      constructor() {
+        super();
+        this.template = '<div class="from-template">Template content</div>';
+      }
+      render() {
+        return this.template;
+      }
+    }
+
+    const { component: comp2, cleanup: cleanup2 } = await createTestComponent(TemplatePropertyComponent);
+    assert(comp2.querySelector('.from-template')?.textContent === 'Template content', 'Should use template property');
+    cleanup2();
+
+    // Test 3: innerHTML fallback
+    class InnerHTMLComponent extends Component(HTMLElement) {
+      static tag = 'test-innerhtml-fallback';
+    }
+
+    customElements.define('test-innerhtml-fallback', InnerHTMLComponent);
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const comp3 = document.createElement('test-innerhtml-fallback');
+    comp3.innerHTML = '<div class="from-html">Inner content</div>';
+    container.appendChild(comp3);
+    await comp3.rendered;
+
+    assert(comp3.querySelector('.from-html') !== null, 'Should use innerHTML');
+    container.remove();
   });
 
-  test('Component - pre/post hooks are called', async () => {
+  test('Component - lifecycle hooks (pre, post, removed, renderedCallback)', async () => {
     let preCalled = false;
     let postCalled = false;
+    let removedCalled = false;
+    let renderedCallbackCalled = false;
 
     class TestComponent extends Component(HTMLElement) {
+      static tag = 'test-lifecycle-hooks';
 
       pre() {
         preCalled = true;
@@ -759,23 +735,9 @@ export default ({ test, assert }) => {
       post() {
         postCalled = true;
       }
-    }
 
-    const { component, container, cleanup } = await createTestComponent(TestComponent);
-
-    assert(preCalled === true, 'pre() should be called');
-    assert(postCalled === true, 'post() should be called');
-    cleanup();
-  });
-
-  test('Component - removed() hook on disconnect', async () => {
-    let removedCalled = false;
-
-    class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-removed';
-
-      render() {
-        return html`<div>Test</div>`;
+      renderedCallback() {
+        renderedCallbackCalled = true;
       }
 
       removed() {
@@ -783,15 +745,19 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-removed', TestComponent);
+    customElements.define('test-lifecycle-hooks', TestComponent);
 
     const container = document.createElement('div');
     document.body.appendChild(container);
 
-    const component = document.createElement('test-removed');
+    const component = document.createElement('test-lifecycle-hooks');
     container.appendChild(component);
 
     await component.rendered;
+
+    assert(preCalled === true, 'pre() should be called');
+    assert(postCalled === true, 'post() should be called');
+    assert(renderedCallbackCalled === true, 'renderedCallback should be called');
 
     container.removeChild(component);
 
@@ -867,24 +833,9 @@ export default ({ test, assert }) => {
     cleanup();
   });
 
-  test('Component - static expressions with ${}', async () => {
+  test('Component - static and mixed expressions with ${}', async () => {
     const testId = 'my-test-id';
 
-    class TestComponent extends Component(HTMLElement) {
-
-      render() {
-        return html`<div id="${testId}">Static</div>`;
-      }
-    }
-
-    const { component, container, cleanup } = await createTestComponent(TestComponent);
-
-    const div = component.querySelector(`#${testId}`);
-    assert(div !== null, 'Should have div with static id');
-    cleanup();
-  });
-
-  test('Component - mixed static and reactive expressions', async () => {
     class TestComponent extends Component(HTMLElement) {
 
       constructor() {
@@ -893,21 +844,29 @@ export default ({ test, assert }) => {
       }
 
       render() {
-        return html`<div class="${'greeting'}">Hello {this.state.name}</div>`;
+        return html`
+          <div id="${testId}">Static</div>
+          <div class="${'greeting'}">Hello {this.state.name}</div>
+        `;
       }
     }
 
-    const { component, container, cleanup } = await createTestComponent(TestComponent);
+    const { component, cleanup } = await createTestComponent(TestComponent);
     await flushEffects();
 
-    const div = component.querySelector('.greeting');
-    assert(div !== null, 'Should have div with static class');
-    assert(div.textContent.includes('World'), 'Should have reactive content');
+    // Test static expression
+    const staticDiv = component.querySelector(`#${testId}`);
+    assert(staticDiv !== null, 'Should have div with static id');
+
+    // Test mixed static and reactive
+    const dynamicDiv = component.querySelector('.greeting');
+    assert(dynamicDiv !== null, 'Should have div with static class');
+    assert(dynamicDiv.textContent.includes('World'), 'Should have reactive content');
 
     component.state.name = 'Universe';
     await flushEffects();
 
-    assert(div.textContent.includes('Universe'), 'Reactive content should update');
+    assert(dynamicDiv.textContent.includes('Universe'), 'Reactive content should update');
     cleanup();
   });
 
@@ -942,53 +901,16 @@ export default ({ test, assert }) => {
     cleanup();
   });
 
-  test('Component - watch with immediate option', async () => {
+  test('Component - watch() helper (basic, immediate, cleanup)', async () => {
     const values = [];
+    const immediateValues = [];
+    let cleanupWatchRuns = 0;
 
     class TestComponent extends Component(HTMLElement) {
 
       constructor() {
         super();
-        this.state = this.reactive({ count: 0 });
-      }
-
-      async connectedCallback() {
-        await super.connectedCallback();
-
-        this.watch(
-          () => this.state.count,
-          (val) => values.push(val),
-          { immediate: true }
-        );
-      }
-
-      render() {
-        return html`<div>{this.state.count}</div>`;
-      }
-    }
-
-    const { component, container, cleanup } = await createTestComponent(TestComponent);
-    await flushEffects();
-
-    assert(values.length === 1, 'Should run immediately with immediate:true');
-    assert(values[0] === 0, 'Initial value should be 0');
-
-    component.state.count = 5;
-    await flushEffects();
-
-    assert(values.length === 2, 'Should run again on change');
-    assert(values[1] === 5, 'New value should be 5');
-    cleanup();
-  });
-
-  test('Component - watch returns cleanup function', async () => {
-    let watchRuns = 0;
-
-    class TestComponent extends Component(HTMLElement) {
-
-      constructor() {
-        super();
-        this.state = this.reactive({ count: 0 });
+        this.state = this.reactive({ count: 0, other: 0 });
       }
 
       watchCleanup = null;
@@ -996,9 +918,23 @@ export default ({ test, assert }) => {
       async connectedCallback() {
         await super.connectedCallback();
 
+        // Basic watch
+        this.watch(
+          () => this.state.count,
+          (newVal, oldVal) => values.push({ new: newVal, old: oldVal })
+        );
+
+        // Watch with immediate
+        this.watch(
+          () => this.state.other,
+          (val) => immediateValues.push(val),
+          { immediate: true }
+        );
+
+        // Watch with cleanup
         this.watchCleanup = this.watch(
           () => this.state.count,
-          () => watchRuns++
+          () => cleanupWatchRuns++
         );
       }
 
@@ -1007,68 +943,29 @@ export default ({ test, assert }) => {
       }
     }
 
-    const { component, container, cleanup } = await createTestComponent(TestComponent);
+    const { component, cleanup } = await createTestComponent(TestComponent);
     await flushEffects();
 
-    component.state.count = 1;
+    // Test immediate option
+    assert(immediateValues.length === 1 && immediateValues[0] === 0, 'Immediate watch should run with initial value');
+
+    // Test basic watch
+    component.state.count = 5;
     await flushEffects();
+    assert(values.length === 1 && values[0].new === 5 && values[0].old === 0, 'Watch should track changes');
 
-    const runsBeforeCleanup = watchRuns;
+    component.state.count = 10;
+    await flushEffects();
+    assert(values[1].new === 10 && values[1].old === 5, 'Watch should track subsequent changes');
 
-    // Call cleanup
+    // Test cleanup
+    const runsBeforeCleanup = cleanupWatchRuns;
     component.watchCleanup();
-
-    component.state.count = 2;
+    component.state.count = 15;
     await flushEffects();
+    assert(cleanupWatchRuns === runsBeforeCleanup, 'Watch should not run after cleanup');
 
-    assert(watchRuns === runsBeforeCleanup, 'Watch should not run after cleanup');
     cleanup();
-  });
-
-  test('Component - template property is used if render returns undefined', async () => {
-    class TestComponent extends Component(HTMLElement) {
-
-      constructor() {
-        super();
-        this.template = '<div class="from-template">Template content</div>';
-      }
-
-      render() {
-        // Use default behavior - returns this.template
-        return this.template;
-      }
-    }
-
-    const { component, container, cleanup } = await createTestComponent(TestComponent);
-
-    const div = component.querySelector('.from-template');
-    assert(div !== null, 'Should render from template property');
-    assert(div.textContent === 'Template content', 'Should have template content');
-    cleanup();
-  });
-
-  test('Component - innerHTML is used if no template or render', async () => {
-    class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-innerhtml';
-
-      // Don't override render - use default
-    }
-
-    customElements.define('test-innerhtml', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-innerhtml');
-    component.innerHTML = '<div class="from-html">Inner content</div>';
-    container.appendChild(component);
-
-    await component.rendered;
-
-    const div = component.querySelector('.from-html');
-    assert(div !== null, 'Should render from innerHTML');
-
-    container.remove();
   });
 
   // ==================== NESTED COMPONENTS ====================
@@ -1298,36 +1195,6 @@ export default ({ test, assert }) => {
     cleanup();
   });
 
-  test('Component - multiple text expressions in sequence', async () => {
-    class MultiTextComponent extends Component(HTMLElement) {
-
-      constructor() {
-        super();
-        this.state = this.reactive({
-          a: 'A',
-          b: 'B',
-          c: 'C'
-        });
-      }
-
-      render() {
-        return html`<div>{this.state.a}-{this.state.b}-{this.state.c}</div>`;
-      }
-    }
-
-    const { component, container, cleanup } = await createTestComponent(MultiTextComponent);
-    await flushEffects();
-
-    const div = component.querySelector('div');
-    assert(div.textContent === 'A-B-C', 'Should render multiple expressions');
-
-    component.state.b = 'X';
-    await flushEffects();
-
-    assert(div.textContent === 'A-X-C', 'Should update middle expression');
-    cleanup();
-  });
-
   test('Component - non-reactive component with expressions', async () => {
     class NonReactiveComponent extends Component(HTMLElement) {
 
@@ -1353,26 +1220,6 @@ export default ({ test, assert }) => {
 
     // Still shows old value - no re-render
     assert(div.textContent === 'static', 'Should not update (non-reactive)');
-    cleanup();
-  });
-
-  test('Component - renderedCallback is called', async () => {
-    let callbackCalled = false;
-
-    class CallbackComponent extends Component(HTMLElement) {
-
-      renderedCallback() {
-        callbackCalled = true;
-      }
-
-      render() {
-        return html`<div>Test</div>`;
-      }
-    }
-
-    const { component, container, cleanup } = await createTestComponent(CallbackComponent);
-
-    assert(callbackCalled === true, 'renderedCallback should be called');
     cleanup();
   });
 
@@ -1592,50 +1439,37 @@ export default ({ test, assert }) => {
     cleanup();
   });
 
-  test('Component - non-reactive attributes are evaluated once', async () => {
+  test('Component - non-reactive attributes (regular and boolean)', async () => {
     class NonReactiveAttrComponent extends Component(HTMLElement) {
 
       constructor() {
         super();
         this.value = 'initial';
+        this.isDisabled = true;
       }
 
       render() {
-        return html`<div data-value="{this.value}">Content</div>`;
+        return html`
+          <div data-value="{this.value}">Content</div>
+          <button disabled="{this.isDisabled}">Button</button>
+        `;
       }
     }
 
-    const { component, container, cleanup } = await createTestComponent(NonReactiveAttrComponent);
+    const { component, cleanup } = await createTestComponent(NonReactiveAttrComponent);
 
     const div = component.querySelector('div');
-    assert(div.getAttribute('data-value') === 'initial', 'Should have initial value');
+    const button = component.querySelector('button');
 
-    // Change non-reactive property
+    assert(div.getAttribute('data-value') === 'initial', 'Should have initial value');
+    assert(button.disabled === true, 'Should be disabled initially');
+
+    // Change non-reactive properties
     component.value = 'changed';
     await flushEffects();
 
     // Should still have old value (non-reactive)
     assert(div.getAttribute('data-value') === 'initial', 'Should not update (non-reactive)');
-    cleanup();
-  });
-
-  test('Component - non-reactive boolean attributes', async () => {
-    class NonReactiveBoolComponent extends Component(HTMLElement) {
-
-      constructor() {
-        super();
-        this.isDisabled = true;
-      }
-
-      render() {
-        return html`<button disabled="{this.isDisabled}">Button</button>`;
-      }
-    }
-
-    const { component, container, cleanup } = await createTestComponent(NonReactiveBoolComponent);
-
-    const button = component.querySelector('button');
-    assert(button.disabled === true, 'Should be disabled initially');
     cleanup();
   });
 
@@ -1675,74 +1509,52 @@ export default ({ test, assert }) => {
     cleanup();
   });
 
-  test('Component - event handler with direct function reference', async () => {
+  test('Component - event handler variations (direct function, method name, error handling)', async () => {
     let clickCount = 0;
+    let methodCalled = false;
+    const warnings = [];
+    const originalWarn = console.warn;
+    console.warn = (...args) => warnings.push(args.join(' '));
 
-    class DirectFunctionComponent extends Component(HTMLElement) {
+    class EventHandlerVariationsComponent extends Component(HTMLElement) {
 
       myClickHandler = () => {
         clickCount++;
       }
 
-      render() {
-        return html`<button onclick="{this.myClickHandler}">Click</button>`;
-      }
-    }
-
-    const { component, container, cleanup } = await createTestComponent(DirectFunctionComponent);
-
-    const button = component.querySelector('button');
-    button.click();
-
-    assert(clickCount === 1, 'Should call handler directly');
-
-    button.click();
-    assert(clickCount === 2, 'Should call handler multiple times');
-    cleanup();
-  });
-
-  test('Component - event handler with simple method name lookup', async () => {
-    let called = false;
-
-    class SimpleMethodComponent extends Component(HTMLElement) {
-
       myMethod() {
-        called = true;
+        methodCalled = true;
       }
 
       render() {
-        return html`<button onclick="{myMethod}">Click</button>`;
+        return html`
+          <button id="direct" onclick="{this.myClickHandler}">Direct</button>
+          <button id="method" onclick="{myMethod}">Method</button>
+          <button id="error" onclick="{this.nonExistent.method}">Error</button>
+        `;
       }
     }
 
-    const { component, container, cleanup } = await createTestComponent(SimpleMethodComponent);
+    const { component, cleanup } = await createTestComponent(EventHandlerVariationsComponent);
 
-    const button = component.querySelector('button');
-    button.click();
+    // Test direct function reference
+    const directBtn = component.querySelector('#direct');
+    directBtn.click();
+    assert(clickCount === 1, 'Should call handler directly');
+    directBtn.click();
+    assert(clickCount === 2, 'Should call handler multiple times');
 
-    assert(called === true, 'Should find and call method by name');
-    cleanup();
-  });
-
-  test('Component - event handler catches errors in expression evaluation', async () => {
-    const warnings = [];
-    const originalWarn = console.warn;
-    console.warn = (...args) => warnings.push(args.join(' '));
-
-    class ErrorExprHandlerComponent extends Component(HTMLElement) {
-
-      render() {
-        // This expression will fail to evaluate
-        return html`<button onclick="{this.nonExistent.method}">Click</button>`;
-      }
-    }
-
-    const { component, container, cleanup } = await createTestComponent(ErrorExprHandlerComponent);
+    // Test method name lookup
+    const methodBtn = component.querySelector('#method');
+    methodBtn.click();
+    assert(methodCalled === true, 'Should find and call method by name');
 
     console.warn = originalWarn;
 
+    // Test error handling
     const hasWarning = warnings.some(w => w.includes('Invalid'));
     assert(hasWarning, 'Should warn about invalid event handler expression');
+
     cleanup();
   });
 
@@ -2737,4 +2549,5 @@ export default ({ test, assert }) => {
   });
 
 };
+
 
