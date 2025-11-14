@@ -1,9 +1,9 @@
-import {reactive} from '../src/Reactive.js';
-import {effect, flushEffects} from '../src/Effect.js';
-import Model from '../src/Model.js';
-import Backend from '../src/Backend.js';
-import Subscription from '../src/Subscription.js';
-import {timeout} from '../src/Util.js';
+import {reactive} from '../../src/Reactive.js';
+import {effect, flushEffects} from '../../src/Effect.js';
+import Model from '../../src/Model.js';
+import Backend from '../../src/Backend.js';
+import Subscription from '../../src/Subscription.js';
+import {timeout} from '../../src/Util.js';
 
 Backend.init();
 
@@ -40,7 +40,7 @@ export default ({test, assert}) => {
 
   test('Race condition - concurrent Model operations', async () => {
     await Backend.authenticate('veda', 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3');
-    
+
     const id = 'd:race_test_' + Date.now();
     const m = new Model(id);
     m['rdfs:label'] = ['Initial'];
@@ -105,7 +105,7 @@ export default ({test, assert}) => {
   test('Circular references - nested objects', async () => {
     const parent = reactive({name: 'parent', child: null});
     const child = reactive({name: 'child', parent: null});
-    
+
     parent.child = child;
     child.parent = parent;
 
@@ -146,19 +146,19 @@ export default ({test, assert}) => {
 
   test('Memory - model cache does not leak', () => {
     // Note: Model cache is by design - models are cached by ID
-    
+
     const uniqueId1 = 'd:cache_test_1_' + Date.now();
     const uniqueId2 = 'd:cache_test_2_' + Date.now();
-    
+
     const m1a = new Model(uniqueId1);
     const m1b = new Model(uniqueId1);
-    
+
     // Same ID should return same instance (cache working)
     assert(m1a === m1b, 'Same ID should return cached instance');
-    
+
     const m2 = new Model(uniqueId2);
     assert(m1a !== m2, 'Different IDs should return different instances');
-    
+
     // Cache holds models - this is intentional design
     assert(Model.cache.get(uniqueId1) === m1a, 'Cache should contain model 1');
     assert(Model.cache.get(uniqueId2) === m2, 'Cache should contain model 2');
@@ -176,7 +176,7 @@ export default ({test, assert}) => {
     });
 
     await flushEffects();
-    
+
     for (let i = 0; i < 3; i++) {
       state.value++;
       await flushEffects();
@@ -196,7 +196,7 @@ export default ({test, assert}) => {
 
   test('Edge case - delete property that does not exist', async () => {
     const obj = reactive({a: 1});
-    
+
     let runs = 0;
     effect(() => {
       runs++;
@@ -204,7 +204,7 @@ export default ({test, assert}) => {
     });
 
     await flushEffects();
-    
+
     delete obj.nonExistent;
     await flushEffects();
 
@@ -303,7 +303,7 @@ export default ({test, assert}) => {
 
   test('Integration - Reactive Model properties', async () => {
     const m = new Model('d:reactive_model_' + Date.now());
-    
+
     // Model is already reactive
     let labelChangeCount = 0;
     m.on('rdfs:label', () => labelChangeCount++);
@@ -317,7 +317,7 @@ export default ({test, assert}) => {
     // Array operations should also work
     m['rdfs:comment'] = [];
     m['rdfs:comment'].push('Comment 1');
-    
+
     assert(m['rdfs:comment'].length === 1, 'Array operations should work on reactive model');
   });
 
@@ -571,7 +571,7 @@ export default ({test, assert}) => {
       table.filtered = table.filterText
         ? table.data.filter(row => row.name.toLowerCase().includes(table.filterText.toLowerCase()))
         : table.data;
-      
+
       // Sort
       table.sorted = [...table.filtered].sort((a, b) => {
         return a[table.sortBy] > b[table.sortBy] ? 1 : -1;

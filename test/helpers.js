@@ -3,6 +3,7 @@
  */
 
 import { flushEffects } from '../src/Effect.js';
+import Model from '../src/Model.js';
 
 /**
  * Creates a test component with automatic cleanup
@@ -14,37 +15,37 @@ import { flushEffects } from '../src/Effect.js';
  */
 export async function createTestComponent(ComponentClass, options = {}) {
   const { setup = null, autoRender = true } = options;
-  
+
   // Generate unique tag name to avoid conflicts
   const tag = `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   ComponentClass.tag = tag;
-  
+
   if (!customElements.get(tag)) {
     customElements.define(tag, ComponentClass);
   }
-  
+
   const container = document.createElement('div');
   document.body.appendChild(container);
-  
+
   const component = document.createElement(tag);
-  
+
   // Setup before adding to DOM
   if (setup) {
     setup(component);
   }
-  
+
   container.appendChild(component);
-  
+
   // Wait for render if requested
   if (autoRender) {
     await component.rendered;
     await flushEffects();
   }
-  
+
   const cleanup = () => {
     container.remove();
   };
-  
+
   return { component, container, cleanup };
 }
 
@@ -55,11 +56,11 @@ export async function createTestComponent(ComponentClass, options = {}) {
 export function createTestContainer() {
   const container = document.createElement('div');
   document.body.appendChild(container);
-  
+
   const cleanup = () => {
     container.remove();
   };
-  
+
   return { container, cleanup };
 }
 
@@ -70,13 +71,10 @@ export function createTestContainer() {
  * @param {Function} domAssertion - Function that asserts DOM state
  */
 export async function assertReactiveUpdate(component, stateUpdate, domAssertion) {
-  // Initial assertion (optional - can be skipped if not needed)
-  const initialCheck = domAssertion();
-  
   // Update state
   stateUpdate();
   await flushEffects();
-  
+
   // Assert DOM updated
   const result = domAssertion();
   return result;
@@ -111,14 +109,14 @@ export function assertClasses(element, expectedClasses) {
  */
 export async function waitFor(condition, timeout = 1000, interval = 50) {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < timeout) {
     if (condition()) {
       return true;
     }
     await new Promise(resolve => setTimeout(resolve, interval));
   }
-  
+
   throw new Error(`Timeout waiting for condition after ${timeout}ms`);
 }
 
@@ -133,12 +131,12 @@ export function createSpy() {
     get callCount() { return this.calls.length; },
     reset() { this.calls = []; }
   };
-  
+
   spy.fn = function(...args) {
     spy.calls.push(args);
     return args;
   };
-  
+
   return spy;
 }
 
@@ -151,17 +149,17 @@ export function createSpy() {
 export async function captureConsole(fn, method = 'error') {
   const messages = [];
   const original = console[method];
-  
+
   console[method] = (...args) => {
     messages.push(args.join(' '));
   };
-  
+
   try {
     await fn();
   } finally {
     console[method] = original;
   }
-  
+
   return messages;
 }
 
@@ -189,11 +187,11 @@ export function createMockModel(data = {}) {
  */
 export async function withCleanup(testFn) {
   const cleanups = [];
-  
+
   const registerCleanup = (fn) => {
     cleanups.push(fn);
   };
-  
+
   try {
     await testFn(registerCleanup);
   } finally {
@@ -206,5 +204,153 @@ export async function withCleanup(testFn) {
       }
     }
   }
+}
+
+/**
+ * Waits for async condition with better error messages
+ * Improved version that handles promises and flushes effects
+ * @param {Function} condition - Function that returns boolean or Promise<boolean>
+ * @param {Object} options - Configuration
+ * @param {number} options.timeout - Timeout in ms (default: 5000)
+ * @param {number} options.interval - Check interval in ms (default: 50)
+ * @param {string} options.message - Error message to show on timeout
+ * @returns {Promise<void>}
+ */
+export async function waitForCondition(condition, options = {}) {
+  const {
+    timeout = 5000,
+    interval = 50,
+    message = 'Condition was not met'
+  } = options;
+
+  const startTime = Date.now();
+  let lastError = null;
+
+  while (Date.now() - startTime < timeout) {
+    try {
+      await flushEffects(); // Always flush effects before checking
+      const result = await Promise.resolve(condition());
+      if (result) {
+        return;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise(resolve => setTimeout(resolve, interval));
+  }
+
+  const elapsed = Date.now() - startTime;
+  const errorMsg = `${message} (waited ${elapsed}ms)${lastError ? ': ' + lastError.message : ''}`;
+  throw new Error(errorMsg);
+}
+
+/**
+ * Polls for a value to equal expected
+ * @param {Function} getter - Function that returns current value
+ * @param {*} expected - Expected value
+ * @param {Object} options - Same as waitForCondition
+ */
+export async function waitForValue(getter, expected, options = {}) {
+  await waitForCondition(
+    () => getter() === expected,
+    {
+      ...options,
+      message: options.message || `Expected value to be ${expected}, but got ${getter()}`
+    }
+  );
+}
+
+/**
+ * Clears Model cache for test isolation
+ * Should be called before/after tests that use Models
+ */
+export function clearModelCache() {
+  if (Model.cache) {
+    Model.cache.clear();
+  }
+}
+
+/**
+ * Creates isolated test environment with automatic cleanup
+ * Clears Model cache, customElements registry tracking, etc.
+ */
+export async function withIsolation(testFn) {
+  const registeredElements = new Set();
+  const originalDefine = customElements.define.bind(customElements);
+
+  // Track custom elements
+  customElements.define = function(name, constructor, options) {
+    registeredElements.add(name);
+    return originalDefine(name, constructor, options);
+  };
+
+  try {
+    // Clear before test
+    clearModelCache();
+
+    await testFn();
+
+  } finally {
+    // Restore
+    customElements.define = originalDefine;
+
+    // Clear after test
+    clearModelCache();
+
+    // Note: We can't unregister custom elements, but we track them for debugging
+    if (registeredElements.size > 0) {
+      // In a real scenario, we'd need to reload the page or use a different strategy
+      // For now, just clear the cache
+    }
+  }
+}
+
+/**
+ * Generates unique ID for tests
+ * @param {string} prefix - ID prefix
+ * @returns {string} Unique ID
+ */
+export function generateTestId(prefix = 'd:test') {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substr(2, 9);
+  return `${prefix}-${timestamp}-${random}`;
+}
+
+/**
+ * Retry operation with exponential backoff
+ * @param {Function} operation - Async operation to retry
+ * @param {Object} options - Configuration
+ * @param {number} options.maxRetries - Max retry attempts (default: 3)
+ * @param {number} options.initialDelay - Initial delay in ms (default: 100)
+ * @param {number} options.maxDelay - Max delay in ms (default: 5000)
+ * @param {Function} options.shouldRetry - Function to determine if error is retryable
+ */
+export async function retry(operation, options = {}) {
+  const {
+    maxRetries = 3,
+    initialDelay = 100,
+    maxDelay = 5000,
+    shouldRetry = () => true
+  } = options;
+
+  let lastError;
+  let delay = initialDelay;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+
+      if (attempt === maxRetries || !shouldRetry(error)) {
+        throw error;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay = Math.min(delay * 2, maxDelay);
+    }
+  }
+
+  throw lastError;
 }
 

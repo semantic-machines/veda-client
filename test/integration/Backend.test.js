@@ -1,5 +1,5 @@
-import Backend from '../src/Backend.js';
-import BackendError from '../src/BackendError.js';
+import Backend from '../../src/Backend.js';
+import BackendError from '../../src/BackendError.js';
 
 export default ({test, assert}) => {
   test('Backend - базовые операции', async () => {
