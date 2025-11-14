@@ -55,10 +55,15 @@ async function flushEffects() {
     effectQueue.clear();
 
     for (const effect of sortedEffects) {
-      if (effect.options?.scheduler) {
-        effect.options.scheduler(effect);
-      } else {
-        effect();
+      try {
+        if (effect.options?.scheduler) {
+          effect.options.scheduler(effect);
+        } else {
+          effect();
+        }
+      } catch (error) {
+        console.error('Error in effect:', error);
+        // Continue with other effects even if one fails
       }
     }
 

@@ -135,43 +135,47 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     removed () {}
 
     async update () {
-      // Clear old child promises to prevent memory leak
-      this.#childrenRendered = [];
+      try {
+        // Clear old child promises to prevent memory leak
+        this.#childrenRendered = [];
 
-      // Clear old render effects
-      this.#renderEffects.forEach(cleanup => cleanup());
-      this.#renderEffects = [];
+        // Clear old render effects
+        this.#renderEffects.forEach(cleanup => cleanup());
+        this.#renderEffects = [];
 
-      const pre = this.pre();
-      if (pre instanceof Promise) await pre;
+        const pre = this.pre();
+        if (pre instanceof Promise) await pre;
 
-      let html = this.render();
-      if (html instanceof Promise) html = await html;
+        let html = this.render();
+        if (html instanceof Promise) html = await html;
 
-      if (typeof html === 'undefined') {
-        const post = this.post();
+        if (typeof html === 'undefined') {
+          const post = this.post();
+          if (post instanceof Promise) await post;
+          return;
+        }
+
+        html = typeof html === 'string' ? html.replaceAll(marker, '') : html;
+        let template = document.createElement('template');
+        template.innerHTML = html;
+        let fragment = template.content;
+
+        this._process(fragment);
+
+        const container = this.hasAttribute('shadow')
+          ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
+          : this;
+        container.replaceChildren(fragment);
+
+        const post = this.post(fragment);
         if (post instanceof Promise) await post;
-        return;
+
+        template.remove();
+        template = null;
+        fragment = null;
+      } catch (error) {
+        console.log(this, 'Component render error', error);
       }
-
-      html = typeof html === 'string' ? html.replaceAll(marker, '') : html;
-      let template = document.createElement('template');
-      template.innerHTML = html;
-      let fragment = template.content;
-
-      this._process(fragment);
-
-      const container = this.hasAttribute('shadow')
-        ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
-        : this;
-      container.replaceChildren(fragment);
-
-      const post = this.post(fragment);
-      if (post instanceof Promise) await post;
-
-      template.remove();
-      template = null;
-      fragment = null;
     }
 
     async populate () {

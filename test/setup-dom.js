@@ -99,6 +99,10 @@ console.error = (...args) => {
 
     // Suppress expected test errors
     if (firstArg.includes('Infinite loop detected') ||
+        firstArg.includes('Error in effect:') ||
+        firstArg.includes('Component render error:') ||
+        firstArg.includes('Component added error:') ||
+        firstArg.includes('Component removed error:') ||
         firstArg.includes('TypeError: Cannot read properties of undefined')) {
       return;
     }
@@ -113,7 +117,8 @@ console.warn = (...args) => {
     const message = String(args[0]);
 
     // Suppress expected warnings from tests
-    if (message.includes('Invalid expression')) {
+    if (message.includes('Invalid expression') ||
+        message.includes('Handler expression')) {
       return;
     }
   }
