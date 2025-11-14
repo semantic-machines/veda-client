@@ -991,5 +991,17 @@ export default ({ test, assert }) => {
 
     clearModelCache();
   });
+
+  // Cleanup: restore original Backend methods after all tests
+  test('Model - cleanup mocks', () => {
+    Backend.get_rights = originalGetRights;
+    Backend.get_membership = originalGetMembership;
+    Backend.get_individual = originalGetIndividual;
+    Backend.put_individual = originalPutIndividual;
+    Backend.remove_individual = originalRemoveIndividual;
+    Backend.user_uri = originalUserUri;
+    
+    assert(true, 'Backend methods restored');
+  });
 };
 
