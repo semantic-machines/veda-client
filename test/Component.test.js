@@ -2,10 +2,45 @@ import './setup-dom.js';
 import Component, { html, raw, safe, reactive, effect } from '../src/components/Component.js';
 import { flushEffects } from '../src/Effect.js';
 import Model from '../src/Model.js';
+import { createTestComponent, createTestContainer, assertAttribute, createSpy, captureConsole } from './helpers.js';
 
 export default ({ test, assert }) => {
 
   // ==================== HELPER FUNCTIONS ====================
+
+  // Parametrized test for different value types in expressions
+  [
+    ['string', 'hello', 'world'],
+    ['number', 42, 100],
+    ['boolean', true, false],
+    ['array', [1, 2], [3, 4, 5]]
+  ].forEach(([type, initial, updated]) => {
+    test(`Component - reactive ${type} expression`, async () => {
+      class TestComponent extends Component(HTMLElement) {
+        constructor() {
+          super();
+          this.state = this.reactive({ value: initial });
+        }
+        render() {
+          return html`<div class="value">{this.state.value}</div>`;
+        }
+      }
+
+      const { component, cleanup } = await createTestComponent(TestComponent);
+      const div = component.querySelector('.value');
+      
+      const initialText = Array.isArray(initial) ? initial.join(',') : String(initial);
+      assert(div.textContent === initialText, `Initial ${type} renders correctly`);
+
+      component.state.value = updated;
+      await flushEffects();
+
+      const updatedText = Array.isArray(updated) ? updated.join(',') : String(updated);
+      assert(div.textContent === updatedText, `Updated ${type} renders correctly`);
+
+      cleanup();
+    });
+  });
 
   test('html() tagged template - escaping and safe values', () => {
     // Combines: escapes values, preserves safe markup, handles arrays
@@ -698,78 +733,48 @@ export default ({ test, assert }) => {
 
   test('Component - handles undefined/null in expressions', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-nullish';
-
       constructor() {
         super();
-        this.state = this.reactive({
-          value: null
-        });
+        this.state = this.reactive({ value: null });
       }
-
       render() {
         return html`<div class="value">{this.state.value}</div>`;
       }
     }
 
-    customElements.define('test-nullish', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-nullish');
-    container.appendChild(component);
-
-    await component.rendered;
-    await flushEffects();
-
+    const { component, cleanup } = await createTestComponent(TestComponent);
     const div = component.querySelector('.value');
+    
     assert(div.textContent === '', 'Null should render as empty string');
 
     component.state.value = undefined;
     await flushEffects();
-
     assert(div.textContent === '', 'Undefined should render as empty string');
 
     component.state.value = 'Hello';
     await flushEffects();
-
     assert(div.textContent === 'Hello', 'Should render actual value');
 
-    container.remove();
+    cleanup();
   });
 
   test('Component - async render() method', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-async-render';
-
       async render() {
         await new Promise(resolve => setTimeout(resolve, 10));
         return html`<div>Async content</div>`;
       }
     }
 
-    customElements.define('test-async-render', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-async-render');
-    container.appendChild(component);
-
-    await component.rendered;
-
+    const { component, cleanup } = await createTestComponent(TestComponent);
     assert(component.textContent.includes('Async content'), 'Should render async content');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - async lifecycle hooks', async () => {
     const calls = [];
 
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-async-hooks';
-
       async added() {
         await new Promise(resolve => setTimeout(resolve, 5));
         calls.push('added');
@@ -791,22 +796,14 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-async-hooks', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-async-hooks');
-    container.appendChild(component);
-
-    await component.rendered;
-
+    const { component, cleanup } = await createTestComponent(TestComponent);
+    
     assert(calls.includes('added'), 'added should be called');
     assert(calls.includes('pre'), 'pre should be called');
     assert(calls.includes('render'), 'render should be called');
     assert(calls.includes('post'), 'post should be called');
 
-    container.remove();
+    cleanup();
   });
 
   test('Component - populate with model attribute', async () => {
