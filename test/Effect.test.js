@@ -296,5 +296,63 @@ export default ({test, assert}) => {
     await flushEffects();
     assert.equal(result, 2, 'Should switch to other branch');
   });
+
+  test('Effect - flushEffects during flush (line 43)', async () => {
+    const state = reactive({count: 0});
+    let runs = 0;
+
+    effect(() => {
+      runs++;
+      state.count;
+    });
+
+    await flushEffects();
+    const runsBeforeSecondFlush = runs;
+
+    // Trigger multiple flushes concurrently
+    state.count++;
+    const promise1 = flushEffects();
+    const promise2 = flushEffects(); // Should return early (line 43)
+    const promise3 = flushEffects(); // Should return early (line 43)
+
+    await Promise.all([promise1, promise2, promise3]);
+
+    // Effect should run once more (not multiple times)
+    assert(runs === runsBeforeSecondFlush + 1, 'Effect should run once despite concurrent flushes');
+  });
+
+  test('Effect - computed effects priority (line 50)', async () => {
+    const state = reactive({value: 1});
+    const executionOrder = [];
+
+    // Regular effect
+    effect(() => {
+      executionOrder.push('regular');
+      state.value;
+    });
+
+    // Computed effect (higher priority)
+    effect(() => {
+      executionOrder.push('computed');
+      state.value;
+    }, { computed: true });
+
+    // Another regular effect
+    effect(() => {
+      executionOrder.push('regular2');
+      state.value;
+    });
+
+    await flushEffects();
+    executionOrder.length = 0; // Clear initial runs
+
+    // Trigger update
+    state.value++;
+    await flushEffects();
+
+    // Computed effects should run first
+    assert.equal(executionOrder[0], 'computed', 'Computed effect should run first');
+    assert(executionOrder.includes('regular'), 'Regular effects should also run');
+  });
 };
 
