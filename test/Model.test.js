@@ -5,6 +5,7 @@
 
 import Model from '../src/Model.js';
 import Backend from '../src/Backend.js';
+import Subscription from '../src/Subscription.js';
 import { MockBackend, getMockBackend, resetMockBackend } from './mocks/Backend.mock.js';
 import {
   waitForCondition,
@@ -18,7 +19,7 @@ export default ({ test, assert }) => {
 
   // Setup mock backend
   const mockBackend = getMockBackend();
-  
+
   // Replace Backend methods with mocks (save originals for restore)
   const originalGetRights = Backend.get_rights;
   const originalGetMembership = Backend.get_membership;
@@ -26,10 +27,10 @@ export default ({ test, assert }) => {
   const originalPutIndividual = Backend.put_individual;
   const originalRemoveIndividual = Backend.remove_individual;
   const originalUserUri = Backend.user_uri;
-  
+
   // Set user_uri for rights tests
   Backend.user_uri = 'cfg:Guest';
-  
+
   Backend.get_rights = (id, user_uri) => mockBackend.get_rights(id, user_uri || Backend.user_uri);
   Backend.get_membership = (id) => mockBackend.get_membership(id);
   Backend.get_individual = (id, reopen) => mockBackend.get_individual(id, reopen);
@@ -739,6 +740,205 @@ export default ({ test, assert }) => {
     clearModelCache();
   });
 
+  test('Model - removeValue with non-array property (direct assignment)', () => {
+    clearModelCache();
+
+    const model = new Model();
+    const prop = 'test:prop';
+
+    // Direct assignment bypasses Value.parse() and creates non-array property
+    model[prop] = 'test-value';
+
+    assert(model.hasValue(prop, 'test-value'), 'Should have value');
+    assert(!Array.isArray(model[prop]), 'Property should not be array');
+
+    // removeValue should handle non-array case
+    model.removeValue(prop, 'test-value');
+
+    assert(!model.hasValue(prop), 'Should not have value after remove');
+    assert(model[prop] === undefined, 'Property should be undefined');
+
+    clearModelCache();
+  });
+
+  test('Model - apply with missing @ property (uses genUri fallback)', () => {
+    clearModelCache();
+
+    const model = new Model();
+
+    // Apply data without '@' field (null or undefined)
+    model.apply({
+      '@': null,
+      'rdfs:label': [{ data: 'Test', type: 'String' }]
+    });
+
+    // Should generate URI using genUri()
+    assert(model.id !== null, 'Should have generated id');
+    assert(typeof model.id === 'string', 'ID should be string');
+    assert(model.id.startsWith('d:'), 'Generated ID should start with d:');
+
+    clearModelCache();
+  });
+
+  test('Model - subscribe without updateCounter (fallback to 0)', () => {
+    clearModelCache();
+
+    const testId = generateTestId('d:subscribe-no-counter');
+    mockBackend.seed({
+      [testId]: {
+        'rdfs:label': [{ data: 'Test', type: 'String' }]
+      }
+    });
+
+    const model = new Model(testId);
+
+    // Subscribe without updateCounter (uses 0 as default)
+    model.subscribe();
+
+    const subscriptionData = Subscription._subscriptions.get(testId);
+    assert(subscriptionData !== undefined, 'Should be subscribed');
+    assert(subscriptionData[1] === 0, 'Counter should default to 0');
+
+    clearModelCache();
+  });
+
+  test('Model - subscribe with updateCounter', () => {
+    clearModelCache();
+
+    const testId = generateTestId('d:subscribe-with-counter');
+    mockBackend.seed({
+      [testId]: {
+        'rdfs:label': [{ data: 'Test', type: 'String' }],
+        'v-s:updateCounter': [{ data: 5, type: 'Integer' }]
+      }
+    });
+
+    const model = new Model(testId);
+    model['v-s:updateCounter'] = [5]; // Set updateCounter
+
+    // Subscribe with updateCounter (uses actual counter value)
+    model.subscribe();
+
+    const subscriptionData = Subscription._subscriptions.get(testId);
+    assert(subscriptionData !== undefined, 'Should be subscribed');
+    assert(subscriptionData[1] === 5, 'Counter should use updateCounter value');
+
+    clearModelCache();
+  });
+
+  test('Model - hasValue with function property', () => {
+    clearModelCache();
+
+    const model = new Model();
+    const prop = 'test:func';
+
+    // Assign function as property
+    model[prop] = function() { return 'test'; };
+
+    // hasValue should return false for function properties
+    const result = model.hasValue(prop, function() {});
+
+    assert(result === false, 'Should return false for function properties');
+
+    clearModelCache();
+  });
+
+  test('Model - removeValue deletes empty array', () => {
+    clearModelCache();
+
+    const model = new Model();
+    const prop = 'test:values';
+
+    // Set array with single value
+    model[prop] = ['single-value'];
+
+    assert(model.hasValue(prop, 'single-value'), 'Should have value');
+
+    // Remove the only value - should delete the property entirely
+    model.removeValue(prop, 'single-value');
+
+    assert(model[prop] === undefined, 'Property should be deleted when array becomes empty');
+    assert(!model.hasValue(prop), 'Should not have property after removal');
+
+    clearModelCache();
+  });
+
+  test('Model - getPropertyChain with nested Models', async () => {
+    clearModelCache();
+
+    const testId1 = generateTestId('d:chain-parent');
+    const testId2 = generateTestId('d:chain-child');
+    const testId3 = generateTestId('d:chain-grandchild');
+    
+    mockBackend.seed({
+      [testId1]: {
+        'rdfs:label': [{ data: 'Parent', type: 'String' }]
+      },
+      [testId2]: {
+        'rdfs:label': [{ data: 'Child', type: 'String' }]
+      },
+      [testId3]: {
+        'rdfs:label': [{ data: 'Grandchild', type: 'String' }]
+      }
+    });
+
+    const parent = new Model(testId1);
+    await parent.load();
+    
+    const child = new Model(testId2);
+    await child.load();
+    
+    const grandchild = new Model(testId3);
+    await grandchild.load();
+    
+    // Create chain: parent -> child -> grandchild
+    parent['v-s:hasChild'] = [child];
+    child['v-s:hasGrandchild'] = [grandchild];
+    
+    // Test recursive getPropertyChain call
+    const result = await parent.getPropertyChain('v-s:hasChild', 'v-s:hasGrandchild');
+    
+    assert(result !== undefined, 'Should return value through chain');
+    assert(Array.isArray(result), 'Should return array');
+    assert(result[0] === grandchild, 'Should get grandchild through chain');
+
+    clearModelCache();
+  });
+
+  test('Model - getPropertyChain with non-array property', async () => {
+    clearModelCache();
+
+    const testId1 = generateTestId('d:chain-single-parent');
+    const testId2 = generateTestId('d:chain-single-child');
+    
+    mockBackend.seed({
+      [testId1]: {
+        'rdfs:label': [{ data: 'Parent', type: 'String' }]
+      },
+      [testId2]: {
+        'rdfs:label': [{ data: 'Child', type: 'String' }]
+      }
+    });
+
+    const parent = new Model(testId1);
+    await parent.load();
+    
+    const child = new Model(testId2);
+    await child.load();
+    
+    // Direct assignment (non-array) to test the else branch
+    parent['v-s:child'] = child; // Not an array
+    
+    // Test recursive call with non-array property
+    const result = await parent.getPropertyChain('v-s:child', 'rdfs:label');
+    
+    assert(result !== undefined, 'Should return value through non-array chain');
+    assert(Array.isArray(result), 'Should return array');
+    assert(result[0] === 'Child', 'Should get child label');
+
+    clearModelCache();
+  });
+
   test('Model - subscribe error handling', async () => {
     clearModelCache();
 
@@ -754,17 +954,40 @@ export default ({ test, assert }) => {
     const model = new Model(testId);
     await model.load();
 
+    // Capture console.error to verify error logging
+    const originalError = console.error;
+    let errorCaught = false;
+    console.error = (...args) => {
+      if (args[0].includes('Error resetting model')) {
+        errorCaught = true;
+      }
+    };
+
     // Override Backend.get_individual to throw error
     const originalGetIndividual = Backend.get_individual;
     Backend.get_individual = async () => {
       throw new Error('Network error');
     };
 
-    // Subscribe should handle error internally (logs to console)
+    // Subscribe
     model.subscribe();
+
+    // Trigger updater callback by simulating an update
+    // The updater is registered with Subscription, we need to trigger it
+    const subscriptionData = Subscription._subscriptions.get(testId);
+    if (subscriptionData && subscriptionData[2]) {
+      // Call the updater function directly (it's at index 2)
+      await subscriptionData[2](testId, 1);
+
+      // Wait a bit for async error handler
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      assert(errorCaught, 'Should catch and log error');
+    }
 
     // Restore
     Backend.get_individual = originalGetIndividual;
+    console.error = originalError;
 
     clearModelCache();
   });

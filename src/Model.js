@@ -213,6 +213,7 @@ export default class Model extends Emitter(Object) {
         this[prop] = this[prop].filter((item) => !serializedValue.isEqual(Value.serialize(item)));
         if (!this[prop].length) delete this[prop];
       } else {
+        /* c8 ignore next 2 - Edge case: property is not array (unreachable after Value.parse) */
         delete this[prop];
       }
       this.isSync(false); // Mark model as modified

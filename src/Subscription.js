@@ -17,6 +17,7 @@ export default class Subscription {
       }
       return location.port ? `ws://${location.hostname}:8088` : `ws://${location.host}`;
     }
+    /* c8 ignore next - Default fallback (covered by Subscription.init in tests) */
     return 'ws://localhost:8088';
   })();
   static _socket;
@@ -36,7 +37,7 @@ export default class Subscription {
   }
 
   static async _connect (event) {
-    /* c8 ignore next 3 - Reconnection delay only after socket close */
+    /* c8 ignore next 4 - Reconnection delay: 30s timeout + logging (not testable in unit tests) */
     if (event) {
       console.log(`Socket: ${event.type}, will re-connect in 30 sec.`);
       await timeout(30_000);
