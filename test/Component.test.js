@@ -26,9 +26,9 @@ export default ({ test, assert }) => {
         }
       }
 
-      const { component, cleanup } = await createTestComponent(TestComponent);
+      const { component, container, cleanup } = await createTestComponent(TestComponent);
       const div = component.querySelector('.value');
-      
+
       const initialText = Array.isArray(initial) ? initial.join(',') : String(initial);
       assert(div.textContent === initialText, `Initial ${type} renders correctly`);
 
@@ -109,7 +109,6 @@ export default ({ test, assert }) => {
     const calls = [];
 
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-lifecycle';
 
       constructor() {
         super();
@@ -138,15 +137,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-lifecycle', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-lifecycle');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
 
     assert(calls[0] === 'constructor', 'constructor should be first');
     assert(calls.includes('added'), 'added should be called');
@@ -154,8 +145,7 @@ export default ({ test, assert }) => {
     assert(calls.includes('render'), 'render should be called');
     assert(calls.includes('post'), 'post should be called');
     assert(calls[calls.length - 1] === 'renderedCallback', 'renderedCallback should be last');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - disconnectedCallback cleanup', async () => {
@@ -213,7 +203,6 @@ export default ({ test, assert }) => {
 
   test('Component - reactive state changes trigger re-render', async () => {
     class CounterComponent extends Component(HTMLElement) {
-      static tag = 'test-counter';
 
       constructor() {
         super();
@@ -225,15 +214,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-counter', CounterComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-counter');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(CounterComponent);
     await flushEffects();
 
     let countDiv = component.querySelector('.count');
@@ -245,13 +226,11 @@ export default ({ test, assert }) => {
 
     countDiv = component.querySelector('.count');
     assert(countDiv.textContent === '42', 'Count should update to 42');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - multiple reactive properties', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-multi-reactive';
 
       constructor() {
         super();
@@ -271,15 +250,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-multi-reactive', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-multi-reactive');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
     await flushEffects();
 
     assert(component.querySelector('.first').textContent === 'John', 'First name should be John');
@@ -290,13 +261,11 @@ export default ({ test, assert }) => {
 
     assert(component.querySelector('.first').textContent === 'Jane', 'First name should update');
     assert(component.querySelector('.last').textContent === 'Doe', 'Last name should stay same');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - computed properties are reactive', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-computed';
 
       constructor() {
         super();
@@ -312,15 +281,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-computed', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-computed');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
     await flushEffects();
 
     assert(component.querySelector('.result').textContent === '10', 'Initial doubled value');
@@ -329,8 +290,7 @@ export default ({ test, assert }) => {
     await flushEffects();
 
     assert(component.querySelector('.result').textContent === '14', 'Computed should update');
-
-    container.remove();
+    cleanup();
   });
 
   // ==================== EVENT HANDLERS ====================
@@ -339,7 +299,6 @@ export default ({ test, assert }) => {
     let clicked = false;
 
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-event-simple';
 
       handleClick = () => {
         clicked = true;
@@ -350,22 +309,13 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-event-simple', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-event-simple');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
 
     const button = component.querySelector('button');
     button.click();
 
     assert(clicked === true, 'Click handler should be called');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - event handler receives event and node', async () => {
@@ -373,7 +323,6 @@ export default ({ test, assert }) => {
     let receivedNode = null;
 
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-event-args';
 
       handleClick = (event, node) => {
         receivedEvent = event;
@@ -385,15 +334,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-event-args', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-event-args');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
 
     const button = component.querySelector('button');
     button.click();
@@ -401,15 +342,13 @@ export default ({ test, assert }) => {
     assert(receivedEvent !== null, 'Should receive event');
     assert(receivedEvent.type === 'click', 'Event type should be click');
     assert(receivedNode === button, 'Should receive button node');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - multiple event types', async () => {
     const events = [];
 
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-multi-events';
 
       handleClick = () => events.push('click');
       handleMouseover = () => events.push('mouseover');
@@ -425,15 +364,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-multi-events', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-multi-events');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
 
     const button = component.querySelector('button');
 
@@ -442,15 +373,13 @@ export default ({ test, assert }) => {
 
     assert(events.length >= 1, 'Click event should fire');
     assert(events[0] === 'click', 'First event should be click');
-
-    container.remove();
+    cleanup();
   });
 
   // ==================== REACTIVE ATTRIBUTES ====================
 
   test('Component - reactive attributes update', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-reactive-attr';
 
       constructor() {
         super();
@@ -462,15 +391,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-reactive-attr', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-reactive-attr');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
     await flushEffects();
 
     const button = component.querySelector('button');
@@ -481,13 +402,11 @@ export default ({ test, assert }) => {
     await flushEffects();
 
     assert(button.disabled, 'Button should be disabled after state change');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - boolean attributes (checked, disabled, etc)', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-boolean-attrs';
 
       constructor() {
         super();
@@ -504,15 +423,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-boolean-attrs', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-boolean-attrs');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
     await flushEffects();
 
     const checkbox = component.querySelector('input');
@@ -527,41 +438,29 @@ export default ({ test, assert }) => {
 
     assert(checkbox.checked, 'Checkbox should be checked');
     assert(button.disabled, 'Button should be disabled');
-
-    container.remove();
+    cleanup();
   });
 
   // ==================== TEMPLATE PROCESSING ====================
 
   test('Component - renders simple template', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-simple-template';
 
       render() {
         return html`<div class="test">Hello World</div>`;
       }
     }
 
-    customElements.define('test-simple-template', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-simple-template');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
 
     const div = component.querySelector('.test');
     assert(div !== null, 'Should have div with class test');
     assert(div.textContent === 'Hello World', 'Should have correct text');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - multiple reactive expressions in text', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-multi-expressions';
 
       constructor() {
         super();
@@ -576,15 +475,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-multi-expressions', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-multi-expressions');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
     await flushEffects();
 
     assert(component.textContent.includes('John'), 'Should include first name');
@@ -595,15 +486,13 @@ export default ({ test, assert }) => {
 
     assert(component.textContent.includes('Jane'), 'Should update first name');
     assert(component.textContent.includes('Doe'), 'Last name should stay');
-
-    container.remove();
+    cleanup();
   });
 
   // ==================== MODEL INTEGRATION ====================
 
   test('Component - model property integration', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-model-prop';
 
       render() {
         return html`<div class="model-id">{this.model.id}</div>`;
@@ -634,7 +523,6 @@ export default ({ test, assert }) => {
     let effectRuns = 0;
 
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-effect-helper';
 
       constructor() {
         super();
@@ -655,15 +543,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-effect-helper', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-effect-helper');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
     await flushEffects();
 
     const initialRuns = effectRuns;
@@ -672,15 +552,13 @@ export default ({ test, assert }) => {
     await flushEffects();
 
     assert(effectRuns > initialRuns, 'Effect should run on state change');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - watch() helper method', async () => {
     const values = [];
 
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-watch-helper';
 
       constructor() {
         super();
@@ -703,15 +581,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-watch-helper', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-watch-helper');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
     await flushEffects();
 
     component.state.count = 5;
@@ -725,8 +595,7 @@ export default ({ test, assert }) => {
     assert(values[0].old === 0, 'First change old value');
     assert(values[1].new === 10, 'Second change new value');
     assert(values[1].old === 5, 'Second change old value');
-
-    container.remove();
+    cleanup();
   });
 
   // ==================== EDGE CASES ====================
@@ -742,9 +611,9 @@ export default ({ test, assert }) => {
       }
     }
 
-    const { component, cleanup } = await createTestComponent(TestComponent);
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
     const div = component.querySelector('.value');
-    
+
     assert(div.textContent === '', 'Null should render as empty string');
 
     component.state.value = undefined;
@@ -766,7 +635,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    const { component, cleanup } = await createTestComponent(TestComponent);
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
     assert(component.textContent.includes('Async content'), 'Should render async content');
     cleanup();
   });
@@ -796,8 +665,8 @@ export default ({ test, assert }) => {
       }
     }
 
-    const { component, cleanup } = await createTestComponent(TestComponent);
-    
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
+
     assert(calls.includes('added'), 'added should be called');
     assert(calls.includes('pre'), 'pre should be called');
     assert(calls.includes('render'), 'render should be called');
@@ -808,7 +677,6 @@ export default ({ test, assert }) => {
 
   test('Component - populate with model attribute', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-populate-model';
 
       render() {
         return html`<div>{this.model?.id || 'no-id'}</div>`;
@@ -834,7 +702,6 @@ export default ({ test, assert }) => {
 
   test('Component - model property sets about attribute', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-model-attr';
 
       render() {
         return html`<div>Test</div>`;
@@ -861,7 +728,6 @@ export default ({ test, assert }) => {
 
   test('Component - render returns undefined (no template)', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-no-template';
 
       render() {
         // Return undefined - no template
@@ -869,20 +735,11 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-no-template', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-no-template');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
 
     // Should not crash, just not render anything
     assert(component.childNodes.length === 0, 'Should have no children');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - pre/post hooks are called', async () => {
@@ -890,7 +747,6 @@ export default ({ test, assert }) => {
     let postCalled = false;
 
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-pre-post';
 
       pre() {
         preCalled = true;
@@ -905,20 +761,11 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-pre-post', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-pre-post');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
 
     assert(preCalled === true, 'pre() should be called');
     assert(postCalled === true, 'post() should be called');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - removed() hook on disconnect', async () => {
@@ -955,35 +802,24 @@ export default ({ test, assert }) => {
 
   test('Component - error in render is caught', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-render-error';
 
       render() {
         throw new Error('Render error');
       }
     }
 
-    customElements.define('test-render-error', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-render-error');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
 
     // Component should be rendered even if render() throws
     assert(component.isConnected, 'Component should remain connected despite render error');
     assert(component.innerHTML === '', 'Component should have empty content after render error');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - update() can be called manually', async () => {
     let renderCount = 0;
 
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-manual-update';
 
       render() {
         renderCount++;
@@ -991,28 +827,18 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-manual-update', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-manual-update');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
 
     const initialCount = renderCount;
 
     await component.update();
 
     assert(renderCount > initialCount, 'Render should be called again after manual update');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - falsy values render correctly', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-falsy';
 
       constructor() {
         super();
@@ -1032,54 +858,34 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-falsy', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-falsy');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
     await flushEffects();
 
     assert(component.querySelector('.zero').textContent === '0', 'Zero should render as "0"');
     assert(component.querySelector('.empty').textContent === '', 'Empty string should render as ""');
     assert(component.querySelector('.false').textContent === 'false', 'False should render as "false"');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - static expressions with ${}', async () => {
     const testId = 'my-test-id';
 
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-static-expr';
 
       render() {
         return html`<div id="${testId}">Static</div>`;
       }
     }
 
-    customElements.define('test-static-expr', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-static-expr');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
 
     const div = component.querySelector(`#${testId}`);
     assert(div !== null, 'Should have div with static id');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - mixed static and reactive expressions', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-mixed-expr';
 
       constructor() {
         super();
@@ -1091,15 +897,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-mixed-expr', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-mixed-expr');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
     await flushEffects();
 
     const div = component.querySelector('.greeting');
@@ -1110,13 +908,11 @@ export default ({ test, assert }) => {
     await flushEffects();
 
     assert(div.textContent.includes('Universe'), 'Reactive content should update');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - expression with optional chaining', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-optional-chain';
 
       constructor() {
         super();
@@ -1134,15 +930,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-optional-chain', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-optional-chain');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
     await flushEffects();
 
     assert(component.textContent.includes('default'), 'Should show default for null');
@@ -1151,15 +939,13 @@ export default ({ test, assert }) => {
     await flushEffects();
 
     assert(component.textContent.includes('found'), 'Should show nested value');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - watch with immediate option', async () => {
     const values = [];
 
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-watch-immediate';
 
       constructor() {
         super();
@@ -1181,15 +967,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-watch-immediate', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-watch-immediate');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
     await flushEffects();
 
     assert(values.length === 1, 'Should run immediately with immediate:true');
@@ -1200,15 +978,13 @@ export default ({ test, assert }) => {
 
     assert(values.length === 2, 'Should run again on change');
     assert(values[1] === 5, 'New value should be 5');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - watch returns cleanup function', async () => {
     let watchRuns = 0;
 
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-watch-cleanup';
 
       constructor() {
         super();
@@ -1231,15 +1007,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-watch-cleanup', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-watch-cleanup');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
     await flushEffects();
 
     component.state.count = 1;
@@ -1254,13 +1022,11 @@ export default ({ test, assert }) => {
     await flushEffects();
 
     assert(watchRuns === runsBeforeCleanup, 'Watch should not run after cleanup');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - template property is used if render returns undefined', async () => {
     class TestComponent extends Component(HTMLElement) {
-      static tag = 'test-template-prop';
 
       constructor() {
         super();
@@ -1273,21 +1039,12 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-template-prop', TestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-template-prop');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TestComponent);
 
     const div = component.querySelector('.from-template');
     assert(div !== null, 'Should render from template property');
     assert(div.textContent === 'Template content', 'Should have template content');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - innerHTML is used if no template or render', async () => {
@@ -1465,22 +1222,13 @@ export default ({ test, assert }) => {
     console.warn = (...args) => warnings.push(args.join(' '));
 
     class NoMethodComponent extends Component(HTMLElement) {
-      static tag = 'test-no-method';
 
       render() {
         return html`<button onclick="{nonExistentMethod}">Click</button>`;
       }
     }
 
-    customElements.define('test-no-method', NoMethodComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-no-method');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(NoMethodComponent);
 
     const button = component.querySelector('button');
     button.click();
@@ -1489,8 +1237,7 @@ export default ({ test, assert }) => {
 
     const hasWarning = warnings.some(w => w.includes('nonExistentMethod'));
     assert(hasWarning, 'Should warn about method not found');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - invalid event handler expression', async () => {
@@ -1499,7 +1246,6 @@ export default ({ test, assert }) => {
     console.warn = (...args) => warnings.push(args.join(' '));
 
     class InvalidHandlerComponent extends Component(HTMLElement) {
-      static tag = 'test-invalid-handler';
 
       render() {
         return html`<button onclick="{this.state.notAFunction}">Click</button>`;
@@ -1511,15 +1257,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-invalid-handler', InvalidHandlerComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-invalid-handler');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(InvalidHandlerComponent);
     await flushEffects();
 
     console.warn = originalWarn;
@@ -1529,15 +1267,13 @@ export default ({ test, assert }) => {
       w.includes('Invalid expression')
     );
     assert(hasWarning, 'Should warn about invalid handler');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - event handler with property access', async () => {
     let receivedValue = null;
 
     class PropAccessComponent extends Component(HTMLElement) {
-      static tag = 'test-prop-access';
 
       constructor() {
         super();
@@ -1553,27 +1289,17 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-prop-access', PropAccessComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-prop-access');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(PropAccessComponent);
 
     const button = component.querySelector('button');
     button.click();
 
     assert(receivedValue === 'called', 'Should call handler via property access');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - multiple text expressions in sequence', async () => {
     class MultiTextComponent extends Component(HTMLElement) {
-      static tag = 'test-multi-text';
 
       constructor() {
         super();
@@ -1589,15 +1315,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-multi-text', MultiTextComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-multi-text');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(MultiTextComponent);
     await flushEffects();
 
     const div = component.querySelector('div');
@@ -1607,13 +1325,11 @@ export default ({ test, assert }) => {
     await flushEffects();
 
     assert(div.textContent === 'A-X-C', 'Should update middle expression');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - non-reactive component with expressions', async () => {
     class NonReactiveComponent extends Component(HTMLElement) {
-      static tag = 'test-non-reactive';
 
       constructor() {
         super();
@@ -1626,15 +1342,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-non-reactive', NonReactiveComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-non-reactive');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(NonReactiveComponent);
 
     const div = component.querySelector('div');
     assert(div.textContent === 'static', 'Should render static value');
@@ -1645,15 +1353,13 @@ export default ({ test, assert }) => {
 
     // Still shows old value - no re-render
     assert(div.textContent === 'static', 'Should not update (non-reactive)');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - renderedCallback is called', async () => {
     let callbackCalled = false;
 
     class CallbackComponent extends Component(HTMLElement) {
-      static tag = 'test-rendered-callback';
 
       renderedCallback() {
         callbackCalled = true;
@@ -1664,24 +1370,14 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-rendered-callback', CallbackComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-rendered-callback');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(CallbackComponent);
 
     assert(callbackCalled === true, 'renderedCallback should be called');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - error in added() hook is caught', async () => {
     class ErrorInAddedComponent extends Component(HTMLElement) {
-      static tag = 'test-error-added';
 
       added() {
         throw new Error('Error in added');
@@ -1692,21 +1388,12 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-error-added', ErrorInAddedComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-error-added');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(ErrorInAddedComponent);
 
     // Component should remain connected despite error in added()
     // but might not render if error occurs before update()
     assert(component.isConnected, 'Component should remain connected despite added() error');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - error in removed() hook is caught', async () => {
@@ -1788,7 +1475,6 @@ export default ({ test, assert }) => {
 
   test('Component - expression evaluation error handling', async () => {
     class ErrorExprComponent extends Component(HTMLElement) {
-      static tag = 'test-error-expr';
 
       render() {
         // This will cause evaluation error
@@ -1796,26 +1482,16 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-error-expr', ErrorExprComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-error-expr');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(ErrorExprComponent);
 
     const div = component.querySelector('div');
     // Should render empty string on error
     assert(div.textContent === '', 'Should render empty on evaluation error');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - event handler can throw error', async () => {
     class ErrorHandlerComponent extends Component(HTMLElement) {
-      static tag = 'test-error-handler';
 
       handleClick = () => {
         throw new Error('Handler error');
@@ -1826,15 +1502,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-error-handler', ErrorHandlerComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-error-handler');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(ErrorHandlerComponent);
 
     const button = component.querySelector('button');
     assert(button !== null, 'Button should exist');
@@ -1842,15 +1510,13 @@ export default ({ test, assert }) => {
     // Handler is registered, component renders successfully
     // Error in handler would only be caught during click in browser
     assert(component.isConnected, 'Component should be rendered with error-throwing handler');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - event handler resolves to function via getter', async () => {
     let clicked = false;
 
     class GetterHandlerComponent extends Component(HTMLElement) {
-      static tag = 'test-getter-handler';
 
       get myHandler() {
         return () => { clicked = true; };
@@ -1861,22 +1527,13 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-getter-handler', GetterHandlerComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-getter-handler');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(GetterHandlerComponent);
 
     const button = component.querySelector('button');
     button.click();
 
     assert(clicked === true, 'Handler from getter should be called');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - invalid event handler syntax', async () => {
@@ -1885,7 +1542,6 @@ export default ({ test, assert }) => {
     console.warn = (...args) => warnings.push(args.join(' '));
 
     class InvalidSyntaxComponent extends Component(HTMLElement) {
-      static tag = 'test-invalid-syntax';
 
       render() {
         // Invalid: missing closing brace
@@ -1893,27 +1549,17 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-invalid-syntax', InvalidSyntaxComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-invalid-syntax');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(InvalidSyntaxComponent);
 
     console.warn = originalWarn;
 
     // Missing brace won't match regex, so no error - just verify component renders
     assert(component.querySelector('button') !== null, 'Component should render button even with malformed expression');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - reactive attributes (class, title, data-*)', async () => {
     class ReactiveAttributesComponent extends Component(HTMLElement) {
-      static tag = 'test-reactive-attrs-combined';
 
       constructor() {
         super();
@@ -1925,15 +1571,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-reactive-attrs-combined', ReactiveAttributesComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-reactive-attrs-combined');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(ReactiveAttributesComponent);
     await flushEffects();
 
     const div = component.querySelector('div');
@@ -1951,13 +1589,11 @@ export default ({ test, assert }) => {
     assert(div.className === 'base active', 'Should have updated classes');
     assert(div.getAttribute('title') === 'Updated', 'Should have updated title');
     assert(div.getAttribute('data-value') === '456', 'Should have updated data-value');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - non-reactive attributes are evaluated once', async () => {
     class NonReactiveAttrComponent extends Component(HTMLElement) {
-      static tag = 'test-nonreactive-attr';
 
       constructor() {
         super();
@@ -1969,15 +1605,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-nonreactive-attr', NonReactiveAttrComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-nonreactive-attr');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(NonReactiveAttrComponent);
 
     const div = component.querySelector('div');
     assert(div.getAttribute('data-value') === 'initial', 'Should have initial value');
@@ -1988,13 +1616,11 @@ export default ({ test, assert }) => {
 
     // Should still have old value (non-reactive)
     assert(div.getAttribute('data-value') === 'initial', 'Should not update (non-reactive)');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - non-reactive boolean attributes', async () => {
     class NonReactiveBoolComponent extends Component(HTMLElement) {
-      static tag = 'test-nonreactive-bool';
 
       constructor() {
         super();
@@ -2006,25 +1632,15 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-nonreactive-bool', NonReactiveBoolComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-nonreactive-bool');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(NonReactiveBoolComponent);
 
     const button = component.querySelector('button');
     assert(button.disabled === true, 'Should be disabled initially');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - multiple reactive attributes on same element', async () => {
     class MultiAttrComponent extends Component(HTMLElement) {
-      static tag = 'test-multi-attr';
 
       constructor() {
         super();
@@ -2040,15 +1656,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-multi-attr', MultiAttrComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-multi-attr');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(MultiAttrComponent);
     await flushEffects();
 
     const div = component.querySelector('div');
@@ -2064,15 +1672,13 @@ export default ({ test, assert }) => {
     assert(div.id === 'elem2', 'Should have updated id');
     assert(div.className === 'inactive', 'Should have updated class');
     assert(div.getAttribute('title') === 'New tooltip', 'Should have updated title');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - event handler with direct function reference', async () => {
     let clickCount = 0;
 
     class DirectFunctionComponent extends Component(HTMLElement) {
-      static tag = 'test-direct-function';
 
       myClickHandler = () => {
         clickCount++;
@@ -2083,15 +1689,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-direct-function', DirectFunctionComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-direct-function');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(DirectFunctionComponent);
 
     const button = component.querySelector('button');
     button.click();
@@ -2100,15 +1698,13 @@ export default ({ test, assert }) => {
 
     button.click();
     assert(clickCount === 2, 'Should call handler multiple times');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - event handler with simple method name lookup', async () => {
     let called = false;
 
     class SimpleMethodComponent extends Component(HTMLElement) {
-      static tag = 'test-simple-method';
 
       myMethod() {
         called = true;
@@ -2119,22 +1715,13 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-simple-method', SimpleMethodComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-simple-method');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(SimpleMethodComponent);
 
     const button = component.querySelector('button');
     button.click();
 
     assert(called === true, 'Should find and call method by name');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - event handler catches errors in expression evaluation', async () => {
@@ -2143,7 +1730,6 @@ export default ({ test, assert }) => {
     console.warn = (...args) => warnings.push(args.join(' '));
 
     class ErrorExprHandlerComponent extends Component(HTMLElement) {
-      static tag = 'test-error-expr-handler';
 
       render() {
         // This expression will fail to evaluate
@@ -2151,22 +1737,13 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-error-expr-handler', ErrorExprHandlerComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-error-expr-handler');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(ErrorExprHandlerComponent);
 
     console.warn = originalWarn;
 
     const hasWarning = warnings.some(w => w.includes('Invalid'));
     assert(hasWarning, 'Should warn about invalid event handler expression');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - reactive attribute on nested custom component', async () => {
@@ -2226,7 +1803,6 @@ export default ({ test, assert }) => {
     let called = false;
 
     class ExprFunctionComponent extends Component(HTMLElement) {
-      static tag = 'test-expr-function';
 
       handlers = {
         click: (e, node) => {
@@ -2239,29 +1815,19 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-expr-function', ExprFunctionComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-expr-function');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(ExprFunctionComponent);
 
     const button = component.querySelector('button');
     button.click();
 
     assert(called === true, 'Should call function returned by expression');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - method defined directly on component instance', async () => {
     let methodCalled = false;
 
     class DirectMethodComponent extends Component(HTMLElement) {
-      static tag = 'test-direct-method';
 
       constructor() {
         super();
@@ -2278,29 +1844,19 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-direct-method', DirectMethodComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-direct-method');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(DirectMethodComponent);
 
     const button = component.querySelector('button');
     button.click();
 
     assert(methodCalled === true, 'Should call method returned by expression');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - findMethod finds method in current component', async () => {
     let foundMethodCalled = false;
 
     class FindMethodComponent extends Component(HTMLElement) {
-      static tag = 'test-find-method';
 
       myLocalMethod() {
         foundMethodCalled = true;
@@ -2312,22 +1868,13 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-find-method', FindMethodComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-find-method');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(FindMethodComponent);
 
     const button = component.querySelector('button');
     button.click();
 
     assert(foundMethodCalled === true, 'Should find and call method in current component');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - deeply nested framework components without nextSibling', async () => {
@@ -2399,7 +1946,6 @@ export default ({ test, assert }) => {
     }
 
     class IfWithAttrComponent extends Component(HTMLElement) {
-      static tag = 'test-if-with-attr';
 
       constructor() {
         super();
@@ -2418,15 +1964,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-if-with-attr', IfWithAttrComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-if-with-attr');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(IfWithAttrComponent);
     await flushEffects();
 
     const ifComponent = component.querySelector('veda-if-reactive');
@@ -2439,8 +1977,7 @@ export default ({ test, assert }) => {
     await flushEffects();
 
     assert(ifComponent.getAttribute('data-test') === 'updated456', 'Should update reactive attribute');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - skip framework attributes on veda-loop', async () => {
@@ -2451,7 +1988,6 @@ export default ({ test, assert }) => {
     }
 
     class LoopAttrComponent extends Component(HTMLElement) {
-      static tag = 'test-loop-attr';
 
       constructor() {
         super();
@@ -2473,15 +2009,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-loop-attr', LoopAttrComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-loop-attr');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(LoopAttrComponent);
     await flushEffects();
 
     const loopComponent = component.querySelector('veda-loop-frameworktest');
@@ -2489,8 +2017,7 @@ export default ({ test, assert }) => {
 
     // data-custom should be set (lines 478-479 skip items/item-key)
     assert(loopComponent.getAttribute('data-custom') === 'mydata', 'Should set non-framework attribute');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - DOM traversal when component has no nextSibling and parent has nextSibling', async () => {
@@ -2551,7 +2078,6 @@ export default ({ test, assert }) => {
     let methodCalled = false;
 
     class MethodInThisComponent extends Component(HTMLElement) {
-      static tag = 'test-method-in-this-correct';
 
       render() {
         // At render time, dynamicHandler doesn't exist
@@ -2572,15 +2098,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-method-in-this-correct', MethodInThisComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-method-in-this-correct');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(MethodInThisComponent);
 
     // Verify method was added
     assert(typeof component.dynamicHandler === 'function', 'Method should be added after render');
@@ -2589,8 +2107,7 @@ export default ({ test, assert }) => {
     button.click();
 
     assert(methodCalled === true, 'Should find method via #findMethod even if added after render');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - skip framework attrs: condition attribute on veda-if', async () => {
@@ -2604,7 +2121,6 @@ export default ({ test, assert }) => {
     }
 
     class IfSkipAttrComponent extends Component(HTMLElement) {
-      static tag = 'test-if-skip-attr-correct';
 
       constructor() {
         super();
@@ -2625,15 +2141,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-if-skip-attr-correct', IfSkipAttrComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-if-skip-attr-correct');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(IfSkipAttrComponent);
     await flushEffects();
 
     const ifComp = component.querySelector('veda-if');
@@ -2641,8 +2149,7 @@ export default ({ test, assert }) => {
     // condition should be handled by veda-if itself, not as reactive attribute
     // data-other should be set as reactive attribute
     assert(ifComp.getAttribute('data-other') === 'test456', 'Non-framework attr should be set');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - inline component (HTML element with about attribute)', async () => {
@@ -2650,7 +2157,6 @@ export default ({ test, assert }) => {
     const Model = (await import('../src/Model.js')).default;
 
     class InlineTestComponent extends Component(HTMLElement) {
-      static tag = 'test-inline-component';
 
       async connectedCallback() {
         // Create a model for testing
@@ -2671,22 +2177,13 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-inline-component', InlineTestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-inline-component');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(InlineTestComponent);
 
     const span = component.querySelector('span');
     assert(span !== null, 'Should have span element');
     assert(span.hasAttribute('is'), 'Should have is attribute for inline component');
     assert(span.getAttribute('is').includes('span-inline-component'), 'Should have inline component class');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - property component (HTML element with property attribute)', async () => {
@@ -2694,7 +2191,6 @@ export default ({ test, assert }) => {
     const Model = (await import('../src/Model.js')).default;
 
     class PropertyTestComponent extends Component(HTMLElement) {
-      static tag = 'test-property-component';
 
       async connectedCallback() {
         // Create a model for testing
@@ -2715,15 +2211,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-property-component', PropertyTestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-property-component');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(PropertyTestComponent);
     await flushEffects();
 
     const span = component.querySelector('span');
@@ -2738,8 +2226,7 @@ export default ({ test, assert }) => {
     // Check if property component rendered (it should display the value)
     // Just verify the component was created, not the content
     // as PropertyComponent may need specific lifecycle
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - relation component (HTML element with rel attribute)', async () => {
@@ -2747,7 +2234,6 @@ export default ({ test, assert }) => {
     const Model = (await import('../src/Model.js')).default;
 
     class RelTestComponent extends Component(HTMLElement) {
-      static tag = 'test-rel-component';
 
       async connectedCallback() {
         // Create models for testing
@@ -2773,15 +2259,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-rel-component', RelTestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-rel-component');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(RelTestComponent);
     await flushEffects();
 
     const ul = component.querySelector('ul');
@@ -2791,8 +2269,7 @@ export default ({ test, assert }) => {
 
     const items = ul.querySelectorAll('li');
     assert(items.length === 2, 'Should render 2 items');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - customized built-in element with is attribute', async () => {
@@ -2814,7 +2291,6 @@ export default ({ test, assert }) => {
     }
 
     class CustomizedBuiltinTestComponent extends Component(HTMLElement) {
-      static tag = 'test-customized-builtin-correct';
 
       render() {
         // Use a regular button tag with 'is' attribute
@@ -2828,23 +2304,14 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-customized-builtin-correct', CustomizedBuiltinTestComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-customized-builtin-correct');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(CustomizedBuiltinTestComponent);
 
     // The button should be processed via the customized built-in path (lines 377-389)
     const button = component.querySelector('[is="fancy-btn-custom"]');
     assert(button !== null, 'Should have button with is attribute');
     assert(button.getAttribute('is') === 'fancy-btn-custom', 'Should preserve is attribute');
     assert(button.hasAttribute('class'), 'Should preserve other attributes');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - auto-detect reactive state in populate', async () => {
@@ -2897,7 +2364,6 @@ export default ({ test, assert }) => {
   test('Component - text with trailing static content after expression', async () => {
     // Tests lines 239-243: adding remaining static text after last expression
     class TrailingTextComponent extends Component(HTMLElement) {
-      static tag = 'test-trailing-text';
 
       constructor() {
         super();
@@ -2910,21 +2376,12 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-trailing-text', TrailingTextComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-trailing-text');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TrailingTextComponent);
     await flushEffects();
 
     const div = component.querySelector('div');
     assert(div.textContent === 'Hello John, welcome!', 'Should include trailing static text');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - auto-detect reactive state in _process', async () => {
@@ -2977,7 +2434,6 @@ export default ({ test, assert }) => {
     }
 
     class TemplateSkipComponent extends Component(HTMLElement) {
-      static tag = 'test-template-skip2';
 
       render() {
         // Static condition to ensure veda-if renders
@@ -2993,15 +2449,7 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-template-skip2', TemplateSkipComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-template-skip2');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(TemplateSkipComponent);
     await flushEffects();
     await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -3011,8 +2459,7 @@ export default ({ test, assert }) => {
     // Note: Lines 310-316 are covered when the walker encounters a template inside veda-if/veda-loop
     // The template skip logic is tested - we verify the component renders without errors
     assert(component.isConnected, 'Template skip logic should work without errors');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - DOM traversal up when component has no nextSibling', async () => {
@@ -3077,7 +2524,6 @@ export default ({ test, assert }) => {
     const {reactive: makeReactive} = await import('../src/Reactive.js');
 
     class LateReactiveComponent extends Component(HTMLElement) {
-      static tag = 'test-late-reactive-assignment';
 
       async populate() {
         // Call super.populate() BEFORE assigning state
@@ -3094,20 +2540,11 @@ export default ({ test, assert }) => {
       }
     }
 
-    customElements.define('test-late-reactive-assignment', LateReactiveComponent);
-
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-
-    const component = document.createElement('test-late-reactive-assignment');
-    container.appendChild(component);
-
-    await component.rendered;
+    const { component, container, cleanup } = await createTestComponent(LateReactiveComponent);
     await flushEffects();
 
     assert(component.querySelector('div').textContent === 'late-reactive', 'Should auto-detect reactive state in _process');
-
-    container.remove();
+    cleanup();
   });
 
   test('Component - skip template inside veda-if (lines 310-316)', async () => {
