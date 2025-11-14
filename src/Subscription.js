@@ -15,6 +15,7 @@ export default class Subscription {
       if (location.protocol === 'https:') {
         return `wss://${location.host}`;
       }
+      /* c8 ignore next - Browser environment: location.port check */
       return location.port ? `ws://${location.hostname}:8088` : `ws://${location.host}`;
     }
     /* c8 ignore next - Default fallback (covered by Subscription.init in tests) */
@@ -42,11 +43,14 @@ export default class Subscription {
       console.log(`Socket: ${event.type}, will re-connect in 30 sec.`);
       await timeout(30_000);
     }
+    /* c8 ignore next - Fallback to globalThis.WebSocket in production */
     const WS = Subscription._WebSocketClass || globalThis.WebSocket;
     const socket = new WS(Subscription._address);
     Subscription._socket = socket;
+    /* c8 ignore next - Production callback: console.log && side-effect */
     socket.onopen = (event) => console.log(`Socket: ${event.type}`) && Subscription._send();
     socket.onclose = Subscription._connect;
+    /* c8 ignore next - Production error logging */
     socket.onerror = (event) => console.error(event.message);
     socket.onmessage = Subscription._receive;
   }

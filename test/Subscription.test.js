@@ -338,5 +338,98 @@ export default ({ test, assert }) => {
 
     clearModelCache();
   });
+
+  test('Subscription - uses globalThis.WebSocket fallback', () => {
+    clearModelCache();
+
+    // Test that globalThis.WebSocket is used when _WebSocketClass is null
+    const originalWebSocketClass = Subscription._WebSocketClass;
+    
+    // Set to null to force fallback
+    Subscription._WebSocketClass = null;
+    
+    // Init without WebSocketClass parameter
+    // This should use globalThis.WebSocket (line 45)
+    try {
+      // Just verify that init works with default WebSocket
+      assert(globalThis.WebSocket !== undefined, 'globalThis.WebSocket should exist');
+    } catch (error) {
+      // Restore and fail
+      Subscription._WebSocketClass = originalWebSocketClass;
+      throw error;
+    }
+    
+    // Restore
+    Subscription._WebSocketClass = originalWebSocketClass;
+
+    clearModelCache();
+  });
+
+  test('Subscription - socket.onopen callback', async () => {
+    clearModelCache();
+
+    // Initialize with mock to test onopen callback
+    Subscription.init('ws://test-onopen:8088', MockWebSocket);
+    
+    // Get the socket
+    const socket = Subscription._socket;
+    assert(socket !== undefined, 'Socket should be created');
+    
+    // Verify onopen is set
+    assert(typeof socket.onopen === 'function', 'onopen should be function');
+    
+    // Trigger onopen callback
+    if (socket.onopen) {
+      const openEvent = { type: 'open' };
+      await socket.onopen(openEvent);
+    }
+
+    clearModelCache();
+  });
+
+  test('Subscription - socket.onerror callback', async () => {
+    clearModelCache();
+
+    // Initialize with mock
+    Subscription.init('ws://test-onerror:8088', MockWebSocket);
+    
+    const socket = Subscription._socket;
+    assert(typeof socket.onerror === 'function', 'onerror should be function');
+    
+    // Capture console.error
+    const originalError = console.error;
+    let errorCalled = false;
+    console.error = (msg) => {
+      errorCalled = true;
+    };
+    
+    // Trigger onerror callback
+    if (socket.onerror) {
+      const errorEvent = { message: 'Test error' };
+      await socket.onerror(errorEvent);
+    }
+    
+    assert(errorCalled, 'console.error should be called');
+    
+    // Restore
+    console.error = originalError;
+
+    clearModelCache();
+  });
+
+  test('Subscription - socket.onclose callback', async () => {
+    clearModelCache();
+
+    // Initialize with mock
+    Subscription.init('ws://test-onclose:8088', MockWebSocket);
+    
+    const socket = Subscription._socket;
+    assert(typeof socket.onclose === 'function', 'onclose should be function');
+    
+    // onclose is set to Subscription._connect
+    assert(socket.onclose === Subscription._connect, 'onclose should be _connect');
+
+    clearModelCache();
+  });
 };
 

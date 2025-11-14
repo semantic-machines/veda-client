@@ -869,7 +869,7 @@ export default ({ test, assert }) => {
     const testId1 = generateTestId('d:chain-parent');
     const testId2 = generateTestId('d:chain-child');
     const testId3 = generateTestId('d:chain-grandchild');
-    
+
     mockBackend.seed({
       [testId1]: {
         'rdfs:label': [{ data: 'Parent', type: 'String' }]
@@ -884,20 +884,20 @@ export default ({ test, assert }) => {
 
     const parent = new Model(testId1);
     await parent.load();
-    
+
     const child = new Model(testId2);
     await child.load();
-    
+
     const grandchild = new Model(testId3);
     await grandchild.load();
-    
+
     // Create chain: parent -> child -> grandchild
     parent['v-s:hasChild'] = [child];
     child['v-s:hasGrandchild'] = [grandchild];
-    
+
     // Test recursive getPropertyChain call
     const result = await parent.getPropertyChain('v-s:hasChild', 'v-s:hasGrandchild');
-    
+
     assert(result !== undefined, 'Should return value through chain');
     assert(Array.isArray(result), 'Should return array');
     assert(result[0] === grandchild, 'Should get grandchild through chain');
@@ -910,7 +910,7 @@ export default ({ test, assert }) => {
 
     const testId1 = generateTestId('d:chain-single-parent');
     const testId2 = generateTestId('d:chain-single-child');
-    
+
     mockBackend.seed({
       [testId1]: {
         'rdfs:label': [{ data: 'Parent', type: 'String' }]
@@ -922,16 +922,16 @@ export default ({ test, assert }) => {
 
     const parent = new Model(testId1);
     await parent.load();
-    
+
     const child = new Model(testId2);
     await child.load();
-    
+
     // Direct assignment (non-array) to test the else branch
     parent['v-s:child'] = child; // Not an array
-    
+
     // Test recursive call with non-array property
     const result = await parent.getPropertyChain('v-s:child', 'rdfs:label');
-    
+
     assert(result !== undefined, 'Should return value through non-array chain');
     assert(Array.isArray(result), 'Should return array');
     assert(result[0] === 'Child', 'Should get child label');
