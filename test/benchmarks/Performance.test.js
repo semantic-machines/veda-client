@@ -4,15 +4,15 @@
  * These tests measure performance of critical operations
  * to detect performance regressions early.
  *
- * Run with: pnpm test
+ * Run with: pnpm test:benchmark
  * Results are logged but don't fail the test suite.
  */
 
-import {reactive} from '../src/Reactive.js';
-import {effect, flushEffects} from '../src/Effect.js';
-import Model from '../src/Model.js';
-import Component, {html} from '../src/components/Component.js';
-import {timeout} from '../src/Util.js';
+import {reactive} from '../../src/Reactive.js';
+import {effect, flushEffects} from '../../src/Effect.js';
+import Model from '../../src/Model.js';
+import Component, {html} from '../../src/components/Component.js';
+import {timeout} from '../../src/Util.js';
 
 const ITERATIONS = 1000;
 const LARGE_ARRAY_SIZE = 1000;

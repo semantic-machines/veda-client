@@ -6,6 +6,7 @@
 test/
 ├── *.test.js           # Unit tests (fast, isolated, with mocks)
 ├── integration/        # Integration tests (slow, require server)
+├── benchmarks/         # Performance benchmarks (optional)
 ├── mocks/             # Mock implementations
 │   ├── Backend.mock.js
 │   └── WebSocket.mock.js
@@ -15,14 +16,17 @@ test/
 ## 🚀 Running Tests
 
 ```bash
-# Run all tests (unit + integration)
+# Run all tests (unit + integration, without benchmarks)
 pnpm test
 
-# Run only unit tests (fast, ~2-5s)
+# Run only unit tests (fast, ~2-3s)
 pnpm test:unit
 
-# Run only integration tests (slow, requires server, ~30s)
+# Run only integration tests (slow, requires server, ~26s)
 pnpm test:integration
+
+# Run only performance benchmarks (fast, ~0.7s)
+pnpm test:benchmark
 
 # Run with coverage
 pnpm c8           # all tests
@@ -33,24 +37,38 @@ pnpm c8:unit      # unit tests only
 
 ### Unit Tests
 - **Location**: `test/*.test.js`
-- **Speed**: Fast (2-5 seconds)
+- **Speed**: Fast (2-3 seconds)
 - **Dependencies**: None (uses mocks)
 - **Purpose**: Test individual components in isolation
+- **Count**: 362 tests
 - **Examples**:
   - `Model.test.js` - Model with mocks
   - `Subscription.test.js` - Subscription with MockWebSocket
-  - `Component.raw.test.js` - Component helpers
+  - `Component.test.js` - Component functionality
 
 ### Integration Tests
 - **Location**: `test/integration/*.test.js`
-- **Speed**: Slow (30+ seconds)
+- **Speed**: Slow (26+ seconds)
 - **Dependencies**: Requires running veda server
 - **Purpose**: Test real interactions with server
+- **Count**: 93 tests
 - **Examples**:
   - `Model.integration.test.js` - Model with real Backend
   - `Subscription.integration.test.js` - Subscription with real WebSocket
   - `Backend.test.js` - Backend API tests
   - `Integration.test.js` - End-to-end scenarios
+
+### Performance Benchmarks
+- **Location**: `test/benchmarks/*.test.js`
+- **Speed**: Fast (0.7 seconds)
+- **Dependencies**: None
+- **Purpose**: Measure performance and detect regressions
+- **Count**: 12 benchmarks
+- **Examples**:
+  - Reactive object creation
+  - Effect execution speed
+  - Component rendering performance
+  - Memory usage profiling
 
 ## 🛠 Writing Tests
 
@@ -78,7 +96,7 @@ test('My unit test', async () => {
 ### Integration Test Example
 
 ```javascript
-import Backend from '../src/Backend.js';
+import Backend from '../../src/Backend.js';
 
 test('My integration test', async () => {
   await Backend.authenticate('user', 'hash');
@@ -87,14 +105,33 @@ test('My integration test', async () => {
 });
 ```
 
+### Benchmark Test Example
+
+```javascript
+test('Benchmark - my operation', () => {
+  const start = performance.now();
+  
+  for (let i = 0; i < 1000; i++) {
+    // Operation to benchmark
+  }
+  
+  const elapsed = performance.now() - start;
+  console.log(`📊 My operation: ${elapsed.toFixed(2)}ms for 1000 iterations`);
+  
+  assert(elapsed < 100, 'Should be fast');
+});
+```
+
 ## 📊 Coverage
 
-Current coverage: **99.76%**
+Current coverage: **100%** 🎉
 
-- Statements: 99.76%
-- Branches: 95.89%
-- Functions: 99.01%
-- Lines: 99.76%
+- Statements: 100%
+- Branches: 100%
+- Functions: 100%
+- Lines: 100%
+
+**All 19 modules have perfect 100% coverage!**
 
 ## 🔧 Test Utilities
 
@@ -118,15 +155,20 @@ Current coverage: **99.76%**
 
 - Unit tests: `ComponentName.test.js`
 - Integration tests: `ComponentName.integration.test.js`
+- Benchmarks: `Performance.test.js`
 - Test names: descriptive, indicate what is being tested
 
 ## ⚡ Performance
 
 | Type | Tests | Time | Server | Coverage |
 |------|-------|------|--------|----------|
-| Unit | 327  | ~3s  | ❌     | ~88%     |
-| Integration | 93 | ~26s | ✅ Required | +12% (backend paths) |
-| All  | 420  | ~29s | ✅ Required | ~99.76% |
+| Unit | 362  | ~3s  | ❌     | 100%     |
+| Integration | 93 | ~26s | ✅ Required | 100% (full coverage) |
+| Benchmarks | 12 | ~0.7s | ❌ | N/A (performance) |
+| All  | 455  | ~29s | ✅ Required | 100% |
 
-**Recommendation**: Run `pnpm test:unit` during development, `pnpm test` before commit.
+**Recommendation**: 
+- During development: `pnpm test:unit` (fast feedback)
+- Before commit: `pnpm test` (full validation)
+- Weekly/CI: `pnpm test:benchmark` (performance regression check)
 

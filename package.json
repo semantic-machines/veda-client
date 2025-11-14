@@ -10,6 +10,7 @@
     "test": "tsc --noEmit && time -p node --expose-gc test",
     "test:unit": "tsc --noEmit && time -p node --expose-gc test --unit",
     "test:integration": "tsc --noEmit && time -p node --expose-gc test --integration",
+    "test:benchmark": "time -p node --expose-gc test --benchmark",
     "debug": "node --inspect-brk test",
     "c8": "tsc --noEmit && time -p c8 node --expose-gc test",
     "c8:unit": "tsc --noEmit && time -p c8 node --expose-gc test --unit",
