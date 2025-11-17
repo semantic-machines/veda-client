@@ -16,6 +16,13 @@ const REMOVE_PROMISE = Symbol('removePromise');
 const MEMBERSHIPS = Symbol('memberships');
 const RIGHTS = Symbol('rights');
 
+// Dangerous property names that could break Model or cause prototype pollution
+const DANGEROUS_PROPS = new Set([
+  '__proto__',
+  'constructor',
+  'prototype'
+]);
+
 export default class Model extends Emitter(Object) {
   static cache = new WeakCache();
 
@@ -98,6 +105,12 @@ export default class Model extends Emitter(Object) {
     propsToDelete.forEach(prop => prop !== 'id' && delete this[prop]);
 
     dataProps.forEach((prop) => {
+      // Skip dangerous property names to prevent prototype pollution
+      if (DANGEROUS_PROPS.has(prop)) {
+        console.warn(`Model.apply: Skipping dangerous property name: ${prop}`);
+        return;
+      }
+
       if (prop === '@') {
         this.id = data['@'] ?? genUri();
         return;
@@ -213,7 +226,6 @@ export default class Model extends Emitter(Object) {
         this[prop] = this[prop].filter((item) => !serializedValue.isEqual(Value.serialize(item)));
         if (!this[prop].length) delete this[prop];
       } else {
-        /* c8 ignore next 2 - Edge case: property is not array (unreachable after Value.parse) */
         delete this[prop];
       }
       this.isSync(false); // Mark model as modified

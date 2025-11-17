@@ -2,6 +2,9 @@ import {effect, track, trigger} from './Effect.js';
 
 const reactiveMap = new WeakMap();
 
+// Dangerous property names that could cause prototype pollution
+const DANGEROUS_PROPS = new Set(['__proto__', 'constructor', 'prototype']);
+
 /**
  * Creates a reactive proxy that tracks property access and triggers updates
  * @param {Object} target - The object to make reactive
@@ -79,6 +82,12 @@ export function reactive(target, options = {}) {
     },
 
     set(target, key, value, receiver) {
+      // Silently ignore dangerous property names to prevent prototype pollution
+      if (typeof key === 'string' && DANGEROUS_PROPS.has(key)) {
+        console.warn(`Reactive.set: Blocked dangerous property name: ${key}`);
+        return true; // Return true to avoid TypeError in strict mode
+      }
+
       const oldValue = target[key];
       const result = Reflect.set(target, key, value, receiver);
 

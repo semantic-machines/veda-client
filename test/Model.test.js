@@ -1003,5 +1003,68 @@ export default ({ test, assert }) => {
 
     assert(true, 'Backend methods restored');
   });
+
+  // ==================== SECURITY TESTS ====================
+
+  test('Model - protects against prototype pollution in apply()', () => {
+    clearModelCache();
+
+    // Capture console.warn calls
+    const originalWarn = console.warn;
+    const warnings = [];
+    console.warn = (...args) => {
+      warnings.push(args.join(' '));
+    };
+
+    // Try to set dangerous properties
+    // Note: __proto__ doesn't appear in getOwnPropertyNames, so it's naturally filtered
+    const maliciousData = {
+      '@': 'test:prototype-pollution-1',
+      'constructor': { polluted: true },
+      'prototype': { polluted: true },
+      'safe:property': [{ data: 'safe value', type: 'String' }]
+    };
+
+    const model = new Model(maliciousData);
+
+    // Check that dangerous properties were skipped
+    assert(typeof model.constructor === 'function', 'constructor should remain function');
+    assert(typeof model.prototype === 'undefined', 'prototype should not be set');
+    
+    // Check that safe property was set
+    assert(model['safe:property'][0] === 'safe value', 'Safe property should be set');
+
+    // Verify warnings were logged (only constructor and prototype, not __proto__)
+    assert(warnings.some(w => w.includes('constructor')), 'Should warn about constructor');
+    assert(warnings.some(w => w.includes('prototype')), 'Should warn about prototype');
+    assert(warnings.length >= 2, `Should have at least 2 warnings, got ${warnings.length}`);
+
+    // Restore console.warn
+    console.warn = originalWarn;
+
+    clearModelCache();
+  });
+
+  test('Model - protects against prototype pollution in multiple apply() calls', () => {
+    clearModelCache();
+
+    const originalWarn = console.warn;
+    let warnCount = 0;
+    console.warn = () => { warnCount++; };
+
+    const model = new Model({ '@': 'test:multi-apply' });
+    
+    // Try multiple times with different dangerous properties
+    model.apply({ '@': 'test:multi-apply', 'constructor': { y: 2 } });
+    model.apply({ '@': 'test:multi-apply', 'prototype': { z: 3 } });
+    model.apply({ '@': 'test:multi-apply', 'constructor': { y: 4 } });
+
+    // Should have warned 3 times (constructor appears twice, prototype once)
+    assert(warnCount === 3, `Should warn 3 times, got ${warnCount}`);
+
+    console.warn = originalWarn;
+    clearModelCache();
+  });
+
 };
 
