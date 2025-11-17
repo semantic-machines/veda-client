@@ -8,6 +8,7 @@ import './setup-dom.js';
 import Component, { html, reactive } from '../src/components/Component.js';
 import { flushEffects } from '../src/Effect.js';
 import { createTestComponent } from './helpers.js';
+import { performanceTest, adaptiveThreshold } from './performance-helpers.js';
 
 export default ({ test, assert }) => {
 
@@ -221,9 +222,9 @@ export default ({ test, assert }) => {
     await flushEffects();
 
     const input = component.querySelector('input');
-    // Empty string should be treated as truthy for boolean attributes
-    assert(input.checked === true,
-      'Should treat empty string (from undefined) as truthy for boolean attributes');
+    // undefined should make boolean attribute false
+    assert(input.checked === false,
+      'Should treat undefined as falsy for boolean attributes');
 
     cleanup();
   });
@@ -340,6 +341,8 @@ export default ({ test, assert }) => {
   // ==================== PERFORMANCE TESTS ====================
 
   test('Component - renders simple template within performance budget', async () => {
+    await adaptiveThreshold.initialize();
+
     class SimpleComponent extends Component(HTMLElement) {
       constructor() {
         super();
@@ -357,6 +360,7 @@ export default ({ test, assert }) => {
       }
     }
 
+    const threshold = adaptiveThreshold.getThreshold(100);
     const start = performance.now();
     const { component, cleanup } = await createTestComponent(SimpleComponent);
     await flushEffects();
@@ -364,12 +368,15 @@ export default ({ test, assert }) => {
 
     assert(component.querySelector('p') !== null, 'Should render paragraph');
     assert(component.querySelector('button') !== null, 'Should render button');
-    assert(duration < 100, `Simple render took ${duration.toFixed(2)}ms, should be under 100ms`);
+    assert(duration < threshold,
+      `Simple render took ${duration.toFixed(2)}ms, threshold: ${threshold.toFixed(2)}ms`);
 
     cleanup();
   });
 
   test('Component - reactive updates complete within performance budget', async () => {
+    await adaptiveThreshold.initialize();
+
     class ReactiveUpdateComponent extends Component(HTMLElement) {
       constructor() {
         super();
@@ -383,6 +390,7 @@ export default ({ test, assert }) => {
     const { component, cleanup } = await createTestComponent(ReactiveUpdateComponent);
     await flushEffects();
 
+    const threshold = adaptiveThreshold.getThreshold(500);
     const start = performance.now();
     for (let i = 0; i < 100; i++) {
       component.state.count = i;
@@ -392,13 +400,15 @@ export default ({ test, assert }) => {
 
     assert(component.querySelector('div').textContent === '99',
       'Should have final value');
-    assert(duration < 500,
-      `100 batched updates took ${duration.toFixed(2)}ms, should be under 500ms`);
+    assert(duration < threshold,
+      `100 batched updates took ${duration.toFixed(2)}ms, threshold: ${threshold.toFixed(2)}ms`);
 
     cleanup();
   });
 
   test('Component - handles multiple reactive expressions efficiently', async () => {
+    await adaptiveThreshold.initialize();
+
     class MultiExpressionComponent extends Component(HTMLElement) {
       constructor() {
         super();
@@ -417,6 +427,7 @@ export default ({ test, assert }) => {
       }
     }
 
+    const threshold = adaptiveThreshold.getThreshold(100);
     const start = performance.now();
     const { component, cleanup } = await createTestComponent(MultiExpressionComponent);
     await flushEffects();
@@ -424,8 +435,8 @@ export default ({ test, assert }) => {
 
     const spans = component.querySelectorAll('span');
     assert(spans.length === 5, 'Should render all spans');
-    assert(duration < 100,
-      `Multiple expressions took ${duration.toFixed(2)}ms, should be under 100ms`);
+    assert(duration < threshold,
+      `Multiple expressions took ${duration.toFixed(2)}ms, threshold: ${threshold.toFixed(2)}ms`);
 
     cleanup();
   });

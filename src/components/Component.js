@@ -605,15 +605,25 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             /* c8 ignore next */
             const evalContext = this._currentEvalContext || this;
             const cleanup = effect(() => {
+              let hasUndefinedOrNull = false;
               const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
                 // Use ExpressionParser for simple expressions
                 /* c8 ignore next */
-                return ExpressionParser.evaluate(code.trim(), evalContext) ?? '';
+                const rawValue = ExpressionParser.evaluate(code.trim(), evalContext);
+                // Track if any expression returned null/undefined
+                if (rawValue === null || rawValue === undefined) {
+                  hasUndefinedOrNull = true;
+                }
+                return rawValue ?? '';
               });
 
               if (propName) {
                 // For boolean properties, set both property and attribute
-                const boolValue = value === 'true' || value === '' || value === attrName;
+                // Boolean attributes should be false for: false, null, undefined, 'false'
+                // And true for: true, 'true', '', attribute name, non-empty strings
+                const boolValue = !hasUndefinedOrNull &&
+                                  value !== 'false' &&
+                                  (value === 'true' || value === '' || value === attrName);
                 if (node[propName] !== boolValue) {
                   node[propName] = boolValue;
                   node.toggleAttribute(attrName, boolValue);
@@ -629,14 +639,24 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             this.#renderEffects.push(cleanup);
           } else {
             // Non-reactive: evaluate once
+            let hasUndefinedOrNull = false;
             const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
               /* c8 ignore next */
-              return this.#evaluate(code.trim()) ?? '';
+              const rawValue = this.#evaluate(code.trim());
+              // Track if any expression returned null/undefined
+              if (rawValue === null || rawValue === undefined) {
+                hasUndefinedOrNull = true;
+              }
+              return rawValue ?? '';
             });
 
             if (propName) {
               /* c8 ignore next */
-              const boolValue = value === 'true' || value === '' || value === attrName;
+              // Boolean attributes should be false for: false, null, undefined, 'false'
+              // And true for: true, 'true', '', attribute name, non-empty strings
+              const boolValue = !hasUndefinedOrNull &&
+                                value !== 'false' &&
+                                (value === 'true' || value === '' || value === attrName);
               node[propName] = boolValue;
               node.toggleAttribute(attrName, boolValue);
             } else {

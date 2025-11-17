@@ -2599,8 +2599,8 @@ export default ({ test, assert }) => {
     component.remove();
   });
 
-  test('Component - nullish coalescing in reactive boolean attribute (line 590)', async () => {
-    // Test that ?? '' in line 590 handles undefined/null for boolean attributes
+  test('Component - nullish coalescing in reactive boolean attribute', async () => {
+    // Test that undefined/null values make boolean attributes false
     class TestComponent extends Component(HTMLElement) {
       static tag = 'test-nullish-reactive-bool';
       state = reactive({ checked: undefined });
@@ -2619,16 +2619,14 @@ export default ({ test, assert }) => {
     await flushEffects();
 
     const input = component.querySelector('input');
-    // When ExpressionParser.evaluate returns undefined, ?? '' provides ''
-    // Line 595: boolValue = value === 'true' || value === '' || value === attrName
-    // Since value === '', boolValue is true
-    assert(input.checked === true, 'Should be checked when expression returns undefined -> empty string (line 590)');
+    // undefined should make boolean attribute false
+    assert(input.checked === false, 'Should be unchecked when expression returns undefined');
 
     component.remove();
   });
 
-  test('Component - nullish coalescing in non-reactive boolean attribute (line 612)', async () => {
-    // Test that ?? '' in line 612 handles undefined/null for boolean attributes
+  test('Component - nullish coalescing in non-reactive boolean attribute', async () => {
+    // Test that undefined/null values make boolean attributes false
     class TestComponent extends Component(HTMLElement) {
       static tag = 'test-nullish-non-reactive-bool';
       // No reactive state
@@ -2646,10 +2644,8 @@ export default ({ test, assert }) => {
     await component.rendered;
 
     const input = component.querySelector('input');
-    // When this.#evaluate returns undefined, ?? '' provides ''
-    // Line 616: boolValue = value === 'true' || value === '' || value === attrName
-    // Since value === '', boolValue is true
-    assert(input.checked === true, 'Should be checked when #evaluate returns undefined -> empty string (line 612)');
+    // undefined should make boolean attribute false
+    assert(input.checked === false, 'Should be unchecked when #evaluate returns undefined');
 
     component.remove();
   });
@@ -2686,9 +2682,8 @@ export default ({ test, assert }) => {
     component.remove();
   });
 
-  test('Component - evalContext branch in reactive bool attr (line 586)', async () => {
-    // Test line 586: const evalContext = this._currentEvalContext || this;
-    // When inside veda-if with boolean attribute
+  test('Component - evalContext branch in reactive bool attr', async () => {
+    // Test evalContext: when inside veda-if with boolean attribute
     class TestComponent extends Component(HTMLElement) {
       static tag = 'test-eval-context-586';
       state = reactive({ show: true });
@@ -2711,11 +2706,9 @@ export default ({ test, assert }) => {
     await flushEffects();
 
     const input = component.querySelector('input');
-    // Should use evalContext (line 586) and handle undefined with ?? '' (line 590)
-    // Line 595: boolValue = value === 'true' || value === '' || value === attrName
-    // Since value === '', boolValue is true
+    // Should use evalContext and handle undefined as false for boolean attributes
     assert(input !== null, 'Should render input inside veda-if');
-    assert(input.checked === true, 'Should be checked when evalContext expression is undefined -> empty string (lines 586, 590)');
+    assert(input.checked === false, 'Should be unchecked when evalContext expression is undefined');
 
     component.remove();
   });
@@ -2747,7 +2740,7 @@ export default ({ test, assert }) => {
     const button = component.querySelector('button');
     assert(button !== null, 'Should render button inside veda-if');
     // Should use contextForReactivity (line 577) to check if parent is reactive
-    
+
     // Change state to test reactivity
     component.state.isDisabled = true;
     await flushEffects();
@@ -2757,12 +2750,12 @@ export default ({ test, assert }) => {
   });
 
   test('Component - boolValue calculation with empty string (line 616)', async () => {
-    // Test line 616: const boolValue = value === 'true' || value === '' || value === attrName;
-    // When value is '' (from ?? ''), boolValue should be true
+    // Test line 624-626: Boolean logic for attributes
+    // When value is undefined/null, boolValue should be false (not converted to '')
     class TestComponent extends Component(HTMLElement) {
       static tag = 'test-bool-value-616';
       render() {
-        // When this.nonExistent is undefined, ?? '' provides '', making boolValue true
+        // When this.nonExistent is undefined, boolValue should be false
         return html`<input type="checkbox" checked="{this.nonExistent}">`;
       }
     }
@@ -2776,9 +2769,8 @@ export default ({ test, assert }) => {
     await component.rendered;
 
     const input = component.querySelector('input');
-    // Line 616: boolValue = value === 'true' || value === '' || value === attrName
-    // When value is '', the second part (value === '') should be true
-    assert(input.checked === true, 'Should be checked when value is empty string (line 616)');
+    // When rawValue is undefined, hasUndefinedOrNull becomes true, so boolValue is false
+    assert(input.checked === false, 'Should be unchecked when value is undefined');
 
     component.remove();
   });

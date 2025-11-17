@@ -176,6 +176,100 @@ export default ({ test, assert }) => {
     assert(result !== 8, 'Should not evaluate operators');
   });
 
+  test('Security - ExpressionParser blocks unicode escape exploitation', () => {
+    const context = {};
+    
+    // Try unicode escapes to spell out 'alert'
+    const attempts = [
+      '\\u0061\\u006c\\u0065\\u0072\\u0074', // 'alert' in unicode
+      '\u0061\u006c\u0065\u0072\u0074', // decoded unicode
+      'eval("alert(1)")',
+      'Function("alert(1)")()',
+      'constructor.constructor("alert(1)")()'
+    ];
+    
+    attempts.forEach(attempt => {
+      let result;
+      try {
+        result = ExpressionParser.evaluate(attempt, context);
+      } catch (e) {
+        result = undefined;
+      }
+      
+      assert(result === undefined || typeof result !== 'function',
+        `Unicode/eval escape should not execute: ${attempt}`);
+    });
+  });
+
+  test('Security - ExpressionParser blocks template literal injection', () => {
+    const context = { value: 'test' };
+    
+    // Try template literal syntax
+    const attempts = [
+      '`${alert(1)}`',
+      '`${value}`',
+      String.raw`\`\${alert(1)}\``,
+    ];
+    
+    attempts.forEach(attempt => {
+      let result;
+      try {
+        result = ExpressionParser.evaluate(attempt, context);
+      } catch (e) {
+        result = undefined;
+      }
+      
+      // Should not execute or evaluate template literals
+      assert(typeof result === 'undefined' || result === attempt,
+        `Template literal should not be evaluated: ${attempt}`);
+    });
+  });
+
+  test('Security - ExpressionParser blocks obfuscated code', () => {
+    const context = {};
+    
+    // Obfuscated attempts to run code
+    const obfuscated = [
+      'this["cons"+"tructor"]',
+      'this["cons\x74ructor"]',
+      'this[String.fromCharCode(99,111,110,115,116,114,117,99,116,111,114)]',
+      'Object.getPrototypeOf(this).constructor'
+    ];
+    
+    obfuscated.forEach(code => {
+      let result;
+      try {
+        result = ExpressionParser.evaluate(code, context);
+      } catch (e) {
+        result = undefined;
+      }
+      
+      assert(result === undefined || typeof result !== 'function',
+        `Obfuscated code should not work: ${code}`);
+    });
+  });
+
+  test('Security - ExpressionParser handles hexadecimal escapes', () => {
+    const context = {};
+    
+    const hexEscapes = [
+      '\\x61\\x6c\\x65\\x72\\x74', // 'alert' in hex
+      '\x61\x6c\x65\x72\x74', // decoded hex
+    ];
+    
+    hexEscapes.forEach(code => {
+      let result;
+      try {
+        result = ExpressionParser.evaluate(code, context);
+      } catch (e) {
+        result = undefined;
+      }
+      
+      assert(typeof result !== 'function',
+        `Hex escape should not execute: ${code}`);
+    });
+  });
+
   test('Security - ExpressionParser only allows dot notation', () => {
     const context = {
       user: { name: 'Alice', password: 'secret' }

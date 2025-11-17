@@ -47,8 +47,8 @@ export default class Subscription {
     const WS = Subscription._WebSocketClass || globalThis.WebSocket;
     const socket = new WS(Subscription._address);
     Subscription._socket = socket;
-    /* c8 ignore next - Production callback: console.log && side-effect */
-    socket.onopen = (event) => console.log(`Socket: ${event.type}`) && Subscription._send();
+    /* c8 ignore next - Production callback: silent open handler */
+    socket.onopen = () => Subscription._send();
     socket.onclose = Subscription._connect;
     /* c8 ignore next - Production error logging */
     socket.onerror = (event) => console.error(event.message);
