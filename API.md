@@ -7,9 +7,16 @@ Complete API documentation for Veda Client Framework.
 - [Component](#component)
 - [Reactivity](#reactivity)
 - [Built-in Components](#built-in-components)
+  - [Loop](#loop)
+  - [If](#if)
+  - [Property](#property)
+  - [Relation](#relation)
 - [Model](#model)
 - [Backend](#backend)
 - [Router](#router)
+- [Value](#value)
+- [WeakCache](#weakcache)
+- [BackendError](#backenderror)
 - [TypeScript](#typescript)
 
 ---
@@ -243,9 +250,9 @@ cleanup(); // Stop effect
 **Options:**
 ```typescript
 interface EffectOptions {
-  lazy?: boolean;           // Don't run immediately
-  scheduler?: (fn) => void; // Custom scheduler
-  computed?: boolean;       // Mark as computed effect
+  lazy?: boolean;           // Don't run immediately (default: false)
+  scheduler?: (fn) => void; // Custom scheduler function
+  computed?: boolean;       // Mark as computed effect (runs first)
 }
 ```
 
@@ -254,6 +261,41 @@ interface EffectOptions {
 - Batched async execution (via microtask)
 - Infinite loop detection (max 100 triggers)
 - Automatic cleanup
+
+**Scheduler Example:**
+
+```javascript
+import { effect } from './src/Effect.js';
+
+// Debounced effect
+let timeout;
+effect(() => {
+  console.log('Count:', state.count);
+}, {
+  scheduler: (fn) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(fn, 300); // Debounce 300ms
+  }
+});
+```
+
+**Computed Priority:**
+
+Effects with `computed: true` run before regular effects:
+
+```javascript
+// This runs FIRST (computed)
+effect(() => {
+  derivedValue = state.count * 2;
+}, { computed: true });
+
+// This runs SECOND (regular)
+effect(() => {
+  console.log('Derived:', derivedValue);
+});
+```
+
+This ensures computed values are always up-to-date before dependent effects run.
 
 ### `flushEffects(): Promise<void>`
 
@@ -383,6 +425,152 @@ class ConditionalView extends Component(HTMLElement) {
     `;
   }
 }
+```
+
+### Property
+
+Renders RDF property values with language support and reactive updates.
+
+```javascript
+// Declarative syntax (preferred)
+<span property="v-s:title"></span>
+
+// Programmatic usage (advanced)
+import PropertyComponent from './src/components/PropertyComponent.js';
+```
+
+**Attributes:**
+- `property` - RDF property name (required)
+- `lang` - Language filter (optional, auto-detected)
+- `shadow` - Use Shadow DOM (optional)
+- `about` - Model URI (optional, inherits from parent)
+
+**Features:**
+- Automatically renders property values from model
+- Language filtering (e.g., `Title^^EN` vs `Title^^RU`)
+- Reactive updates when model property changes
+- Supports custom templates with `<slot>` or text content
+
+**Example - Simple:**
+
+```javascript
+class PersonCard extends Component(HTMLElement) {
+  render() {
+    return html`
+      <h1 property="v-s:title"></h1>
+      <p property="v-s:description"></p>
+    `;
+  }
+}
+```
+
+**Example - With Template:**
+
+```javascript
+render() {
+  return html`
+    <div property="v-s:email">
+      <template>
+        <a href="mailto:"><slot></slot></a>
+      </template>
+    </div>
+  `;
+}
+// Renders: <a href="mailto:">user@example.com</a>
+```
+
+**Language Support:**
+
+```javascript
+// Model has: {'v-s:title': ['Hello^^EN', 'Привет^^RU']}
+
+// User's browser lang = 'en'
+<span property="v-s:title"></span>
+// Renders: "Hello"
+
+// User's browser lang = 'ru'
+<span property="v-s:title"></span>
+// Renders: "Привет"
+```
+
+**How it works:**
+- Inherits `model` from parent component automatically
+- Creates reactive effect to re-render on property changes
+- Filters by document language (`document.documentElement.lang`)
+
+### Relation
+
+Renders related RDF resources (URI values) with automatic model loading and custom templates.
+
+```javascript
+// Declarative syntax (preferred)
+<ul rel="v-s:hasTodo">
+  <li>{this.model['v-s:title']}</li>
+</ul>
+
+// Programmatic usage (advanced)
+import RelationComponent from './src/components/RelationComponent.js';
+```
+
+**Attributes:**
+- `rel` - RDF relation property name (required)
+- `shadow` - Use Shadow DOM (optional)
+- `about` - Model URI (optional, inherits from parent)
+
+**Features:**
+- Automatically loads related models
+- Each child receives `model` prop with related resource
+- Reactive updates when relation changes
+- Supports custom templates
+
+**Example - Simple:**
+
+```javascript
+class TodoList extends Component(HTMLElement) {
+  render() {
+    return html`
+      <ul rel="v-s:hasTodo">
+        <li>{this.model['v-s:title']}</li>
+      </ul>
+    `;
+  }
+}
+```
+
+**Example - With Custom Components:**
+
+```javascript
+render() {
+  return html`
+    <div rel="v-s:hasAuthor">
+      <person-card></person-card>
+    </div>
+  `;
+}
+// Each person-card receives related Person model
+```
+
+**Difference from Loop:**
+
+| Feature | Relation | Loop |
+|---------|----------|------|
+| Data source | RDF property (URI[]) | Any array |
+| Model loading | Automatic | Manual |
+| Use case | Semantic relations | Generic lists |
+| Reconciliation | No keys | Key-based |
+
+**Example - Relation vs Loop:**
+
+```javascript
+// ✅ Use Relation for RDF relations
+<div rel="v-s:hasAttachment">
+  <file-preview></file-preview>
+</div>
+
+// ✅ Use Loop for generic arrays
+<${Loop} items="{this.todos}" item-key="id">
+  <todo-item></todo-item>
+</${Loop}>
 ```
 
 ---
@@ -581,6 +769,155 @@ if (!location.hash) {
   location.hash = '#/';
 }
 router.route(location.hash);
+```
+
+---
+
+## Value
+
+RDF value serialization/deserialization utility.
+
+### Constructor
+
+```javascript
+import Value from './src/Value.js';
+
+// Create from data and type
+const value = new Value('John', 'String', 'EN');
+const number = new Value(42, 'Integer');
+const date = new Value('2024-01-01T00:00:00Z', 'Datetime');
+```
+
+### Static Methods
+
+#### `Value.serialize(value): Value`
+
+Auto-detects type and creates Value object.
+
+```javascript
+Value.serialize(42);              // Value { data: 42, type: 'Integer' }
+Value.serialize(3.14);            // Value { data: '3.14', type: 'Decimal' }
+Value.serialize(true);            // Value { data: true, type: 'Boolean' }
+Value.serialize(new Date());      // Value { data: '...Z', type: 'Datetime' }
+Value.serialize('d:Person1');     // Value { data: 'd:Person1', type: 'Uri' }
+Value.serialize('Hello');         // Value { data: 'Hello', type: 'String' }
+Value.serialize('Title^^EN');     // Value { data: 'Title', type: 'String', lang: 'EN' }
+```
+
+#### `Value.parse(value): any`
+
+Converts Value object to JavaScript type.
+
+```javascript
+Value.parse({ data: 'Hello', type: 'String' });           // 'Hello'
+Value.parse({ data: 'Title', type: 'String', lang: 'EN' }); // 'Title^^EN'
+Value.parse({ data: 42, type: 'Integer' });               // 42
+Value.parse({ data: '3.14', type: 'Decimal' });           // 3.14
+Value.parse({ data: true, type: 'Boolean' });             // true
+Value.parse({ data: '2024-01-01T00:00:00Z', type: 'Datetime' }); // Date object
+Value.parse({ data: 'd:Person1', type: 'Uri' });          // Model instance
+```
+
+#### `Value.areEqual(first, second): boolean`
+
+Compares two Value objects.
+
+```javascript
+const v1 = new Value('Hello', 'String');
+const v2 = new Value('Hello', 'String');
+Value.areEqual(v1, v2); // true
+
+const v3 = new Value('Hello', 'String', 'EN');
+Value.areEqual(v1, v3); // false (different lang)
+```
+
+### Instance Methods
+
+#### `isEqual(value): boolean`
+
+```javascript
+const v1 = new Value(42, 'Integer');
+const v2 = new Value(42, 'Integer');
+v1.isEqual(v2); // true
+```
+
+### Properties
+
+```javascript
+const value = new Value('Hello', 'String', 'EN');
+console.log(value.data);  // 'Hello'
+console.log(value.type);  // 'String'
+console.log(value.lang);  // 'EN'
+```
+
+### Supported Types
+
+| Type | JavaScript | Example |
+|------|------------|---------|
+| `String` | string | `'Hello'` |
+| `Integer` | number | `42` |
+| `Decimal` | number | `3.14` |
+| `Boolean` | boolean | `true` |
+| `Datetime` | Date | `new Date()` |
+| `Uri` | Model | `new Model('d:Entity')` |
+
+---
+
+## WeakCache
+
+Weak reference cache for temporary object storage.
+
+### Usage
+
+```javascript
+import WeakCache from './src/WeakCache.js';
+
+const cache = new WeakCache();
+
+// Set value
+const obj = { data: 'value' };
+cache.set('key', obj);
+
+// Get value
+cache.get('key'); // obj
+
+// Check existence
+cache.has('key'); // true
+
+// Delete (automatic when obj is garbage collected)
+cache.delete('key');
+```
+
+**Use case:** Model caching, temporary component state.
+
+---
+
+## BackendError
+
+Custom error class for Backend API errors.
+
+### Usage
+
+```javascript
+import Backend, { BackendError } from './src/Backend.js';
+
+try {
+  await Backend.get_individual('invalid:id');
+} catch (error) {
+  if (error instanceof BackendError) {
+    console.log('Status:', error.status);      // HTTP status code
+    console.log('Message:', error.message);    // Error message
+    console.log('Response:', error.response);  // Raw response
+  }
+}
+```
+
+### Properties
+
+```javascript
+error.status    // HTTP status code (e.g., 404, 500)
+error.message   // Error description
+error.response  // Raw server response
 ```
 
 ---

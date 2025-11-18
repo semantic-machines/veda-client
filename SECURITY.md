@@ -388,9 +388,24 @@ async save() {
 
 ## Reporting Security Issues
 
-If you discover a security vulnerability, please email security@example.com.
+If you discover a security vulnerability in Veda Client Framework, please report it responsibly:
 
-**Do NOT** open a public issue.
+**Email:** info@semantic-machines.com
+
+**Please include:**
+- Description of the vulnerability
+- Steps to reproduce
+- Affected versions
+- Suggested fix (if any)
+
+**Response time:** We aim to respond within 48 hours.
+
+**Do NOT:**
+- Open public issues for security vulnerabilities
+- Disclose vulnerabilities before a fix is available
+- Exploit vulnerabilities in production systems
+
+We appreciate responsible disclosure and will acknowledge security researchers in our release notes (unless you prefer to remain anonymous).
 
 ---
 

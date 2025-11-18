@@ -149,6 +149,85 @@ get incrementedCount() {
 1. Replace complex expressions with computed properties (getters)
 2. Remove operators, ternaries, function calls from templates
 
+#### 6. Property Component - Declarative Syntax
+
+**Before (1.x):**
+```javascript
+// Manual property binding
+<span about="{this.model.id}" property="v-s:title"></span>
+```
+
+**After (2.0):**
+```javascript
+// Automatic model inheritance (preferred)
+<span property="v-s:title"></span>
+
+// Or explicit model via about
+<span about="d:Person1" property="v-s:title"></span>
+```
+
+**Migration steps:**
+1. Remove redundant `about` attributes (inherits from parent)
+2. Property components now reactive by default
+3. Language filtering automatic via `document.documentElement.lang`
+
+**New features:**
+```javascript
+// Template support
+<div property="v-s:email">
+  <template>
+    <a href="mailto:"><slot></slot></a>
+  </template>
+</div>
+
+// Shadow DOM support
+<span property="v-s:title" shadow></span>
+```
+
+#### 7. Relation Component - Template Simplification
+
+**Before (1.x):**
+```javascript
+// Required <template> wrapper
+<div rel="v-s:hasTodo">
+  <template>
+    <li>{this.model['v-s:title']}</li>
+  </template>
+</div>
+```
+
+**After (2.0):**
+```javascript
+// Template wrapper optional (backward compatible)
+<div rel="v-s:hasTodo">
+  <li>{this.model['v-s:title']}</li>
+</div>
+
+// Or use with custom components
+<div rel="v-s:hasAuthor">
+  <person-card></person-card>
+</div>
+```
+
+**Migration steps:**
+1. (Optional) Remove `<template>` wrappers
+2. Relation components now reactive by default
+3. Each child auto-receives related model via `model` prop
+
+**When to use Relation vs Loop:**
+
+```javascript
+// ✅ Use Relation for RDF relations (auto-loads models)
+<ul rel="v-s:hasTodo">
+  <li>{this.model['v-s:title']}</li>
+</ul>
+
+// ✅ Use Loop for generic arrays (manual control)
+<${Loop} items="{this.todos}" item-key="id">
+  <todo-item></todo-item>
+</${Loop}>
+```
+
 #### 6. Model Reactivity
 
 **Before (1.x):**
@@ -249,6 +328,8 @@ Full backward compatibility maintained.
 - [ ] Update Loop/If imports and syntax
 - [ ] Replace complex template expressions with computed properties
 - [ ] Add `item-key` to Loop components
+- [ ] (Optional) Remove `<template>` wrappers from Relation components
+- [ ] Verify Property/Relation components inherit models correctly
 
 ### Testing
 
