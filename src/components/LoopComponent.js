@@ -259,7 +259,6 @@ if (typeof customElements !== 'undefined') {
   const LoopComponentClass = LoopComponent(HTMLElement);
   customElements.define(LoopComponentClass.tag, LoopComponentClass);
   Loop = LoopComponentClass;
-/* c8 ignore next 3 */
 } else {
   Loop = LoopComponent;
 }

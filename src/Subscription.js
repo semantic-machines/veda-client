@@ -15,10 +15,8 @@ export default class Subscription {
       if (location.protocol === 'https:') {
         return `wss://${location.host}`;
       }
-      /* c8 ignore next - Browser environment: location.port check */
       return location.port ? `ws://${location.hostname}:8088` : `ws://${location.host}`;
     }
-    /* c8 ignore next - Default fallback (covered by Subscription.init in tests) */
     return 'ws://localhost:8088';
   })();
   static _socket;
@@ -38,19 +36,15 @@ export default class Subscription {
   }
 
   static async _connect (event) {
-    /* c8 ignore next 4 - Reconnection delay: 30s timeout + logging (not testable in unit tests) */
     if (event) {
       console.log(`Socket: ${event.type}, will re-connect in 30 sec.`);
       await timeout(30_000);
     }
-    /* c8 ignore next - Fallback to globalThis.WebSocket in production */
     const WS = Subscription._WebSocketClass || globalThis.WebSocket;
     const socket = new WS(Subscription._address);
     Subscription._socket = socket;
-    /* c8 ignore next - Production callback: silent open handler */
     socket.onopen = () => Subscription._send();
     socket.onclose = Subscription._connect;
-    /* c8 ignore next - Production error logging */
     socket.onerror = (event) => console.error(event.message);
     socket.onmessage = Subscription._receive;
   }
@@ -64,11 +58,9 @@ export default class Subscription {
         Subscription._socket.send(msg);
         Subscription._buffer.length = 0;
       }
-    /* c8 ignore start - Retry send when socket not ready (covered by integration tests) */
     } else {
       Subscription._send();
     }
-    /* c8 ignore stop */
   }
 
   static _receive ({data: msg}) {
@@ -78,7 +70,6 @@ export default class Subscription {
       const pair = pairStr.split('=');
       const [id, updateCounter] = pair;
       const subscription = Subscription._subscriptions.get(id);
-      /* c8 ignore next 2 - Orphaned subscription cleanup (race condition) */
       if (!subscription) {
         Subscription.unsubscribe(id);
       } else {

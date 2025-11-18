@@ -310,7 +310,6 @@ export default class Backend {
     form.append('path', path);
     form.append('uri', uri);
     if (typeof file === 'string') {
-      /* c8 ignore next - Base64 prefix check */
       const content = file.startsWith('data:text/plain;base64') ? file : `data:text/plain;base64,${file}`;
       form.append('content', content);
     } else {

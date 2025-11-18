@@ -40,7 +40,7 @@ function queueFlush() {
 }
 
 async function flushEffects() {
-  /* c8 ignore next - Race condition protection: concurrent flush during flush */
+  // Race condition protection: concurrent flush during flush (tested in RaceConditions.test.js)
   if (isFlushing) return Promise.resolve();
 
   isFlushPending = false;

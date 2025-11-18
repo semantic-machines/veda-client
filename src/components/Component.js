@@ -25,7 +25,6 @@ export function html (strings, ...values) {
   for (let i = 0; i < strings.length; i++) {
     let value = values[i] ?? '';
     if (Array.isArray(value)) {
-      /* c8 ignore next */
       value = value.map(v => re.test(v) ? v : safe(v)).join(' ');
     } else {
       value = re.test(value) ? value : safe(value);
@@ -52,7 +51,6 @@ export function safe (value) {
 }
 
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
-  /* c8 ignore next */
   return class ComponentClass extends ElementClass {
     static tag = 'veda-component';
 
@@ -102,7 +100,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       // Model subscription cleanup removed - using fine-grained reactivity via effect()
 
       const removed = this.removed();
-      /* c8 ignore next */
       if (removed instanceof Promise) await removed;
     } catch (error) {
       console.log(this, 'Component remove error', error);
@@ -154,14 +151,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
         if (typeof html === 'undefined') {
           const post = this.post();
-          /* c8 ignore next */
           if (post instanceof Promise) await post;
           return;
         }
 
-        /* c8 ignore next */
         html = typeof html === 'string' ? html.replaceAll(marker, '') : html;
-        /* c8 ignore next 5 */
         let template = document.createElement('template');
         template.innerHTML = html;
         let fragment = template.content;
@@ -169,7 +163,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         this._process(fragment);
 
         const container = this.hasAttribute('shadow')
-          /* c8 ignore next */
           ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
           : this;
         container.replaceChildren(fragment);
@@ -256,11 +249,9 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       // If reactive component, create effects for expressions
       if (this.#isReactive) {
         const parent = textNode.parentNode;
-        /* c8 ignore next */
         const evalContext = this._currentEvalContext || this;
 
         // Create nodes for each part
-        /* c8 ignore next */
         const nodes = parts.map(part => {
           if (part.type === 'static') {
             return document.createTextNode(part.value);
@@ -293,7 +284,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         // Non-reactive: just evaluate once
         textNode.nodeValue = text.replace(/\{([^}]+)\}/g, (_, code) => {
           const value = this.#evaluate(code.trim());
-          /* c8 ignore next */
           return value != null ? String(value) : '';
         });
       }
@@ -320,7 +310,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           node = walker.nextNode();
         } else {
           // Skip template content inside veda-if/veda-loop - they handle their own templates
-          /* c8 ignore start - Edge case: manual DOM construction with <template> inside veda-if/loop */
           if (node.tagName === 'TEMPLATE') {
             const parent = node.parentNode;
             if (parent && parent.tagName && (parent.tagName === 'VEDA-IF' || parent.tagName === 'VEDA-LOOP')) {
@@ -329,7 +318,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               continue;
             }
           }
-          /* c8 ignore stop */
 
           if (!node.tagName.includes('-') && !node.hasAttribute('is') && !node.hasAttribute('about') && !node.hasAttribute('property') && !node.hasAttribute('rel')) {
             this.#processAttributes(node);
@@ -379,7 +367,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           // Custom component
           if (tag.includes('-')) {
             const Class = customElements.get(tag);
-            /* c8 ignore next */
             if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
             component = document.createElement(tag);
             // Copy attributes but preserve original values (not evaluated)
@@ -393,7 +380,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           if (node.hasAttribute('is')) {
             const is = node.getAttribute('is');
             const Class = customElements.get(is);
-            /* c8 ignore next */
             if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
             component = document.createElement(tag, {is});
             component.setAttribute('is', is); // Explicitly set 'is' attribute for findMethod
@@ -425,7 +411,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             nextNode = component.nextSibling;
           } else {
             // If no next sibling, traverse up the tree
-            /* c8 ignore next 8 - Edge case: deeply nested component without siblings */
             let parent = component.parentNode;
             while (parent && parent.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
               if (parent.nextSibling) {
@@ -446,7 +431,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     #evaluate (e, fromNode = null) {
       // Use stored eval context if available, otherwise use this
-      /* c8 ignore next */
       const context = this._currentEvalContext || this;
 
       try {
@@ -465,7 +449,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       // Search up the component tree via parentElement and shadow DOM hosts
       // Start with parentElement if available, otherwise try shadow host
-      /* c8 ignore next */
       let parent = this.parentElement || this.getRootNode?.()?.host;
       let depth = 0;
       while (parent && depth < 20) {
@@ -504,19 +487,16 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             const template = attr.nodeValue;
 
             // Use evalContext to check reactivity (for veda-if/veda-loop contexts)
-            /* c8 ignore next */
             const contextForReactivity = this._currentEvalContext || this;
             const isReactive = contextForReactivity.state?.__isReactive || false;
 
             // Create effect to update the attribute
             if (isReactive && /\{([^}]+)\}/g.test(template)) {
               // Capture evalContext for the effect closure
-              /* c8 ignore next */
               const evalContext = this._currentEvalContext || this;
               const cleanup = effect(() => {
                 const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
                   // Use captured evalContext for evaluation
-                  /* c8 ignore next */
                   return ExpressionParser.evaluate(code.trim(), evalContext) ?? '';
                 });
                 // Only update if value changed to prevent unnecessary updates
@@ -528,7 +508,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             } else {
               // Non-reactive: evaluate once
               const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
-                /* c8 ignore next */
                 return this.#evaluate(code.trim(), node) ?? '';
               });
               attr.nodeValue = value;
@@ -592,7 +571,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           const propName = booleanProps[attrName];
 
           // Use evalContext to check reactivity (for veda-if/veda-loop contexts)
-          /* c8 ignore next */
           const contextForReactivity = this._currentEvalContext || this;
           const isReactive = contextForReactivity.state?.__isReactive || false;
 
@@ -602,13 +580,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             node.removeAttribute(attrName);
 
             // Capture evalContext for the effect closure
-            /* c8 ignore next */
             const evalContext = this._currentEvalContext || this;
             const cleanup = effect(() => {
               let hasUndefinedOrNull = false;
               const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
                 // Use ExpressionParser for simple expressions
-                /* c8 ignore next */
                 const rawValue = ExpressionParser.evaluate(code.trim(), evalContext);
                 // Track if any expression returned null/undefined
                 if (rawValue === null || rawValue === undefined) {
@@ -641,7 +617,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             // Non-reactive: evaluate once
             let hasUndefinedOrNull = false;
             const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
-              /* c8 ignore next */
               const rawValue = this.#evaluate(code.trim());
               // Track if any expression returned null/undefined
               if (rawValue === null || rawValue === undefined) {
@@ -651,7 +626,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             });
 
             if (propName) {
-              /* c8 ignore next */
               // Boolean attributes should be false for: false, null, undefined, 'false'
               // And true for: true, 'true', '', attribute name, non-empty strings
               const boolValue = !hasUndefinedOrNull &&
