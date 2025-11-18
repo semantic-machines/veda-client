@@ -357,7 +357,7 @@
 
 ## 🤝 Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for:
+To contribute:
 - How to contribute
 - Code style guide
 - Testing requirements

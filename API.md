@@ -1,0 +1,768 @@
+# API Reference
+
+Complete API documentation for Veda Client Framework.
+
+## Table of Contents
+
+- [Component](#component)
+- [Reactivity](#reactivity)
+- [Built-in Components](#built-in-components)
+- [Model](#model)
+- [Backend](#backend)
+- [Router](#router)
+- [TypeScript](#typescript)
+
+---
+
+## Component
+
+Base class for creating reactive Web Components.
+
+### Usage
+
+```javascript
+import Component, { html } from './src/components/Component.js';
+
+class MyComponent extends Component(HTMLElement) {
+  static tag = 'my-component';
+
+  constructor() {
+    super();
+    this.state = this.reactive({ count: 0 });
+  }
+
+  render() {
+    return html`<div>{this.state.count}</div>`;
+  }
+}
+
+customElements.define(MyComponent.tag, MyComponent);
+```
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `model` | `Model` | Associated semantic data model |
+| `template` | `string` | Rendered HTML template |
+| `rendered` | `Promise<void>` | Resolves when component is rendered |
+
+### Lifecycle Methods
+
+```javascript
+class MyComponent extends Component(HTMLElement) {
+  constructor() {
+    super();
+    // Initialize state
+  }
+
+  async added() {
+    // Called before first render
+  }
+
+  async pre() {
+    // Called before each render
+  }
+
+  render() {
+    // Return HTML template
+    return html`<div>Content</div>`;
+  }
+
+  async post() {
+    // Called after each render
+  }
+
+  async removed() {
+    // Called after disconnection
+  }
+
+  async connectedCallback() {
+    // Component added to DOM
+    await super.connectedCallback();
+  }
+
+  disconnectedCallback() {
+    // Component removed from DOM
+    super.disconnectedCallback();
+  }
+
+  renderedCallback() {
+    // Called after rendering completes
+  }
+}
+```
+
+### Reactive Methods
+
+#### `reactive<T>(obj: T): T`
+
+Creates reactive state for the component.
+
+```javascript
+constructor() {
+  super();
+  this.state = this.reactive({
+    count: 0,
+    items: []
+  });
+}
+```
+
+#### `effect(fn: () => void): () => void`
+
+Creates effect with automatic cleanup.
+
+```javascript
+async connectedCallback() {
+  await super.connectedCallback();
+
+  this.effect(() => {
+    console.log('Count:', this.state.count);
+  });
+}
+```
+
+#### `watch<T>(getter, callback, options?)`
+
+Watches reactive value changes.
+
+```javascript
+this.watch(
+  () => this.state.count,
+  (newValue, oldValue) => {
+    console.log(`Changed from ${oldValue} to ${newValue}`);
+  },
+  { immediate: true }
+);
+```
+
+**Options:**
+- `immediate` - Run callback immediately with current value
+
+**Note:** Uses reference equality (`===`). Array mutations don't trigger unless array reference changes.
+
+```javascript
+// ❌ Won't trigger
+state.items.push(4);
+
+// ✅ Triggers
+state.items = [...state.items, 4];
+```
+
+### Other Methods
+
+#### `update(): Promise<void>`
+
+Manually trigger re-render.
+
+```javascript
+async handleChange() {
+  // Modify state
+  await this.update();
+}
+```
+
+#### `populate(): Promise<void>`
+
+Populate component from model (internal use).
+
+---
+
+## Reactivity
+
+Fine-grained reactivity system with automatic dependency tracking.
+
+### `reactive<T>(target: T, options?): T`
+
+Creates reactive proxy.
+
+```javascript
+import { reactive } from './src/Reactive.js';
+
+const state = reactive({
+  count: 0,
+  user: { name: 'Alice' }
+});
+
+state.count++; // Triggers effects
+```
+
+**Options:**
+```typescript
+interface ReactiveOptions {
+  onSet?: (key: string, value: any, oldValue: any) => void;
+  onDelete?: (key: string) => void;
+}
+```
+
+**Features:**
+- Deep reactivity (nested objects automatically wrapped)
+- Array mutation tracking (push, pop, shift, unshift, splice, sort, reverse)
+- Circular reference handling
+- Prototype pollution prevention
+
+**Limitations:**
+- Array index assignment not reactive: `arr[0] = x` (use `arr.splice(0, 1, x)`)
+- New properties need explicit wrapping
+- Date, RegExp, Promise not wrapped
+
+### `computed<T>(getter: () => T)`
+
+Creates computed value.
+
+```javascript
+import { computed } from './src/Reactive.js';
+
+const state = reactive({ count: 0 });
+const doubled = computed(() => state.count * 2);
+
+console.log(doubled.value); // 0
+state.count = 5;
+console.log(doubled.value); // 10
+```
+
+**Note:** Access via `.value` property.
+
+### `effect(fn: () => void, options?): () => void`
+
+Creates auto-tracking effect.
+
+```javascript
+import { effect } from './src/Effect.js';
+
+const cleanup = effect(() => {
+  console.log('Count:', state.count);
+});
+
+state.count++; // Logs: "Count: 1"
+
+cleanup(); // Stop effect
+```
+
+**Options:**
+```typescript
+interface EffectOptions {
+  lazy?: boolean;           // Don't run immediately
+  scheduler?: (fn) => void; // Custom scheduler
+  computed?: boolean;       // Mark as computed effect
+}
+```
+
+**Features:**
+- Automatic dependency tracking
+- Batched async execution (via microtask)
+- Infinite loop detection (max 100 triggers)
+- Automatic cleanup
+
+### `flushEffects(): Promise<void>`
+
+Manually flush queued effects.
+
+```javascript
+import { flushEffects } from './src/Effect.js';
+
+state.count = 5;
+await flushEffects(); // Wait for effects to run
+```
+
+**Use cases:**
+- Testing
+- Manual timing control
+
+---
+
+## Built-in Components
+
+### Loop
+
+Renders reactive lists with key-based reconciliation.
+
+```javascript
+import { Loop } from './src/components/LoopComponent.js';
+
+<${Loop} items="{this.todos}" item-key="id">
+  <li>{this.model.text}</li>
+</${Loop}>
+```
+
+**Attributes:**
+- `items` - Expression returning array (required)
+- `item-key` - Property name for reconciliation (default: `'id'`)
+
+**Features:**
+- Each child receives `model` prop with item value
+- Key-based reconciliation reuses DOM elements
+- Updates only when items array reference changes
+
+**Limitations:**
+- Naive reconciliation (no LIS optimization, O(n²) for reordering)
+- No virtualization
+
+**Example:**
+
+```javascript
+class TodoList extends Component(HTMLElement) {
+  constructor() {
+    super();
+    this.state = this.reactive({
+      todos: [
+        { id: 1, text: 'Task 1', done: false }
+      ]
+    });
+  }
+
+  addTodo = () => {
+    this.state.todos = [
+      ...this.state.todos,
+      { id: Date.now(), text: 'New task', done: false }
+    ];
+  };
+
+  render() {
+    return html`
+      <ul>
+        <${Loop} items="{this.state.todos}" item-key="id">
+          <li>
+            <input type="checkbox" checked="{this.model.done}" />
+            <span>{this.model.text}</span>
+          </li>
+        </${Loop}>
+      </ul>
+      <button onclick="{addTodo}">Add</button>
+    `;
+  }
+}
+```
+
+### If
+
+Conditional rendering.
+
+```javascript
+import { If } from './src/components/IfComponent.js';
+
+<${If} condition="{this.isVisible}">
+  <div>Content</div>
+</${If}>
+```
+
+**Attributes:**
+- `condition` - Expression evaluated as boolean (required)
+
+**Features:**
+- Creates/removes content based on condition
+- Leaves comment node when hidden
+- Child elements cloned when shown
+
+**Example:**
+
+```javascript
+class ConditionalView extends Component(HTMLElement) {
+  constructor() {
+    super();
+    this.state = this.reactive({
+      isLoggedIn: false,
+      hasPermission: false
+    });
+  }
+
+  render() {
+    return html`
+      <${If} condition="{this.state.isLoggedIn}">
+        <div>Welcome back!</div>
+
+        <${If} condition="{this.state.hasPermission}">
+          <admin-panel></admin-panel>
+        </${If}>
+      </${If}>
+
+      <${If} condition="{!this.state.isLoggedIn}">
+        <login-form></login-form>
+      </${If}>
+    `;
+  }
+}
+```
+
+---
+
+## Model
+
+Represents semantic web resource with RDF properties.
+
+### Constructor
+
+```javascript
+import Model from './src/Model.js';
+
+// Load by URI
+const model = new Model('d:MyModel');
+await model.load();
+
+// Create from data
+const model = new Model({
+  '@': 'd:MyModel',
+  'v-s:title': [{ data: 'Title', type: 'String' }]
+});
+
+// Create new
+const model = new Model();
+model.id = 'd:NewModel';
+model['rdf:type'] = [new Model('v-s:Person')];
+```
+
+### Static Methods
+
+#### `Model.load(uri: string | string[]): Promise<Model | Model[]>`
+
+Load model(s) by URI.
+
+```javascript
+const model = await Model.load('d:Person1');
+const models = await Model.load(['d:Person1', 'd:Person2']);
+```
+
+### Instance Methods
+
+#### `load(): Promise<Model>`
+
+Load model data from backend.
+
+```javascript
+const model = new Model('d:Person1');
+await model.load();
+```
+
+#### `save(): Promise<Model>`
+
+Save model to backend.
+
+```javascript
+model['v-s:title'] = [{ data: 'New Title', type: 'String' }];
+await model.save();
+```
+
+#### `remove(): Promise<void>`
+
+Remove model from backend.
+
+```javascript
+await model.remove();
+```
+
+#### `hasValue(property: string, value?: any): boolean`
+
+Check if property has value.
+
+```javascript
+if (model.hasValue('v-s:title')) {
+  // Has title
+}
+
+if (model.hasValue('v-s:title', 'Specific Title')) {
+  // Has specific title
+}
+```
+
+#### `addValue(property: string, value: any): void`
+
+Add value to property.
+
+```javascript
+model.addValue('v-s:tag', 'important');
+model.addValue('v-s:tag', 'urgent');
+// Now: model['v-s:tag'] = ['important', 'urgent']
+```
+
+#### `removeValue(property: string, value: any): void`
+
+Remove value from property.
+
+```javascript
+model.removeValue('v-s:tag', 'urgent');
+```
+
+### Properties
+
+Properties are arrays (RDF-style):
+
+```javascript
+// Read
+console.log(model['v-s:title']); // [{ data: 'Title', type: 'String' }]
+
+// Write
+model['v-s:title'] = [{ data: 'New Title', type: 'String' }];
+
+// Check
+if (model['v-s:creator']) {
+  // Has creator
+}
+```
+
+### Events
+
+```javascript
+model.on('modified', (property, value) => {
+  console.log(`${property} changed to`, value);
+});
+
+model.on('beforeSave', () => {
+  console.log('About to save');
+});
+
+model.on('afterSave', () => {
+  console.log('Saved successfully');
+});
+```
+
+---
+
+## Backend
+
+Static class for backend communication.
+
+### Authentication
+
+```javascript
+import Backend from './src/Backend.js';
+
+Backend.init('http://localhost:8080');
+
+await Backend.authenticate('username', 'password');
+await Backend.logout();
+```
+
+### Individual Operations
+
+```javascript
+// Get
+const data = await Backend.get_individual('d:Person1');
+
+// Update
+await Backend.put_individual(data);
+
+// Delete
+await Backend.remove_individual('d:Person1');
+```
+
+### Query
+
+```javascript
+const result = await Backend.query({
+  query: 'v-s:Person',
+  sort: "'v-s:created' desc",
+  top: 100
+});
+
+console.log(result.result); // Array of URIs
+```
+
+---
+
+## Router
+
+Simple hash-based router.
+
+```javascript
+import Router from './src/Router.js';
+
+const router = new Router();
+
+router.add('#/', () => {
+  console.log('Home');
+});
+
+router.add('#/user/:id', (params) => {
+  console.log('User ID:', params.id);
+});
+
+if (!location.hash) {
+  location.hash = '#/';
+}
+router.route(location.hash);
+```
+
+---
+
+## TypeScript
+
+Full TypeScript definitions included.
+
+### Component with Types
+
+```typescript
+import Component, { html } from './src/components/Component.js';
+import type { Reactive } from './src/Reactive.js';
+
+interface TodoState {
+  todos: Array<{ id: number; text: string; done: boolean }>;
+  filter: 'all' | 'active' | 'completed';
+}
+
+class TodoApp extends Component(HTMLElement) {
+  state!: Reactive<TodoState>;
+
+  constructor() {
+    super();
+    this.state = this.reactive<TodoState>({
+      todos: [],
+      filter: 'all'
+    });
+  }
+
+  get filteredTodos() {
+    return this.state.todos.filter(t =>
+      this.state.filter === 'all' ||
+      (this.state.filter === 'active' && !t.done) ||
+      (this.state.filter === 'completed' && t.done)
+    );
+  }
+
+  render() {
+    return html`<div>...</div>`;
+  }
+}
+```
+
+### Model with Types
+
+```typescript
+import Model from './src/Model.js';
+
+interface TodoModel extends Model {
+  ['v-s:title']?: Array<{ data: string; type: string }>;
+  ['v-s:completed']?: Array<{ data: boolean; type: string }>;
+}
+
+const todo = new Model('d:Todo1') as TodoModel;
+await todo.load();
+
+if (todo['v-s:title']) {
+  console.log(todo['v-s:title'][0].data);
+}
+```
+
+**Note:** RDF property names with colons require bracket notation in TypeScript.
+
+### Type Definitions
+
+All type definitions available:
+
+```typescript
+import type {
+  ComponentInstance,
+  ComponentConstructor,
+  LoopComponentInstance,
+  IfComponentInstance,
+  Reactive,
+  ReactiveOptions
+} from './src/index.js';
+```
+
+---
+
+## Template Functions
+
+### `html(strings, ...values): string`
+
+Safe template with automatic escaping.
+
+```javascript
+import { html } from './src/components/Component.js';
+
+const userInput = '<script>alert("XSS")</script>';
+const template = html`<div>${userInput}</div>`;
+// Result: <div>&lt;script&gt;alert("XSS")&lt;/script&gt;</div>
+```
+
+### `raw(strings, ...values): string`
+
+Unescaped template for trusted content.
+
+```javascript
+import { raw } from './src/components/Component.js';
+
+const trustedHTML = '<strong>Bold</strong>';
+const template = raw`<div>${trustedHTML}</div>`;
+// Result: <div><strong>Bold</strong></div>
+```
+
+⚠️ **Warning:** Use only with trusted content to avoid XSS vulnerabilities.
+
+### `safe(value: any): string | string[]`
+
+Escapes HTML characters.
+
+```javascript
+import { safe } from './src/components/Component.js';
+
+const escaped = safe('<script>alert("XSS")</script>');
+// Result: '&lt;script&gt;alert("XSS")&lt;/script&gt;'
+```
+
+---
+
+## Expression Syntax
+
+Templates support reactive expressions with `{expression}`:
+
+### Supported
+
+```javascript
+// Property access
+{this.count}
+{this.user.name}
+
+// RDF properties (no quotes needed)
+{this.model['v-s:title']}
+{this.model['rdfs:label']}
+
+// Array indexing
+{this.items.0.title}
+
+// Optional chaining
+{this.user?.email}
+{this.items?.0?.id}
+```
+
+### Not Supported
+
+```javascript
+// ❌ Operators
+{this.count + 1}
+{this.price * 1.2}
+
+// ❌ Ternary
+{this.isActive ? 'Yes' : 'No'}
+
+// ❌ Function calls
+{this.formatDate(date)}
+```
+
+**Solution:** Use computed properties (getters):
+
+```javascript
+get totalPrice() {
+  return this.price * 1.2;
+}
+
+get statusText() {
+  return this.isActive ? 'Yes' : 'No';
+}
+
+render() {
+  return html`
+    <div>Price: {this.totalPrice}</div>
+    <div>Status: {this.statusText}</div>
+  `;
+}
+```
+
+---
+
+**See also:**
+- [Reactivity Guide](./REACTIVITY.md) - Comprehensive reactivity tutorial
+- [Limitations](./LIMITATIONS.md) - Known limitations and performance
+- [Security](./SECURITY.md) - Security best practices
+

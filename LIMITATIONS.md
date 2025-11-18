@@ -1,252 +1,216 @@
-# Veda Client Limitations & Best Practices
+# Limitations & Performance
 
-This document outlines when to use **Veda Client Core** vs **Framework Adapters** (React/Solid).
+Known limitations and when to use alternatives.
 
----
+## Quick Decision Guide
 
-## 🎯 Quick Decision Guide
+### ✅ Use Veda Client When
 
-### ✅ Use Veda Client Core when:
+- Simple to medium forms (10-500 fields)
+- Lists < 500 items
+- RDF/semantic data applications
+- Minimal dependencies preferred
+- Bundle size critical (48 KB)
+- Learning curve should be minimal
 
-- **Simple forms** (10-100 fields)
-- **Small lists** (< 200 items)
-- **RDFa-first** applications
-- **Minimal dependencies** preferred
-- **Bundle size** is critical
-- **Learning curve** should be minimal
+### ⚠️ Consider Alternatives When
 
-### ⚠️ Use Framework Adapters when:
-
-- **Large lists** (1000+ items, need virtualization)
-- **Complex tables** (sorting, filtering, pagination)
-- **Real-time dashboards** (frequent updates)
-- **Rich text editors** or complex widgets
-- **Existing React/Solid** codebase
-- **Team expertise** in specific framework
+- Large lists (1000+ items) - need virtualization
+- Complex tables with sorting/filtering/pagination
+- Real-time dashboards with frequent updates
+- Rich text editors or complex widgets
+- Team already expert in React/Vue/Angular
 
 ---
 
-## 📊 Performance Characteristics
-
-### Veda Client Core
+## Performance Characteristics
 
 | Scenario | Performance | Notes |
 |----------|-------------|-------|
-| Small lists (< 100) | Excellent | Key-based reconciliation works well |
-| Medium lists (100-500) | Good | Acceptable performance |
-| Large lists (500-1000) | Moderate | May feel sluggish |
-| Huge lists (1000+) | Poor | Use React adapter + virtualization |
+| Lists < 100 items | Excellent | Key-based reconciliation works well |
+| Lists 100-500 | Good | Acceptable performance |
+| Lists 500-1000 | Moderate | May feel sluggish on reorder |
+| Lists 1000+ | Poor | Use virtualization library |
 | Simple forms | Excellent | Fine-grained reactivity shines |
-| Conditional rendering | Good | Efficient add/remove from DOM |
+| Conditional rendering | Good | Efficient DOM add/remove |
 | Nested components | Good | Automatic reactivity propagation |
 
-**Bundle size:** 40.2kb (minified)
-
-### React Adapter
-
-| Scenario | Performance | Notes |
-|----------|-------------|-------|
-| Large lists (1000+) | Excellent | With react-virtualized |
-| Complex tables | Excellent | Full React ecosystem |
-| Rich editors | Excellent | Use existing React components |
-| Bundle overhead | ~55-60kb | React + adapter |
-
-### Solid Adapter
-
-| Scenario | Performance | Notes |
-|----------|-------------|-------|
-| Real-time updates | Excellent | Fine-grained reactivity |
-| Large lists | Excellent | With solid-virtual |
-| Reactive dashboards | Excellent | No VDOM overhead |
-| Bundle overhead | ~50-55kb | Solid + adapter |
+**Bundle sizes:**
+- Browser: 48 KB (minified)
+- Node.js: 82 KB (includes ws package)
 
 ---
 
-## 🐛 Known Limitations (Core)
+## Known Limitations
 
-### 1. Loop Component
+### 1. Loop Component - Naive Reconciliation
 
-#### ⚠️ Naive Reconciliation Algorithm
-
-**Issue:**
-- Uses simple key-based reconciliation
-- Does NOT use "Longest Increasing Subsequence" (LIS) optimization
-- Reordering large lists has O(n²) DOM operations
+**Issue:** Uses simple key-based reconciliation without LIS optimization.
 
 **Impact:**
-```javascript
-// Example: reverse 1000 items
-items.reverse();
-
-// Veda Core: ~1000 insertBefore() calls
-// React with LIS: ~500 moves (optimal)
-```
+- Reordering large lists has O(n²) DOM operations
+- Reversing 1000 items = ~1000 insertBefore() calls
 
 **Workaround:**
 - Avoid frequent reordering of large lists (> 500 items)
-- Use React adapter for complex list manipulations
+- Use pagination for large datasets
+- Consider virtualization library for 1000+ items
 
-**Status:** Documented limitation (MVP), may optimize in future if needed
+**Status:** Documented limitation (MVP), may optimize if needed
 
----
+### 2. No Virtualization
 
-#### ⚠️ No Virtualization
-
-**Issue:**
-- Renders ALL items in the list
-- No windowing/virtualization support
+**Issue:** Renders ALL items in list.
 
 **Impact:**
-```javascript
-<veda-loop items="{10000items}">
-  // Renders 10,000 DOM nodes!
-  // Memory: ~50-100MB
-  // Scroll: janky
-</veda-loop>
-```
+- 10,000 items = 10,000 DOM nodes
+- Memory: ~50-100MB for large lists
+- Slow scrolling
 
 **Workaround:**
 - Paginate lists > 500 items
-- Use React adapter + react-virtualized for huge lists
+- Use intersection observer for lazy loading
+- Consider react-virtualized or similar
 
-**Status:** Documented limitation (use adapter for this case)
+**Status:** Use pagination or external library
 
----
+### 3. Expression Parser - Limited Syntax
 
-#### ⚠️ Multiple Children Wrapping
-
-**Issue:**
-- Multiple children get wrapped in extra `<div>`
+**Issue:** Only property access supported, no operators.
 
 ```javascript
-<veda-loop items="{items}">
-  <template>
-    <span>Title</span>
-    <span>Description</span>
-  </template>
-</veda-loop>
+// ✅ Supported
+{this.user.name}
+{this.items.0.title}
+{this.model['v-s:title']}
 
-// Renders:
-<div>
-  <span>Title</span>
-  <span>Description</span>
-</div>
-// ❌ Extra wrapper div!
+// ❌ Not supported
+{this.count + 1}
+{this.isActive ? 'Yes' : 'No'}
+{this.formatDate(date)}
 ```
 
-**Workaround:**
-- Use single root element in template
-- Or accept the wrapper div
-
-**Status:** Will be fixed in Phase 1.1
-
----
-
-### 2. If Component
-
-#### ⚠️ Limited Expression Syntax
-
-**Issue:**
-- No complex expressions in `condition` attribute
-- Only simple property access
+**Workaround:** Use computed properties (getters)
 
 ```javascript
-// ✅ GOOD:
-<veda-if condition="{this.isVisible}">
-
-// ❌ BAD (not supported):
-<veda-if condition="{this.count > 5 && this.isActive}">
-
-// ✅ Workaround - use computed:
-get shouldShow() {
-  return this.count > 5 && this.isActive;
+get incrementedCount() {
+  return this.count + 1;
 }
-<veda-if condition="{this.shouldShow}">
+
+<div>{this.incrementedCount}</div>
 ```
 
-**Status:** Documented limitation (use computed properties)
+**Status:** By design (security and simplicity)
 
----
-
-### 3. Expression Evaluation
-
-#### ✅ Safe Expression Parser (FIXED)
-
-**Solution:**
-- All expression evaluation now uses `ExpressionParser`
-- Supports only safe dot notation: `model.property.0.nested`
-- No operators, no function calls, no code execution possible
-
-```javascript
-// ✅ SAFE - supported:
-<div class="{this.model.id}">
-<veda-if condition="{this.model.items.0}">
-<veda-loop items="{this.model.v-s:hasTodo}">
-
-// ❌ NOT supported (and that's GOOD for security):
-<div onclick="{alert('XSS')}">       // Won't execute
-<veda-if condition="{1 + 1}">         // Won't work
-<veda-loop items="{getItems()}">     // Won't work
-
-// ✅ Workaround - use computed/methods:
-get itemCount() {
-  return this.items.length;
-}
-<div>{this.itemCount}</div>
-```
-
-**Status:** ✅ SECURE - ExpressionParser used everywhere
-
----
-
-#### ⚠️ Limited Expression Syntax
+### 4. Array Index Assignment Not Reactive
 
 **Issue:**
-- No complex expressions in templates
-- No ternary operators, no function calls
-
 ```javascript
-// ❌ NOT supported:
-<div class="{item.active ? 'active' : 'inactive'}">
-<div>{formatDate(item.created)}</div>
+const state = reactive({ items: [1, 2, 3] });
 
-// ✅ Workaround - use computed:
-get itemClass() {
-  return this.item.active ? 'active' : 'inactive';
-}
-<div class="{this.itemClass}">
+// ❌ NOT reactive
+state.items[0] = 99;
+
+// ✅ Reactive
+state.items.splice(0, 1, 99);
+state.items = [...state.items]; // Or reassign
 ```
 
-**Status:** Documented limitation (use computed properties)
+**Workaround:** Use array mutation methods or reassignment
+
+**Status:** Same limitation as Vue 3
+
+### 5. Watch Uses Reference Equality
+
+**Issue:**
+```javascript
+// ❌ Won't trigger - same array reference
+this.watch(() => state.items, callback);
+state.items.push(4); // No trigger!
+
+// ✅ Triggers
+state.items = [...state.items, 4];
+
+// ✅ Or watch length
+this.watch(() => state.items.length, callback);
+```
+
+**Status:** By design (performance)
 
 ---
 
-#### ⚠️ HTML Sanitization (safe() function)
+## Best Practices
 
-**Issue:**
-- The `safe()` function escapes HTML **and removes ALL `{}`** characters
-- This is intentional (prevents expression injection) but affects edge cases
+### 1. Use Computed for Logic
 
 ```javascript
-// ❌ Issue:
+// ❌ Bad - won't work
+<div>{this.a > this.b ? this.a : this.b}</div>
+
+// ✅ Good
+get max() {
+  return Math.max(this.a, this.b);
+}
+<div>{this.max}</div>
+```
+
+### 2. Add Keys to Loop
+
+```javascript
+// ❌ Poor performance
+<${Loop} items="{this.items}">
+
+// ✅ Optimized reconciliation
+<${Loop} items="{this.items}" item-key="id">
+```
+
+### 3. Paginate Large Lists
+
+```javascript
+get currentPage() {
+  const { page, pageSize } = this.state;
+  return this.allItems.slice(
+    page * pageSize,
+    (page + 1) * pageSize
+  );
+}
+
+<${Loop} items="{this.currentPage}" item-key="id">
+```
+
+### 4. Batch Model Updates
+
+```javascript
+// ❌ Bad - multiple triggers
+todos.forEach(todo => {
+  todo['v-s:completed'] = [true];
+});
+
+// ✅ Good - batch updates
+const updates = todos.map(t => {
+  t['v-s:completed'] = [true];
+  return t.save();
+});
+await Promise.all(updates);
+this.state.todos = [...this.state.todos]; // Single trigger
+```
+
+---
+
+## Security Limitations
+
+### safe() Removes All Braces
+
+The `safe()` function removes `{}` characters to prevent expression injection:
+
+```javascript
 safe('Style: { color: red }');    // Returns: 'Style: '
 safe('JSON: {"key": "value"}');   // Returns: 'JSON: '
-safe('Code: function() {}');      // Returns: 'Code: function() '
-
-// ✅ Workaround - use raw():
-raw`Style: { color: red }`;       // Preserves {}
-raw`JSON: {"key": "value"}`;      // Preserves {}
 ```
 
-**When this matters:**
-- Displaying JSON in UI
-- Showing CSS snippets  
-- Code examples with object literals
-- Mathematical notation with sets
+**Workaround:** Use `raw()` for code/JSON display (with trusted content only):
 
-**Workaround:**
 ```javascript
-// Use raw() for content that should not be sanitized
 render() {
   return html`
     <pre>${raw`{ "json": "example" }`}</pre>
@@ -255,244 +219,60 @@ render() {
 }
 ```
 
-**Status:** Documented limitation (use `raw()` when displaying code/JSON)
+---
+
+## Browser Support
+
+**Minimum versions:**
+- Chrome/Edge 88+ (Jan 2021)
+- Firefox 85+ (Jan 2021)
+- Safari 14+ (Sep 2020)
+
+**Required features:**
+- Custom Elements v1
+- ES Modules
+- Proxy
+- WeakMap
+
+**Not supported:**
+- IE 11
+- Old mobile browsers
 
 ---
 
-### 4. Reactivity
+## Performance Tips
 
-#### ⚠️ Array Index Assignment
-
-**Issue:**
-- Array index assignment NOT reactive
-
-```javascript
-const state = reactive({ items: [1, 2, 3] });
-
-// ❌ NOT reactive:
-state.items[0] = 99;
-
-// ✅ Use mutation methods:
-state.items.splice(0, 1, 99);
-// Or reassign:
-state.items = [...state.items];
-```
-
-**Workaround:**
-- Use array mutation methods (`push`, `splice`, etc.)
-- Or reassign entire array
-
-**Status:** Documented limitation (same as Vue 3)
+1. **Add item-key to all Loops** - Enables efficient reconciliation
+2. **Use computed properties** - Cache expensive calculations
+3. **Paginate large lists** - Don't render 1000+ items
+4. **Batch state changes** - Automatic batching via microtask
+5. **Use Shadow DOM** - Style isolation without global CSS overhead
 
 ---
 
-#### ⚠️ Nested Object Reactivity
+## When to Use Alternatives
 
-**Issue:**
-- New properties added to reactive objects NOT reactive
+### Use React/Vue/Solid When
 
-```javascript
-const state = reactive({ user: { name: 'John' } });
+You need:
+- Virtualization (1000+ items)
+- Complex drag-and-drop
+- Rich text editors
+- Large existing ecosystem
+- Team expertise in specific framework
 
-// ❌ NOT reactive:
-state.user.age = 30;
+### Migration Path
 
-// ✅ Use reactive for nested:
-state.user = reactive({ ...state.user, age: 30 });
-```
-
-**Workaround:**
-- Wrap nested objects in `reactive()`
-- Or use `Object.assign()` or spread
-
-**Status:** Documented limitation (same as Vue 3)
-
----
-
-### 5. Model Integration
-
-#### ⚠️ Value Structure Complexity
-
-**Issue:**
-- RDF values have complex structure: `{ data, type, lang }`
-- Verbose for simple cases
+Veda models work with any framework:
 
 ```javascript
-// ❌ Verbose:
-model['v-s:title'] = [{ data: 'New Title', type: 'String', lang: 'en' }];
+// React example
+import { useVedaModel } from '@veda/react-adapter'; // Future
 
-// ✅ Use Value helper:
-model['v-s:title'] = [new Value('New Title', 'String', 'en')];
-
-// ✅ Or shorthand (if implemented):
-model.setTitle('New Title', 'en');
-```
-
-**Workaround:**
-- Use `Value` class
-- Or create model-specific helpers
-
-**Status:** Acceptable (RDF semantics preserved)
-
----
-
-## 📋 Best Practices
-
-### 1. Choose the Right Tool
-
-```javascript
-// ✅ Good: Simple form with Core
-<form>
-  <input value="{model['v-s:title'][0].data}">
-  <veda-if condition="{this.showDetails}">
-    <div>{model['rdfs:comment'][0].data}</div>
-  </veda-if>
-</form>
-
-// ❌ Bad: Large table with Core
-<veda-loop items="{10000rows}">
-  // Renders 10k DOM nodes, slow!
-</veda-loop>
-
-// ✅ Good: Large table with React adapter
-import { useVedaRelation } from '@veda/react-adapter';
-import { Virtuoso } from 'react-virtuoso';
-
-function Table() {
-  const rows = useVedaRelation(model, 'v-s:hasRow');
-  return <Virtuoso data={rows} itemContent={Row} />;
-}
-```
-
----
-
-### 2. Optimize List Rendering
-
-```javascript
-// ❌ Bad: Re-render on every change
-<veda-loop items="{this.allItems}">
-
-// ✅ Good: Filter with computed
-get visibleItems() {
-  return this.allItems.filter(i => i.visible);
-}
-<veda-loop items="{this.visibleItems}">
-
-// ✅ Good: Paginate large lists
-get currentPage() {
-  return this.allItems.slice(this.page * 50, (this.page + 1) * 50);
-}
-<veda-loop items="{this.currentPage}">
-```
-
----
-
-### 3. Use Computed Properties
-
-```javascript
-// ❌ Bad: Complex expressions in template
-<div class="{item.status === 'active' && item.priority > 5 ? 'urgent' : 'normal'}">
-
-// ✅ Good: Computed property
-get itemClass() {
-  return this.item.status === 'active' && this.item.priority > 5 
-    ? 'urgent' 
-    : 'normal';
-}
-<div class="{this.itemClass}">
-```
-
----
-
-### 4. Avoid Nested Loops
-
-```javascript
-// ❌ Bad: Nested loops (O(n²))
-<veda-loop items="{this.categories}">
-  <veda-loop items="{category.items}">
-    // Slow for large datasets
-  </veda-loop>
-</veda-loop>
-
-// ✅ Good: Flatten data
-get flatItems() {
-  return this.categories.flatMap(c => c.items);
-}
-<veda-loop items="{this.flatItems}">
-
-// ✅ Or use React adapter for complex hierarchies
-```
-
----
-
-### 5. Cleanup Effects
-
-```javascript
-// ❌ Bad: No cleanup
-effect(() => {
-  const timer = setInterval(() => fetch(), 1000);
-  // Timer leaks when component unmounts!
-});
-
-// ✅ Good: Return cleanup function
-effect(() => {
-  const timer = setInterval(() => fetch(), 1000);
-  return () => clearInterval(timer);
-});
-```
-
----
-
-### 6. Batch Model Updates
-
-```javascript
-// ❌ Bad: Multiple updates
-todos.forEach(todo => {
-  todo['v-s:completed'] = [true];
-  // Triggers effect for EACH todo
-});
-
-// ✅ Good: Batch updates
-const updates = todos.map(todo => {
-  todo['v-s:completed'] = [true];
-  return todo.save();
-});
-await Promise.all(updates);
-// Then trigger single update:
-this.state.todos = [...this.state.todos];
-```
-
----
-
-## 🔄 Migration Path
-
-### From Core to React Adapter
-
-**When to migrate:**
-- List grows > 500 items
-- Need complex interactions (drag-drop, etc.)
-- Need existing React components
-- Team has React expertise
-
-**How:**
-```javascript
-// Before (Core):
-class TodoList extends Component(HTMLElement) {
-  render() {
-    return html`
-      <veda-loop items="{this.todos}">
-        <todo-item></todo-item>
-      </veda-loop>
-    `;
-  }
-}
-
-// After (React adapter):
-import { useVedaRelation } from '@veda/react-adapter';
-
-function TodoList({ model }) {
+function TodoList() {
+  const model = useVedaModel('d:TodoList');
   const todos = useVedaRelation(model, 'v-s:hasTodo');
-  
+
   return (
     <div>
       {todos.map(todo => (
@@ -507,64 +287,27 @@ function TodoList({ model }) {
 
 ---
 
-### From Core to Solid Adapter
+## Summary
 
-**When to migrate:**
-- Need real-time updates (WebSocket, SSE)
-- Performance critical (dashboards)
-- Fine-grained reactivity important
+**Veda Client strengths:**
+- ✅ Small bundle (48 KB)
+- ✅ Simple API
+- ✅ RDF/semantic data
+- ✅ Good for forms and small lists
 
-**How:**
-```javascript
-// Before (Core):
-class Dashboard extends Component(HTMLElement) {
-  render() {
-    return html`<div>{this.stats.count}</div>`;
-  }
-}
+**Limitations:**
+- ❌ No virtualization
+- ❌ Naive reconciliation
+- ❌ Limited expression syntax
 
-// After (Solid adapter):
-import { createVedaProperty } from '@veda/solid-adapter';
-
-function Dashboard(props) {
-  const [count] = createVedaProperty(props.model, 'v-s:count');
-  
-  return <div>{count()}</div>;
-}
-```
-
-**Effort:** Low (models stay same, only UI changes)
+**Decision rule:**
+- < 500 items → Use Veda Client
+- 500-1000 items → Consider pagination
+- 1000+ items → Use React/Vue + virtualization
 
 ---
 
-## 📚 Additional Resources
-
-- [REACTIVITY.md](./REACTIVITY.md) - Core reactivity concepts
-- [LOOP_IF_COMPONENTS.md](./LOOP_IF_COMPONENTS.md) - Loop/If usage
-- [ROADMAP.md](./ROADMAP.md) - Development roadmap
-- [MIGRATION_REACTIVE.md](./MIGRATION_REACTIVE.md) - Migration guide
-
----
-
-## 🤔 Need Help?
-
-**Decision tree:**
-
-```
-Do you have < 200 items in lists?
-├─ Yes → Use Core
-└─ No
-   └─ Do you need virtualization?
-      ├─ Yes → Use React/Solid adapter
-      └─ No → Can you paginate?
-         ├─ Yes → Use Core with pagination
-         └─ No → Use React/Solid adapter
-```
-
-**Still unsure?** Start with Core. Migrate to adapter only when needed. Models stay the same!
-
----
-
-**Last updated:** Phase 1.0
-**Status:** Living document (will be updated as limitations are fixed)
-
+**See also:**
+- [Performance Benchmarks](./test/benchmarks/)
+- [Roadmap](./ROADMAP.md) - Future improvements
+- [API Reference](./API.md) - Complete API docs
