@@ -59,13 +59,19 @@ pnpm test
 
 ## Documentation
 
+### Core Documentation
+
 - 📖 [Full Documentation](./DOCUMENTATION.md) - Complete framework guide
+- 📚 [API Reference](./API_REFERENCE.md) - Complete API documentation
 - 🧩 [Components Guide](./COMPONENTS.md) - Component system details
 - ⚡ [Reactivity System](./REACTIVITY.md) - How reactivity works
 - 🔄 [Effect System](./EFFECT_SYSTEM.md) - Fine-grained effects
+- 💻 [TypeScript Usage](./TYPESCRIPT_USAGE.md) - TypeScript examples
+
+### Additional Resources
+
 - 📋 [Components Guide (TodoMVC)](./app-todo/COMPONENTS_GUIDE.md) - Quick reference
-- ⚠️ [Limitations](./LIMITATIONS.md) - Known limitations
-- 📝 [Changelog](./CHANGELOG.md) - Version history
+- ⚠️ [Limitations](./LIMITATIONS.md) - Known limitations and best practices
 - 🗺️ [Roadmap](./ROADMAP.md) - Future plans
 
 ## Examples

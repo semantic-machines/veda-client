@@ -1,5 +1,7 @@
 # Veda Client Framework Documentation
 
+> **Quick Links**: [API Reference](./API_REFERENCE.md) | [Components Guide](./COMPONENTS.md) | [Reactivity System](./REACTIVITY.md) | [TypeScript Usage](./TYPESCRIPT_USAGE.md)
+
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -914,7 +916,6 @@ See individual module documentation:
 - [Reactivity System](./REACTIVITY.md)
 - [Effect System](./EFFECT_SYSTEM.md)
 - [Limitations](./LIMITATIONS.md)
-- [Changelog](./CHANGELOG.md)
 - [Roadmap](./ROADMAP.md)
 
 ---
