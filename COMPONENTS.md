@@ -22,11 +22,11 @@ Complete guide for building components with the Veda framework.
 Veda components are based on Web Components with reactive data binding to RDF models.
 
 **Key features:**
-- Reactive templates with `{{ }}` syntax
-- Automatic model binding
+- Declarative templates with `{}` syntax (single braces)
+- Automatic model binding via `about` attribute
 - Safe expression parser (CSP-compatible)
 - Event delegation up component tree
-- Semantic (RDF) data binding
+- Semantic (RDF) data binding with `property` and `rel` attributes
 
 ---
 
@@ -40,8 +40,8 @@ import Component, { html } from 'veda-client/components/Component.js';
 class MyComponent extends Component(HTMLElement) {
   render() {
     return html`
-      <h1>Hello, {{this.model.rdfs:label}}</h1>
-      <p>ID: {{this.model.id}}</p>
+      <h1>Hello, {this.model.rdfs:label}</h1>
+      <p>ID: {this.model.id}</p>
     `;
   }
 }
@@ -57,7 +57,7 @@ customElements.define('my-component', MyComponent);
 <my-component about="test:123"></my-component>
 
 <!-- In another component's template -->
-<${MyComponent} about="{{this.model.id}}"></${MyComponent}>
+<${MyComponent} about="{this.model.id}"></${MyComponent}>
 ```
 
 ---
@@ -74,8 +74,8 @@ class UserCard extends Component(HTMLElement) {
     // this.model is automatically available
     return html`
       <div>
-        <h2>{{this.model.rdfs:label}}</h2>
-        <p>Email: {{this.model.v-s:email}}</p>
+        <h2>{this.model.rdfs:label}</h2>
+        <p>Email: {this.model.v-s:email}</p>
       </div>
     `;
   }
@@ -96,7 +96,7 @@ class User extends Model {
 class UserCard extends Component(HTMLElement, User) {
   render() {
     return html`
-      <h2>{{this.model.fullName}}</h2>
+      <h2>{this.model.fullName}</h2>
     `;
   }
 }
@@ -141,8 +141,8 @@ import Component, { html } from 'veda-client/components/Component.js';
 render() {
   return html`
     <div class="card">
-      <h1>{{this.model.rdfs:label}}</h1>
-      <p>{{this.model.rdfs:comment}}</p>
+      <h1>{this.model.rdfs:label}</h1>
+      <p>{this.model.rdfs:comment}</p>
     </div>
   `;
 }
@@ -173,7 +173,7 @@ render() {
     <ul>
       ${items.map(item => html`
         <li>
-          <${ItemComponent} about="{{item.id}}"></${ItemComponent}>
+          <${ItemComponent} about="{item.id}"></${ItemComponent}>
         </li>
       `)}
     </ul>
@@ -205,30 +205,30 @@ render() {
 
 ### Property Access (Dot Notation)
 
-Use `{{ }}` for runtime evaluation in templates:
+Use `{ }` for runtime evaluation in templates:
 
 ```html
 <!-- Simple properties -->
-{{this.model.id}}
-{{this.model.name}}
+{this.model.id}
+{this.model.name}
 
 <!-- RDF properties (no quotes needed!) -->
-{{this.model.rdfs:label}}
-{{this.model.rdf:type}}
-{{this.model.v-s:creator}}
+{this.model.rdfs:label}
+{this.model.rdf:type}
+{this.model.v-s:creator}
 
 <!-- Array indexing with dot -->
-{{this.model.rdfs:label.0}}
-{{this.model.items.0.name}}
+{this.model.rdfs:label.0}
+{this.model.items.0.name}
 
 <!-- Nested properties -->
-{{this.model.author.name}}
-{{this.model.v-s:hasApplication.0.id}}
+{this.model.author.name}
+{this.model.v-s:hasApplication.0.id}
 
 <!-- Optional chaining -->
-{{this.model.author?.name}}
-{{this.model.items?.0?.id}}
-{{this.model.rel?.nested?.value}}
+{this.model.author?.name}
+{this.model.items?.0?.id}
+{this.model.rel?.nested?.value}
 ```
 
 ### Getters for Complex Logic
@@ -258,8 +258,8 @@ class MyComponent extends Component(HTMLElement) {
 
   render() {
     return html`
-      <h1>{{this.displayName}}</h1>
-      <p class="status-{{this.status}}">Status</p>
+      <h1>{this.displayName}</h1>
+      <p class="status-{this.status}">Status</p>
       <button disabled="${!this.canSave}">Save</button>
     `;
   }
@@ -268,11 +268,11 @@ class MyComponent extends Component(HTMLElement) {
 
 ### Interpolation Types
 
-**`{{ }}` - Runtime (in child context):**
+**`{ }` - Runtime (in child context):**
 ```html
 <div rel="items">
-  <span about="{{this.model.id}}">
-    {{this.model.rdfs:label}}  <!-- Evaluated for each item -->
+  <span about="{this.model.id}">
+    {this.model.rdfs:label}  <!-- Evaluated for each item -->
   </span>
 </div>
 ```
@@ -287,21 +287,21 @@ render() {
 }
 ```
 
-### What's NOT Supported in {{ }}
+### What's NOT Supported in { }
 
 Expressions don't support operators or function calls:
 
 ```html
 <!-- ✗ NOT supported - use getters -->
-{{this.count + 1}}
-{{this.price * 1.2}}
-{{this.isActive ? 'Yes' : 'No'}}
-{{this.method()}}
+{this.count + 1}
+{this.price * 1.2}
+{this.isActive ? 'Yes' : 'No'}
+{this.method()}
 
 <!-- ✓ Use getters instead -->
-{{this.totalCount}}
-{{this.priceWithTax}}
-{{this.activeStatus}}
+{this.totalCount}
+{this.priceWithTax}
+{this.activeStatus}
 ```
 
 ---
@@ -310,18 +310,18 @@ Expressions don't support operators or function calls:
 
 ### Event Syntax
 
-Use `onclick="{{expression}}"` with `{{ }}`:
+Use `onclick="{expression}"` with `{ }`:
 
 ```html
 <!-- Method in current component -->
-<button onclick="{{handleClick}}">Click</button>
+<button onclick="{handleClick}">Click</button>
 
 <!-- Explicit this reference -->
-<button onclick="{{this.handleClick}}">Click</button>
+<button onclick="{this.handleClick}">Click</button>
 
 <!-- Model methods (context preserved automatically) -->
-<button onclick="{{this.model.save}}">Save</button>
-<button onclick="{{this.model.remove}}">Delete</button>
+<button onclick="{this.model.save}">Save</button>
+<button onclick="{this.model.remove}">Delete</button>
 ```
 
 ### Method Signature
@@ -338,7 +338,7 @@ class MyComponent extends Component(HTMLElement) {
 
   render() {
     return html`
-      <button onclick="{{handleClick}}" data-id="123">
+      <button onclick="{handleClick}" data-id="123">
         Click
       </button>
     `;
@@ -367,15 +367,15 @@ handleAction(event, node) {
 render() {
   return html`
     <button
-      onclick="{{handleAction}}"
+      onclick="{handleAction}"
       data-action="add"
       data-value="New Label"
     >Add</button>
 
     <button
-      onclick="{{handleAction}}"
+      onclick="{handleAction}"
       data-action="remove"
-      data-value="{{this.model.rdfs:label.0}}"
+      data-value="{this.model.rdfs:label.0}"
     >Remove</button>
   `;
 }
@@ -400,9 +400,9 @@ class Editor extends Component(HTMLElement) {
 
   render() {
     return html`
-      <button onclick="{{addLabel}}">Add</button>
-      <button onclick="{{removeLabel}}">Remove</button>
-      <button onclick="{{this.model.save}}">Save</button>
+      <button onclick="{addLabel}">Add</button>
+      <button onclick="{removeLabel}">Remove</button>
+      <button onclick="{this.model.save}">Save</button>
     `;
   }
 }
@@ -422,9 +422,9 @@ class ParentComponent extends Component(HTMLElement) {
   render() {
     return html`
       <div rel="items">
-        <span about="{{this.model.id}}">
+        <span about="{this.model.id}">
           <!-- deleteItem found in ParentComponent -->
-          <button onclick="{{deleteItem}}" data-id="{{this.model.id}}">
+          <button onclick="{deleteItem}" data-id="{this.model.id}">
             Delete
           </button>
         </span>
@@ -511,7 +511,7 @@ Binds element to a model by ID. **Creates a new component instance** with its ow
 <my-component about="test:123"></my-component>
 
 <!-- Dynamic ID from parent model -->
-<div about="{{this.model.creator.id}}">
+<div about="{this.model.creator.id}">
   <!-- This div becomes a component with creator model -->
   <span property="rdfs:label"></span>
 </div>
@@ -558,7 +558,7 @@ Displays model property value. **Automatically updates** when property changes.
 
 ```html
 <!-- Access nested model properties -->
-<div about="{{this.model.author.id}}">
+<div about="{this.model.author.id}">
   <span property="rdfs:label"></span>  <!-- Author's label -->
   <span property="v-s:email"></span>   <!-- Author's email -->
 </div>
@@ -584,7 +584,7 @@ Iterates over **related models** (not just values). Each related model gets its 
 
 ```html
 <div rel="v-s:hasItem">
-  <${ItemComponent} about="{{this.model.id}}"></${ItemComponent}>
+  <${ItemComponent} about="{this.model.id}"></${ItemComponent}>
 </div>
 
 <!-- Or using 'is' attribute -->
@@ -599,7 +599,7 @@ Iterates over **related models** (not just values). Each related model gets its 
 
 ```html
 <div rel="v-s:hasApplication">
-  <h3>{{this.model.rdfs:label}}</h3>
+  <h3>{this.model.rdfs:label}</h3>
 
   <!-- Nested relation inside parent relation -->
   <ul rel="v-s:hasPermission">
@@ -640,7 +640,7 @@ Iterates over **related models** (not just values). Each related model gets its 
 
 ```html
 <!-- Relations of specific model -->
-<div about="{{this.model.creator.id}}">
+<div about="{this.model.creator.id}">
   <h2>Creator's Applications</h2>
   <ul rel="v-s:hasApplication">
     <li property="rdfs:label"></li>
@@ -656,7 +656,7 @@ Iterates over **related models** (not just values). Each related model gets its 
   <h3 property="rdfs:label"></h3>
 
   <!-- Show application creator -->
-  <div about="{{this.model.v-s:creator.id}}">
+  <div about="{this.model.v-s:creator.id}">
     <span property="rdfs:label"></span>
   </div>
 
@@ -673,7 +673,7 @@ Specifies custom element class for rendering:
 
 ```html
 <!-- Use custom component -->
-<p about="{{this.model.id}}" is="${CustomComponent}">
+<p about="{this.model.id}" is="${CustomComponent}">
   Content
 </p>
 
@@ -756,7 +756,7 @@ One of the most powerful features - build **complex components without JavaScrip
       <p property="rdfs:comment"></p>
 
       <!-- Task assignee -->
-      <div about="{{this.model.v-s:assignedTo.id}}">
+      <div about="{this.model.v-s:assignedTo.id}">
         <span>Assigned to: </span>
         <span property="rdfs:label"></span>
       </div>
@@ -843,7 +843,7 @@ class UserProfile extends Component(HTMLElement) {
         <p property="v-s:email"></p>
 
         <!-- Programmatic control -->
-        <button onclick="{{handleToggleStatus}}">
+        <button onclick="{handleToggleStatus}">
           Toggle Status
         </button>
 
@@ -868,8 +868,8 @@ class ItemComponent extends Component(HTMLElement) {
   render() {
     return html`
       <div class="item">
-        <h3>{{this.model.rdfs:label}}</h3>
-        <button onclick="{{this.model.remove}}">Delete</button>
+        <h3>{this.model.rdfs:label}</h3>
+        <button onclick="{this.model.remove}">Delete</button>
       </div>
     `;
   }
@@ -879,7 +879,7 @@ class ListComponent extends Component(HTMLElement) {
   render() {
     return html`
       <div rel="v-s:hasItem">
-        <${ItemComponent} about="{{this.model.id}}"></${ItemComponent}>
+        <${ItemComponent} about="{this.model.id}"></${ItemComponent}>
       </div>
     `;
   }
@@ -892,8 +892,8 @@ class ListComponent extends Component(HTMLElement) {
 render() {
   return html`
     <${ChildComponent}
-      about="{{this.model.id}}"
-      data-parent-id="{{this.parentId}}"
+      about="{this.model.id}"
+      data-parent-id="{this.parentId}"
     ></${ChildComponent}>
   `;
 }
@@ -907,7 +907,7 @@ render() {
 // Parent
 render() {
   return html`
-    <${Child} about="{{this.model.child.id}}"></${Child}>
+    <${Child} about="{this.model.child.id}"></${Child}>
   `;
 }
 ```
@@ -927,8 +927,8 @@ class ChildComponent extends Component(HTMLElement) {
   render() {
     return html`
       <button
-        onclick="{{handleChildAction}}"
-        data-value="{{this.model.id}}"
+        onclick="{handleChildAction}"
+        data-value="{this.model.id}"
       >Action</button>
     `;
   }
@@ -948,7 +948,7 @@ get displayName() {
 }
 
 render() {
-  return html`<h1>{{this.displayName}}</h1>`;
+  return html`<h1>{this.displayName}</h1>`;
 }
 
 // ✗ Avoid
@@ -1067,20 +1067,20 @@ class UserCard extends Component(HTMLElement, User) {
   render() {
     return html`
       <div class="user-card ${this.statusClass}">
-        <h2>{{this.model.fullName}}</h2>
+        <h2>{this.model.fullName}</h2>
 
         ${this.editing
           ? html`
             <input
               type="text"
-              value="{{this.model.v-s:firstName}}"
-              oninput="{{handleFirstNameChange}}"
+              value="{this.model.v-s:firstName}"
+              oninput="{handleFirstNameChange}"
             />
-            <button onclick="{{handleSave}}">Save</button>
+            <button onclick="{handleSave}">Save</button>
           `
           : html`
-            <p>Email: {{this.model.v-s:email}}</p>
-            <button onclick="{{toggleEdit}}">Edit</button>
+            <p>Email: {this.model.v-s:email}</p>
+            <button onclick="{toggleEdit}">Edit</button>
           `
         }
 
@@ -1089,7 +1089,7 @@ class UserCard extends Component(HTMLElement, User) {
           : ''
         }
 
-        <button onclick="{{handleDelete}}" class="danger">
+        <button onclick="{handleDelete}" class="danger">
           Delete
         </button>
       </div>

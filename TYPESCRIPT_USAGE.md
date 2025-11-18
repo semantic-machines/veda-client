@@ -9,7 +9,7 @@ Types are included automatically when you import from `veda-client`.
 ### Loop Component
 
 ```typescript
-import { Component, Loop, reactive } from 'veda-client';
+import { Component, Loop } from 'veda-client';
 import type { LoopComponentInstance } from 'veda-client';
 
 interface Todo {
@@ -23,7 +23,7 @@ class TodoList extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = reactive<{ todos: Todo[] }>({
+    this.state = this.reactive<{ todos: Todo[] }>({
       todos: []
     });
   }
@@ -31,9 +31,7 @@ class TodoList extends Component(HTMLElement) {
   render() {
     return `
       <veda-loop items="{this.state.todos}" item-key="id">
-        <template>
-          <li>${TodoItem.tag}</li>
-        </template>
+        <li>${TodoItem.tag}</li>
       </veda-loop>
     `;
   }
@@ -43,7 +41,7 @@ class TodoList extends Component(HTMLElement) {
 ### If Component
 
 ```typescript
-import { Component, If, reactive } from 'veda-client';
+import { Component, If } from 'veda-client';
 import type { IfComponentInstance } from 'veda-client';
 
 class ConditionalSection extends Component(HTMLElement) {
@@ -51,7 +49,7 @@ class ConditionalSection extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = reactive({
+    this.state = this.reactive({
       isVisible: false,
       hasItems: false
     });
@@ -64,9 +62,7 @@ class ConditionalSection extends Component(HTMLElement) {
       </veda-if>
 
       <veda-if condition="{this.state.hasItems}">
-        <template>
-          <item-list></item-list>
-        </template>
+        <item-list></item-list>
       </veda-if>
     `;
   }
@@ -97,7 +93,7 @@ import { Loop, If } from 'veda-client';
 ### Custom Loop with Model
 
 ```typescript
-import { Component, Loop, Model, reactive } from 'veda-client';
+import { Component, Loop, Model } from 'veda-client';
 
 class TodoModel extends Model {
   'v-s:title'?: string[];
@@ -109,7 +105,7 @@ class TodoApp extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = reactive<{ todos: TodoModel[] }>({
+    this.state = this.reactive<{ todos: TodoModel[] }>({
       todos: []
     });
   }
@@ -117,9 +113,7 @@ class TodoApp extends Component(HTMLElement) {
   render() {
     return `
       <veda-loop items="{this.state.todos}" item-key="id">
-        <template>
-          <todo-item></todo-item>
-        </template>
+        <todo-item></todo-item>
       </veda-loop>
     `;
   }
@@ -157,14 +151,14 @@ interface AppState {
   isLoading: boolean;
 }
 
-this.state = reactive<AppState>({
+this.state = this.reactive<AppState>({
   todos: [],
   filter: 'all',
   isLoading: false
 });
 
 // ❌ Bad: No type safety
-this.state = reactive({
+this.state = this.reactive({
   todos: [],
   filter: 'all',
   isLoading: false
@@ -249,9 +243,7 @@ class FilteredList extends Component(HTMLElement) {
   render() {
     return `
       <veda-loop items="{this.visibleItems}" item-key="id">
-        <template>
-          <item-view></item-view>
-        </template>
+        <item-view></item-view>
       </veda-loop>
     `;
   }
@@ -279,9 +271,7 @@ render() {
   return `
     <veda-if condition="{this.hasItems}">
       <veda-loop items="{this.state.items}" item-key="id">
-        <template>
-          <item-card></item-card>
-        </template>
+        <item-card></item-card>
       </veda-loop>
     </veda-if>
 

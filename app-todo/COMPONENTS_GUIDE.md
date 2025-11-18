@@ -67,7 +67,7 @@ html`<div>{this.isEmpty}</div>`  // ✅ Simple expression
 ## 📦 Component Base Class
 
 ```javascript
-import { Component } from 'framework';
+import { Component, html } from 'framework';
 
 class MyComponent extends Component(HTMLElement) {
   constructor() {
@@ -120,6 +120,21 @@ html`
 - Reconciliation reuses DOM elements
 - Updates only when items array changes
 
+**Template wrapper is optional:**
+```javascript
+// ✅ Modern syntax (no template)
+<${Loop} items="{this.todos}" item-key="id">
+  <li>{this.model.title}</li>
+</${Loop}>
+
+// ✅ Also works (backward compatibility)
+<${Loop} items="{this.todos}" item-key="id">
+  <template>
+    <li>{this.model.title}</li>
+  </template>
+</${Loop}>
+```
+
 ---
 
 ## ❓ If Component
@@ -144,26 +159,34 @@ html`
 - Child elements are cloned when shown
 - Leaves comment node when hidden
 
+**Template wrapper is optional:**
+```javascript
+// ✅ Modern syntax (no template)
+<${If} condition="{this.show}">
+  <div>Content</div>
+</${If}>
+
+// ✅ Also works (backward compatibility)
+<${If} condition="{this.show}">
+  <template>
+    <div>Content</div>
+  </template>
+</${If}>
+```
+
 ---
 
-## 📄 property Component
+## 📄 property Attribute
 
-Display single value from model:
+Display model property values (declarative data binding):
 
 ```html
 <!-- Simple -->
 <span property="rdfs:label"></span>
 
-<!-- With custom formatting (optional <template>) -->
+<!-- With custom formatting -->
 <div property="v-s:title">
   <strong><slot></slot></strong>
-</div>
-
-<!-- Or with explicit <template> -->
-<div property="v-s:title">
-  <template>
-    <strong><slot></slot></strong>
-  </template>
 </div>
 
 <!-- Array values -->
@@ -179,26 +202,26 @@ Display single value from model:
 - Reads `this.model[property]`
 - If array, renders each value
 - `<slot>` replaced with value
-- `<template>` is optional for custom formatting
 - Automatically reactive
 
 ---
 
-## 🔗 rel Component
+## 🔗 rel Attribute
 
-Display related models:
+Display related models (declarative relations):
 
 ```html
-<!-- Simple - use children as template for each related model -->
+<!-- Simple -->
 <div rel="v-s:hasApplication">
   <app-card></app-card>
 </div>
 
-<!-- Or with explicit <template> (old syntax) -->
+<!-- Nested -->
 <div rel="v-s:hasApplication">
-  <template>
-    <app-card></app-card>
-  </template>
+  <h3 property="rdfs:label"></h3>
+  <ul rel="v-s:hasPermission">
+    <li property="rdfs:label"></li>
+  </ul>
 </div>
 ```
 
@@ -208,113 +231,81 @@ Display related models:
 **How it works:**
 - Iterates over `this.model[rel]`
 - Each child element gets `model = relatedModel`
-- `<template>` is optional (for backward compatibility)
 - Automatically reactive
 
 ---
 
-## 🎯 PropertyComponent
+## 🎯 Combining Approaches
 
-Like `property` but with language support:
+You can use **all three approaches** together:
 
-```html
-<span property="rdfs:label" lang="en"></span>
-```
-
-**Features:**
-- Filters by language suffix: `value^^EN`, `value^^RU`
-- Uses `document.documentElement.lang`
-- Inherits all from `property`
-
----
-
-## 🔄 Lifecycle Hooks
-
+### 1. Reactive Components (with Loop/If)
 ```javascript
-class MyComponent extends Component(HTMLElement) {
-  // 1. Creation
+import { Component, html, Loop } from 'framework';
+
+class TodoApp extends Component(HTMLElement) {
   constructor() {
     super();
-    // Initialize state
+    this.state = this.reactive({ todos: [], filter: 'all' });
   }
 
-  // 2. Before mount
-  async populate() {
-    // Load model (if has 'about' attribute)
+  get filteredTodos() {
+    return this.state.todos.filter(t =>
+      this.state.filter === 'all' || t.status === this.state.filter
+    );
   }
 
-  // 3. After populate
-  added() {
-    // Setup listeners, effects
-  }
-
-  // 4. Before render
-  pre() {
-    // Prepare data
-  }
-
-  // 5. Render
   render() {
-    return html`...`;
-  }
-
-  // 6. After render (before DOM)
-  post(fragment) {
-    // Modify fragment
-  }
-
-  // 7. After complete render (including children)
-  renderedCallback() {
-    // All done
-  }
-
-  // 8. On disconnect
-  removed() {
-    // Cleanup
-  }
-
-  disconnectedCallback() {
-    // Auto-cleanup effects
-    super.disconnectedCallback?.();
+    return html`
+      <ul>
+        <${Loop} items="{this.filteredTodos}" item-key="id">
+          <li>{this.model.title}</li>
+        </${Loop}>
+      </ul>
+    `;
   }
 }
 ```
 
----
+### 2. Declarative Components (with property/rel)
+```html
+<!-- Pure HTML, no JavaScript needed -->
+<div about="v-s:currentUser">
+  <h1 property="rdfs:label"></h1>
+  <p property="v-s:email"></p>
 
-## ⚡ Reactivity API
-
-### `reactive(obj)` - Make object reactive
-```javascript
-this.state = this.reactive({
-  count: 0,
-  items: []
-});
+  <ul rel="v-s:hasApplication">
+    <li property="rdfs:label"></li>
+  </ul>
+</div>
 ```
 
-### `effect(fn)` - Run on dependency change
+### 3. Hybrid (best of both)
 ```javascript
-this.effect(() => {
-  console.log('Count:', this.state.count);
-  // Re-runs when count changes
-});
-```
+class UserProfile extends Component(HTMLElement) {
+  constructor() {
+    super();
+    this.state = this.reactive({ editing: false });
+  }
 
-### `watch(getter, callback)` - Watch specific value
-```javascript
-this.watch(
-  () => this.state.items.length,
-  (newLen, oldLen) => {
-    console.log(`Length: ${oldLen} -> ${newLen}`);
-  },
-  { immediate: true }
-);
-```
+  render() {
+    return html`
+      <div>
+        <!-- Declarative binding -->
+        <h1 property="rdfs:label"></h1>
 
-### Computed properties - Use getters
-```javascript
-get doubled() {
-  return this.state.count * 2;  // Auto-tracks dependencies
+        <!-- Reactive state -->
+        <${If} condition="{this.state.editing}">
+          <input property="v-s:firstName" />
+        </${If}>
+
+        <!-- Declarative relations -->
+        <ul rel="v-s:hasRole">
+          <li property="rdfs:label"></li>
+        </ul>
+      </div>
+    `;
+  }
 }
 ```
 
@@ -357,42 +348,23 @@ this.addEventListener('item-selected', (event) => {
 
 ## 📋 Common Patterns
 
-### Parent → Child (Props)
-```javascript
-// Parent
-html`<child-comp title="{this.title}"></child-comp>`
+### When to use what?
 
-// Child
-static get observedAttributes() {
-  return ['title'];
-}
+**Use Loop/If (reactive):**
+- ✅ Dynamic lists with filtering/sorting
+- ✅ Computed state
+- ✅ Complex conditional logic
+- ✅ Interactive UIs
 
-attributeChangedCallback(name, oldVal, newVal) {
-  this.update();
-}
-```
+**Use property/rel (declarative):**
+- ✅ Simple data display
+- ✅ Static semantic data
+- ✅ Rapid prototyping
+- ✅ No-code components
 
-### Child → Parent (Events)
-```javascript
-// Child
-this.dispatchEvent(new CustomEvent('change', {
-  detail: { value: 123 },
-  bubbles: true
-}));
-
-// Parent
-html`<child-comp onchange="{handleChildChange}"></child-comp>`
-```
-
-### Model sharing
-```javascript
-// Automatic via 'about'
-html`<child-comp about="${modelId}"></child-comp>`
-
-// Manual
-const child = this.querySelector('child-comp');
-child.model = this.model;
-```
+**Use both together:**
+- ✅ Complex apps
+- ✅ Best of both worlds
 
 ---
 
@@ -407,12 +379,13 @@ child.model = this.model;
      </${Loop}>
    `
 
-   // ✅ Multiple children work too
+   // ✅ Also works (backward compatibility)
    html`
-     <${If} condition="{this.show}">
-       <h1>Title</h1>
-       <p>Content</p>
-     </${If}>
+     <${Loop} items="{this.items}" item-key="id">
+       <template>
+         <my-item></my-item>
+       </template>
+     </${Loop}>
    `
    ```
 
@@ -426,19 +399,19 @@ child.model = this.model;
    html`<div>{this.max}</div>`
    ```
 
-3. **Bind handlers in constructor**
+3. **Use this.reactive() in components**
    ```javascript
    constructor() {
      super();
-     this.handleClick = this.handleClick.bind(this);
+     this.state = this.reactive({ count: 0 });  // ✅
    }
    ```
 
 4. **Clean up in disconnectedCallback**
    ```javascript
    disconnectedCallback() {
-     // Custom cleanup
-     super.disconnectedCallback?.();  // Auto-cleans effects
+     // Effects cleaned automatically
+     super.disconnectedCallback?.();
    }
    ```
 
@@ -448,25 +421,13 @@ child.model = this.model;
    get todos() {
      return this.model['v-s:hasTodo'] || [];
    }
-
-   // ❌ Bad - duplication
-   this.state.todos = [...this.model['v-s:hasTodo']];
    ```
 
 ---
 
 ## 🐛 Common Pitfalls
 
-1. **Mutating arrays instead of replacing**
-   ```javascript
-   // ❌ Doesn't trigger reactivity
-   this.todos.push(newTodo);
-
-   // ✅ Creates new array
-   this.todos = [...this.todos, newTodo];
-   ```
-
-2. **Complex expressions in templates**
+1. **Complex expressions in templates**
    ```javascript
    // ❌ Parser doesn't support
    html`<div>{this.count === 0 ? 'none' : 'some'}</div>`
@@ -476,21 +437,7 @@ child.model = this.model;
    html`<div>{this.text}</div>`
    ```
 
-3. **Not calling super.connectedCallback()**
-   ```javascript
-   // ❌ Missing super
-   async connectedCallback() {
-     this.setup();
-   }
-
-   // ✅ With super
-   async connectedCallback() {
-     await super.connectedCallback();
-     this.setup();
-   }
-   ```
-
-4. **Missing key in Loop**
+2. **Missing key in Loop**
    ```javascript
    // ❌ No key - poor performance
    <${Loop} items="{items}">
@@ -499,12 +446,21 @@ child.model = this.model;
    <${Loop} items="{items}" item-key="id">
    ```
 
+3. **Using global reactive() instead of this.reactive()**
+   ```javascript
+   // ❌ Missing internal flag
+   import { reactive } from 'framework';
+   this.state = reactive({ count: 0 });
+
+   // ✅ Correct - sets internal flag
+   this.state = this.reactive({ count: 0 });
+   ```
+
 ---
 
 ## 📚 Quick Links
 
-- **TodoMVC Imperative**: [src/js/](src/js/)
-- **TodoMVC Declarative**: [src-declarative/js/](src-declarative/js/)
+- **Main Documentation**: [DOCUMENTATION.md](../DOCUMENTATION.md)
+- **Reactivity Guide**: [REACTIVITY.md](../REACTIVITY.md)
 - **Component Source**: [../src/components/Component.js](../src/components/Component.js)
 - **Tests**: [../test/](../test/)
-

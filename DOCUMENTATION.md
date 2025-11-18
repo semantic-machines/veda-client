@@ -44,14 +44,14 @@ Veda Client is a lightweight, reactive web framework for building semantic web a
 Components are Web Components extended with reactivity and templating:
 
 ```javascript
-import Component, { html, reactive } from './src/components/Component.js';
+import Component, { html } from './src/components/Component.js';
 
 class MyComponent extends Component(HTMLElement) {
   static tag = 'my-component';
 
   constructor() {
     super();
-    this.state = reactive({
+    this.state = this.reactive({
       count: 0
     });
   }
@@ -138,14 +138,14 @@ node build.mjs
 ### Your First Component
 
 ```javascript
-import Component, { html, reactive } from './src/components/Component.js';
+import Component, { html } from './src/components/Component.js';
 
 class HelloWorld extends Component(HTMLElement) {
   static tag = 'hello-world';
 
   constructor() {
     super();
-    this.state = reactive({
+    this.state = this.reactive({
       name: 'World'
     });
   }
@@ -203,7 +203,7 @@ Use `reactive()` for reactive state:
 ```javascript
 constructor() {
   super();
-  this.state = reactive({
+  this.state = this.reactive({
     loading: false,
     data: [],
     filter: 'all'
@@ -707,14 +707,14 @@ disconnectedCallback() {
 ### Counter
 
 ```javascript
-import Component, { html, reactive } from './src/components/Component.js';
+import Component, { html } from './src/components/Component.js';
 
 class Counter extends Component(HTMLElement) {
   static tag = 'app-counter';
 
   constructor() {
     super();
-    this.state = reactive({ count: 0 });
+    this.state = this.reactive({ count: 0 });
   }
 
   increment = () => this.state.count++;
@@ -737,7 +737,7 @@ customElements.define(Counter.tag, Counter);
 ### Todo List
 
 ```javascript
-import Component, { html, reactive } from './src/components/Component.js';
+import Component, { html } from './src/components/Component.js';
 import { Loop } from './src/components/LoopComponent.js';
 
 class TodoList extends Component(HTMLElement) {
@@ -745,7 +745,7 @@ class TodoList extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = reactive({
+    this.state = this.reactive({
       todos: [],
       input: ''
     });
@@ -753,7 +753,7 @@ class TodoList extends Component(HTMLElement) {
 
   handleAdd = () => {
     if (this.state.input.trim()) {
-      this.state.todos.push(reactive({
+      this.state.todos.push(this.reactive({
         id: Date.now(),
         text: this.state.input,
         done: false
@@ -845,7 +845,7 @@ customElements.define(PersonCard.tag, PersonCard);
 ### Nested Lists with Filtering
 
 ```javascript
-import Component, { html, reactive } from './src/components/Component.js';
+import Component, { html } from './src/components/Component.js';
 import { Loop } from './src/components/LoopComponent.js';
 import Model from './src/Model.js';
 
@@ -854,7 +854,7 @@ class ProjectList extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = reactive({ filter: 'high' });
+    this.state = this.reactive({ filter: 'high' });
   }
 
   async connectedCallback() {
@@ -933,7 +933,7 @@ The framework includes complete TypeScript definitions:
 
 ```typescript
 import Component, { html } from './src/components/Component.js';
-import { reactive, Reactive } from './src/Reactive.js';
+import { Reactive } from './src/Reactive.js';
 
 interface TodoState {
   todos: Array<{ id: number; text: string; done: boolean }>;
@@ -945,7 +945,7 @@ class TodoApp extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = reactive<TodoState>({
+    this.state = this.reactive<TodoState>({
       todos: [],
       filter: 'all'
     });

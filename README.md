@@ -15,14 +15,14 @@ A lightweight, reactive web framework for building semantic web applications.
 ## Quick Start
 
 ```javascript
-import Component, { html, reactive } from './src/components/Component.js';
+import Component, { html } from './src/components/Component.js';
 
 class Counter extends Component(HTMLElement) {
   static tag = 'app-counter';
 
   constructor() {
     super();
-    this.state = reactive({ count: 0 });
+    this.state = this.reactive({ count: 0 });
   }
 
   increment = () => this.state.count++;
@@ -81,12 +81,12 @@ pnpm test
 ### Counter Example
 
 ```javascript
-import Component, { html, reactive } from './src/components/Component.js';
+import Component, { html } from './src/components/Component.js';
 
 class Counter extends Component(HTMLElement) {
   constructor() {
     super();
-    this.state = reactive({ count: 0 });
+    this.state = this.reactive({ count: 0 });
   }
 
   increment = () => this.state.count++;
@@ -107,13 +107,13 @@ class Counter extends Component(HTMLElement) {
 ### Todo List
 
 ```javascript
-import Component, { html, reactive } from './src/components/Component.js';
+import Component, { html } from './src/components/Component.js';
 import { Loop } from './src/components/LoopComponent.js';
 
 class TodoList extends Component(HTMLElement) {
   constructor() {
     super();
-    this.state = reactive({
+    this.state = this.reactive({
       todos: [],
       input: ''
     });
@@ -130,11 +130,15 @@ class TodoList extends Component(HTMLElement) {
     }
   }
 
+  handleInput = (e) => {
+    this.state.input = e.target.value;
+  }
+
   render() {
     return html`
       <div>
         <input value="{this.state.input}"
-               oninput="{this.handleInput}" />
+               oninput="{handleInput}" />
         <button onclick="{handleAdd}">Add</button>
 
         <ul>
@@ -144,10 +148,6 @@ class TodoList extends Component(HTMLElement) {
         </ul>
       </div>
     `;
-  }
-
-  handleInput = (e) => {
-    this.state.input = e.target.value;
   }
 }
 ```
@@ -187,7 +187,7 @@ class PersonCard extends Component(HTMLElement) {
 ```javascript
 import { reactive, effect, computed } from './src/Reactive.js';
 
-// Reactive state
+// Reactive state (outside components)
 const state = reactive({ count: 0 });
 
 // Auto-tracking effects
@@ -197,6 +197,15 @@ effect(() => {
 
 // Computed values
 const doubled = computed(() => state.count * 2);
+console.log(doubled.value); // Access via .value
+
+// In components, use this.reactive()
+class MyComponent extends Component(HTMLElement) {
+  constructor() {
+    super();
+    this.state = this.reactive({ count: 0 });
+  }
+}
 ```
 
 ### 2. Components
@@ -209,7 +218,7 @@ class MyComponent extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = reactive({ /* ... */ });
+    this.state = this.reactive({ /* ... */ });
   }
 
   render() {
@@ -336,7 +345,7 @@ Full TypeScript definitions included:
 
 ```typescript
 import Component, { html } from './src/components/Component.js';
-import { reactive, Reactive } from './src/Reactive.js';
+import { Reactive } from './src/Reactive.js';
 
 interface AppState {
   count: number;
@@ -347,7 +356,7 @@ class App extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = reactive<AppState>({ count: 0 });
+    this.state = this.reactive<AppState>({ count: 0 });
   }
 }
 ```

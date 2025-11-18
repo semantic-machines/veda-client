@@ -15,14 +15,14 @@ The reactivity system consists of three main parts:
 Use single braces `{expression}` in templates for reactive interpolation:
 
 ```javascript
-import { Component, html, reactive } from 'veda-client';
+import { Component, html } from 'veda-client';
 
 export default class Counter extends Component(HTMLElement) {
   static tag = 'my-counter';
 
   constructor() {
     super();
-    this.state = reactive({
+    this.state = this.reactive({
       count: 0
     });
   }
@@ -57,6 +57,7 @@ Create reactive state using the `reactive()` function:
 ```javascript
 import { reactive } from 'veda-client';
 
+// Outside components - use global reactive()
 const state = reactive({
   count: 0,
   name: 'John'
@@ -65,6 +66,25 @@ const state = reactive({
 // Changes trigger effects automatically
 state.count++; // Triggers all effects that depend on count
 ```
+
+**In components, use `this.reactive()`:**
+
+```javascript
+import { Component } from 'veda-client';
+
+class MyComponent extends Component(HTMLElement) {
+  constructor() {
+    super();
+    // Use this.reactive() instead of reactive()
+    this.state = this.reactive({ count: 0 });
+  }
+}
+```
+
+**Why `this.reactive()`?**
+- It calls the global `reactive()` function
+- **And** sets an internal flag that enables reactivity features
+- This is required for automatic effect cleanup and model integration
 
 ### Array Mutations
 
@@ -90,17 +110,17 @@ state.items = [5, 6, 7];
 
 ### Reactive Components
 
-Use `reactive()` to create reactive state - Component automatically detects it and enables reactivity:
+Use `this.reactive()` to create reactive state - Component automatically detects it and enables reactivity:
 
 ```javascript
-import { Component, html, reactive } from 'veda-client';
+import { Component, html } from 'veda-client';
 
 export default class Counter extends Component(HTMLElement) {
   static tag = 'my-counter';
 
   constructor() {
     super();
-    this.state = reactive({
+    this.state = this.reactive({
       count: 0
     });
   }
@@ -127,9 +147,12 @@ Use getters to create computed properties that automatically recalculate:
 
 ```javascript
 export default class TodoList extends Component(HTMLElement) {
-  state = reactive({
-    filter: 'all'
-  });
+  constructor() {
+    super();
+    this.state = this.reactive({
+      filter: 'all'
+    });
+  }
 
   get todos() {
     return this.model['v-s:hasTodo'] || [];
@@ -230,10 +253,11 @@ Models automatically trigger updates when component uses reactive state:
 export default class TodoItem extends Component(HTMLLIElement) {
   constructor() {
     super();
-    this.state = reactive({ editing: false }); // Enables reactivity
+    this.state = this.reactive({ editing: false }); // Enables reactivity
   }
+
   get title() {
-    return this.model['v-s:title']?.[0] || '';
+    return this.model?.['v-s:title']?.[0] || '';
   }
 
   async handleSave() {
@@ -331,7 +355,7 @@ export default class TodoItem extends Component(HTMLLIElement) {
 export default class TodoItem extends Component(HTMLLIElement) {
   constructor() {
     super();
-    this.state = reactive({ editing: false }); // ← Enables reactivity!
+    this.state = this.reactive({ editing: false }); // ← Enables reactivity!
   }
 
   async connectedCallback() {
@@ -354,7 +378,8 @@ export default class TodoItem extends Component(HTMLLIElement) {
 
 ### ✅ DO
 
-- Use `reactive()` when you need automatic updates
+- Use `this.reactive()` in components for automatic reactivity
+- Use global `reactive()` only outside components
 - Use getters for computed properties
 - Use `watch()` for side effects (DOM manipulation, focus, etc.)
 - Keep render() pure - no side effects

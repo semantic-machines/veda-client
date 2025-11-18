@@ -1,6 +1,9 @@
-# TodoMVC - Two Implementations
+# TodoMVC - Two Approaches
 
-This folder contains **two implementations** of TodoMVC using Veda Framework, demonstrating different approaches.
+This folder contains **two implementations** of TodoMVC using Veda Framework, demonstrating different rendering approaches:
+
+1. **Imperative** - full manual control with `{expressions}`
+2. **Declarative** - property binding with `property` attribute
 
 ## 🚀 Quick Start
 
@@ -37,11 +40,10 @@ app-todo/
 │       ├── TodoFooter.js
 │       └── TodoHeader.js
 │
-├── src-declarative/        # Declarative version (property/rel)
+├── src-declarative/        # Declarative version (property attribute)
 │   └── js/
-│       ├── TodoApp.js      # Main app with rel
-│       ├── TodoList.js     # Filter wrapper
-│       ├── TodoItem.js     # Uses property components
+│       ├── TodoApp.js      # Main app with Loop
+│       ├── TodoItem.js     # Uses property attribute
 │       ├── TodoFooter.js
 │       └── TodoHeader.js
 │
@@ -71,9 +73,7 @@ render() {
   return html`
     <ul>
       <${Loop} items="{this.filteredTodos}" item-key="id">
-        <template>
-          <li is="${TodoItem}"></li>
-        </template>
+        <li is="${TodoItem}"></li>
       </${Loop}>
     </ul>
   `;
@@ -103,16 +103,16 @@ render() {
 
 ---
 
-## 🎯 Version 2: Declarative (property/rel)
+## 🎯 Version 2: Declarative (property component)
 
 **File**: `src-declarative/js/TodoApp.js`
 **URL**: `declarative.html`
 
 ### Key Features:
 
-- **rel component** for automatic model iteration
+- **Loop component** for rendering lists (same as imperative)
 - **property component** for displaying model properties
-- **Minimal JavaScript** - logic in templates
+- **Declarative data binding** via property attribute
 - **Model-driven** architecture
 
 ### Example Code:
@@ -120,10 +120,10 @@ render() {
 ```javascript
 render() {
   return html`
-    <ul rel="v-s:hasTodo">
-      <template>
-        <${TodoList} filter="{this.state.filter}"></${TodoList}>
-      </template>
+    <ul class="todo-list">
+      <${Loop} items="{this.filteredTodos}">
+        <li is="${TodoItem}"></li>
+      </${Loop}>
     </ul>
   `;
 }
@@ -134,70 +134,53 @@ render() {
 ```javascript
 render() {
   return html`
-    <label>
-      <span property="v-s:title"></span>
-    </label>
+    <label property="v-s:title" ondblclick="{handleEdit}"></label>
     <input checked="{this.completed}" />
   `;
 }
 ```
 
 **Pros:**
-- ✅ Less JavaScript code
-- ✅ Declarative model binding
-- ✅ Automatic updates from model
-- ✅ Best for CRUD/data-driven apps
+- ✅ Declarative property binding
+- ✅ Automatic updates from model properties
+- ✅ Less manual DOM manipulation
+- ✅ Best for model-property display
 
 **Cons:**
-- ❌ Less control over rendering
-- ❌ Filtering requires wrapper component
+- ❌ Property component only for simple display
+- ❌ Complex rendering still needs render method
 
 ---
 
 ## 🔄 Key Differences
 
-| Feature | Imperative (Loop) | Declarative (property/rel) |
-|---------|-------------------|---------------------------|
-| **List rendering** | `<Loop items="{array}">` | `<ul rel="property">` |
-| **Value display** | `{this.title}` | `<span property="v-s:title">` |
-| **Model binding** | Manual via `model` prop | Automatic via `rel` |
-| **Filtering** | In computed property | Via wrapper component |
-| **JavaScript** | More code | Less code |
-| **Use case** | Interactive UIs | Data-driven apps |
+| Feature | Imperative | Declarative (property) |
+|---------|------------|----------------------|
+| **List rendering** | `<Loop items="{array}">` | `<Loop items="{array}">` |
+| **Value display** | `{this.title}` | `<label property="v-s:title">` |
+| **Model binding** | Manual via `{this.model.prop}` | Automatic via `property` |
+| **Filtering** | Computed property | Computed property |
+| **JavaScript** | Full control | Declarative binding |
+| **Use case** | Complex UIs | Model-property display |
 
 ---
 
 ## 📖 Component Syntax Reference
 
-### Loop Component (Imperative)
+### Loop Component
 
 ```javascript
 import { Loop } from 'framework';
 
 <${Loop} items="{this.items}" item-key="id">
-  <template>
-    <li is="${MyItem}"></li>
-  </template>
+  <li is="${MyItem}"></li>
 </${Loop}>
 ```
 
 - **items**: Expression returning array
-- **item-key**: Property for reconciliation
+- **item-key**: Property for reconciliation (optional)
 - **model**: Each child gets `model = item`
-
-### rel Component (Declarative)
-
-```html
-<ul rel="v-s:hasTodo">
-  <template>
-    <my-item></my-item>
-  </template>
-</ul>
-```
-
-- **rel**: Model property name (must be array of models)
-- **template**: Each instance gets `model = relatedModel`
-- Automatic iteration over `this.model[rel]`
+- Used in both imperative and declarative versions
 
 ### property Component
 
@@ -249,17 +232,17 @@ cd .. && npm start
 
 ## 🎓 When to Use Which?
 
-### Use **Loop Component** (Imperative) when:
+### Use **Imperative approach** when:
 - Building interactive, dynamic UIs
-- Need complex filtering/sorting logic
-- Want full control over rendering
+- Need full control over rendering
+- Complex event handling
 - Building real-time apps (chat, games)
 
-### Use **property/rel** (Declarative) when:
-- Building CRUD applications
-- Model is the source of truth
-- Want minimal JavaScript
-- Building admin panels, forms, data grids
+### Use **property component** (Declarative) when:
+- Displaying model properties directly
+- Want automatic updates from model
+- Simple one-way data binding
+- Reducing manual DOM manipulation
 
 ---
 
