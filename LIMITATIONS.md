@@ -36,8 +36,8 @@ Known limitations and when to use alternatives.
 | Nested components | Good | Automatic reactivity propagation |
 
 **Bundle sizes:**
-- Browser: 48 KB (minified)
-- Node.js: 82 KB (includes ws package)
+- Browser: 48 KB (minified, platform: 'browser')
+- Node.js: 82 KB (minified, platform: 'node', includes ws)
 
 ---
 

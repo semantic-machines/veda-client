@@ -9,7 +9,7 @@ A lightweight reactive framework for building semantic web applications with fin
 - 🔗 **Semantic data** - First-class RDF/linked data model support
 - 📝 **Declarative templates** - JSX-like syntax with reactive expressions
 - 🔄 **Built-in components** - Loop, If, Property, Relation components
-- 📦 **Minimal footprint** - 48 KB browser bundle (minified)
+- 📦 **Minimal footprint** - 48 KB browser bundle, 82 KB with Node.js (ws)
 - 🎨 **TypeScript** - Full type definitions included
 
 ## Quick Start
@@ -75,10 +75,14 @@ class TodoList extends Component(HTMLElement) {
     });
   }
 
+  get todos() {
+    return this.state.todos;
+  }
+
   render() {
     return html`
       <ul>
-        <${Loop} items="{this.state.todos}" item-key="id">
+        <${Loop} items="{this.todos}" item-key="id">
           <li>{this.model.text}</li>
         </${Loop}>
       </ul>
@@ -90,7 +94,9 @@ class TodoList extends Component(HTMLElement) {
 ## Documentation
 
 - **[API Reference](./API.md)** - Complete API documentation
+- **[Architecture Guide](./ARCHITECTURE.md)** - Framework internals and design decisions
 - **[Reactivity Guide](./REACTIVITY.md)** - Comprehensive reactivity tutorial
+- **[Changelog](./CHANGELOG.md)** - Version history and breaking changes
 - **[Migration Guide](./MIGRATION.md)** - Upgrading from previous versions
 - **[Troubleshooting](./TROUBLESHOOTING.md)** - Common issues and solutions
 - **[Security](./SECURITY.md)** - Security best practices
@@ -162,8 +168,9 @@ Requires:
 
 ## Bundle Size
 
-- **Browser**: 48 KB minified
-- **Node.js** (with ws): 82 KB minified
+- **Browser**: 48 KB (minified, without ws)
+- **Node.js**: 82 KB (minified, includes ws for WebSocket support)
+- Both versions are bundled and tree-shakeable
 
 ## Testing
 
@@ -178,7 +185,9 @@ pnpm test:unit
 pnpm test:integration
 ```
 
-Test coverage: **100%** (all modules)
+Test coverage:
+- **>99%** with integration tests (requires backend: `pnpm c8`)
+- **>90%** unit tests only (`pnpm c8:unit`)
 
 ## TypeScript
 

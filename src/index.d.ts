@@ -6,7 +6,7 @@ export { default as Observable } from './Observable.js';
 export { default as Model } from './Model.js';
 export { default as Component, html, safe, raw, reactive, effect } from './components/Component.js';
 export { computed } from './Reactive.js';
-export { flushEffects } from './Effect.js';
+export { flushEffects, trigger, untrack } from './Effect.js';
 export { default as Router } from './Router.js';
 export { default as Value } from './Value.js';
 export { default as WeakCache } from './WeakCache.js';

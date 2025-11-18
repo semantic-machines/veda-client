@@ -130,31 +130,73 @@ async connectedCallback() {
 }
 ```
 
-#### `watch<T>(getter, callback, options?)`
+#### `watch<T>(getter, callback, options?): () => void`
 
-Watches reactive value changes.
+Watches reactive value changes and runs callback when value changes.
+
+**Parameters:**
+- `getter: () => T` - Function that returns the value to watch
+- `callback: (newValue: T, oldValue: T | undefined) => void` - Called when value changes
+- `options?: { immediate?: boolean }` - Optional configuration
+  - `immediate: boolean` - If true, runs callback immediately with current value (default: false)
+
+**Returns:** Cleanup function to stop watching
+
+**Important:** Uses strict equality (===) for comparison. Array/object mutations won't trigger unless reference changes.
+
+**Examples:**
 
 ```javascript
+// Basic usage
 this.watch(
   () => this.state.count,
   (newValue, oldValue) => {
-    console.log(`Changed from ${oldValue} to ${newValue}`);
+    console.log(`Count changed from ${oldValue} to ${newValue}`);
+  }
+);
+
+// With immediate option
+this.watch(
+  () => this.state.editing,
+  (editing) => {
+    this.classList.toggle('editing', editing);
   },
   { immediate: true }
 );
+
+// Watching array length (not array itself)
+this.watch(
+  () => this.state.items.length,
+  (length) => console.log('Items count:', length)
+);
+
+// Manual cleanup
+const stopWatching = this.watch(
+  () => this.state.active,
+  (active) => console.log('Active:', active)
+);
+
+// Later...
+stopWatching(); // Stop watching
 ```
 
-**Options:**
-- `immediate` - Run callback immediately with current value
+**Notes:**
+- Cleanup is automatic on component disconnect
+- Uses reference equality - see Limitations for details
+- Returns cleanup function for manual control
 
-**Note:** Uses reference equality (`===`). Array mutations don't trigger unless array reference changes.
+**Common pitfalls:**
 
 ```javascript
-// ❌ Won't trigger
-state.items.push(4);
+// ❌ Won't trigger - same array reference
+this.watch(() => state.items, callback);
+state.items.push(4);  // No trigger!
 
-// ✅ Triggers
+// ✅ Triggers - new array reference
 state.items = [...state.items, 4];
+
+// ✅ Alternative - watch array length
+this.watch(() => state.items.length, callback);
 ```
 
 ### Other Methods
@@ -1093,6 +1135,222 @@ render() {
     <div>Price: {this.totalPrice}</div>
     <div>Status: {this.statusText}</div>
   `;
+}
+```
+
+---
+
+---
+
+## TypeScript Types
+
+Complete reference for exported TypeScript types.
+
+### Core Types
+
+#### `Reactive<T>`
+
+Type for reactive proxy objects:
+
+```typescript
+import type { Reactive } from 'veda-client';
+
+interface State {
+  count: number;
+  items: string[];
+}
+
+const state: Reactive<State> = reactive({
+  count: 0,
+  items: []
+});
+```
+
+#### `ReactiveOptions`
+
+Options for reactive() function:
+
+```typescript
+interface ReactiveOptions {
+  onSet?: (key: string, value: any, oldValue: any) => void;
+  onDelete?: (key: string) => void;
+}
+```
+
+### Component Types
+
+#### `ComponentInstance`
+
+Base component instance type:
+
+```typescript
+import type { ComponentInstance } from 'veda-client';
+
+const component: ComponentInstance = document.querySelector('my-component');
+```
+
+#### `LoopComponentInstance`
+
+Loop component instance:
+
+```typescript
+import type { LoopComponentInstance } from 'veda-client';
+```
+
+#### `IfComponentInstance`
+
+If component instance:
+
+```typescript
+import type { IfComponentInstance } from 'veda-client';
+```
+
+### Backend Types
+
+#### `IndividualData`
+
+RDF individual data structure:
+
+```typescript
+import type { IndividualData } from 'veda-client';
+
+const data: IndividualData = {
+  '@': 'd:Resource',
+  'v-s:title': [{ data: 'Title', type: 'String' }]
+};
+```
+
+#### `AuthResult`
+
+Authentication result:
+
+```typescript
+import type { AuthResult } from 'veda-client';
+
+const result: AuthResult = await Backend.authenticate(user, pass);
+```
+
+#### `QueryResult`
+
+Search query result:
+
+```typescript
+import type { QueryResult } from 'veda-client';
+
+const result: QueryResult = await Backend.query({
+  query: 'v-s:Person',
+  top: 100
+});
+```
+
+#### `QueryParams`
+
+Query parameters:
+
+```typescript
+import type { QueryParams } from 'veda-client';
+
+const params: QueryParams = {
+  query: 'v-s:Person',
+  sort: "'v-s:created' desc",
+  top: 100,
+  from: 0
+};
+```
+
+#### `UploadFileParams`
+
+File upload parameters:
+
+```typescript
+import type { UploadFileParams } from 'veda-client';
+```
+
+### Value Types
+
+#### `ValueData`
+
+RDF value structure:
+
+```typescript
+import type { ValueData } from 'veda-client';
+
+const value: ValueData = {
+  data: 'Hello',
+  type: 'String',
+  lang: 'EN'
+};
+```
+
+#### `ValueType`
+
+Supported RDF types:
+
+```typescript
+import type { ValueType } from 'veda-client';
+
+type ValueType = 'String' | 'Integer' | 'Decimal' | 'Boolean' | 'Datetime' | 'Uri';
+```
+
+#### `PrimitiveValue`
+
+JavaScript primitive values:
+
+```typescript
+import type { PrimitiveValue } from 'veda-client';
+
+type PrimitiveValue = string | number | boolean | Date;
+```
+
+### Model Types
+
+#### `ModelValue`
+
+Model property value:
+
+```typescript
+import type { ModelValue } from 'veda-client';
+
+const title: ModelValue = model['v-s:title'];
+```
+
+### Emitter Types
+
+#### `EmitterInstance`
+
+Event emitter instance:
+
+```typescript
+import type { EmitterInstance } from 'veda-client';
+```
+
+### Using Types in Your Code
+
+```typescript
+import Component, { html } from 'veda-client';
+import type { Reactive, ComponentInstance } from 'veda-client';
+
+interface TodoState {
+  todos: Array<{ id: number; text: string; done: boolean }>;
+  filter: 'all' | 'active' | 'completed';
+}
+
+class TodoApp extends Component(HTMLElement) {
+  static tag = 'todo-app';
+
+  state!: Reactive<TodoState>;
+
+  constructor() {
+    super();
+    this.state = this.reactive<TodoState>({
+      todos: [],
+      filter: 'all'
+    });
+  }
+
+  render() {
+    return html`<div>...</div>`;
+  }
 }
 ```
 

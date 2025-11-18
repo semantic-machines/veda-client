@@ -158,7 +158,7 @@ render() {
 
 ### Model Properties Not Reactive
 
-**Symptom:** Model changes don't update UI.
+**Symptom:** State changes don't update UI.
 
 **Solution:** Component must use `this.reactive()`:
 
@@ -170,8 +170,8 @@ constructor() {
 ```
 
 **How it works:**
-- Without `this.reactive()`: component ignores model changes
-- With `this.reactive()`: component subscribes to model updates
+- Without `this.reactive()`: component ignores state changes
+- With `this.reactive()`: component subscribes to state updates
 
 ### Model Load Fails Silently
 
@@ -367,9 +367,6 @@ render() {
 ```javascript
 // Check if object is reactive
 console.log(obj.__isReactive); // Should be true
-
-// Check effect count
-console.log(this._Component__effects?.length); // Number of effects
 ```
 
 ### Use Browser DevTools

@@ -346,7 +346,7 @@ Full backward compatibility maintained.
 
 ### Deployment
 
-- [ ] Update bundle size expectations (48 KB browser)
+- [ ] Update bundle size expectations (48 KB browser, 82 KB Node.js)
 - [ ] Test in all supported browsers
 - [ ] Monitor error logs for deprecation warnings
 - [ ] Update documentation

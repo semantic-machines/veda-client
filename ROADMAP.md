@@ -17,7 +17,7 @@
 - ✅ 100/100 tests passing
 - ✅ Comprehensive documentation
 
-**Bundle size:** 40.2kb (acceptable for MVP)
+**Bundle size:** 48 KB browser, 82 KB Node.js (acceptable for MVP)
 
 ---
 
