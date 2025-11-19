@@ -205,6 +205,12 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
    * Process text node for reactive expressions {expr}
    */
   #processTextNode(textNode) {
+      // Skip text nodes inside <style> and <script> tags
+      const parent = textNode.parentNode;
+      if (parent && (parent.tagName === 'STYLE' || parent.tagName === 'SCRIPT')) {
+        return;
+      }
+
       const text = textNode.nodeValue;
       const regex = /\{([^}]+)\}/g;
 

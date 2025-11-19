@@ -12,28 +12,27 @@ export default function RelationComponent (Class = HTMLElement) {
       try {
         this.model = value;
 
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = this.template;
-        
-        // Check if there's a <template> element (old syntax support)
-        const templateEl = tempDiv.querySelector('template');
-        
+        // Use <template> element to parse HTML - it preserves all element types
+        // including table elements (tr, td, etc) without browser auto-correction
+        const template = document.createElement('template');
+        template.innerHTML = this.template;
+
+        // Check if there's a nested <template> element (old syntax support)
+        const nestedTemplate = template.content.querySelector('template');
+
         let fragment;
-        if (templateEl) {
+        if (nestedTemplate) {
           // Old syntax: <rel><template>...</template></rel>
-          fragment = templateEl.content.cloneNode(true);
+          fragment = nestedTemplate.content.cloneNode(true);
         } else {
-          // New syntax: <rel>...</rel> - use all children as template
-          fragment = document.createDocumentFragment();
-          while (tempDiv.firstChild) {
-            fragment.appendChild(tempDiv.firstChild);
-          }
+          // New syntax: <rel>...</rel> - use template content as-is
+          fragment = template.content.cloneNode(true);
         }
 
         // Create a temporary element with the model to use as evalContext
         const contextElement = document.createElement('div');
         contextElement.model = value;
-        
+
         this._process(fragment, contextElement);
 
         const walker = document.createTreeWalker(
