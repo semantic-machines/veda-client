@@ -15,7 +15,7 @@ The reactivity system consists of three main parts:
 Use single braces `{expression}` in templates for reactive interpolation:
 
 ```javascript
-import Component, { html } from './src/components/Component.js';
+import Component, { html } from 'veda-client';
 
 export default class Counter extends Component(HTMLElement) {
   static tag = 'my-counter';
@@ -66,7 +66,7 @@ export default class Counter extends Component(HTMLElement) {
 Create reactive state using the `reactive()` function:
 
 ```javascript
-import { reactive } from './src/Reactive.js';
+import { reactive } from 'veda-client';
 
 // Outside components - use global reactive()
 const state = reactive({
@@ -81,7 +81,7 @@ state.count++; // Triggers all effects that depend on count
 **In components, use `this.reactive()`:**
 
 ```javascript
-import Component from './src/components/Component.js';
+import Component from 'veda-client';
 
 class MyComponent extends Component(HTMLElement) {
   constructor() {
@@ -124,7 +124,7 @@ state.items = [5, 6, 7];
 Use `this.reactive()` to create reactive state - Component automatically detects it and enables reactivity:
 
 ```javascript
-import Component, { html } from './src/components/Component.js';
+import Component, { html } from 'veda-client';
 
 export default class Counter extends Component(HTMLElement) {
   static tag = 'my-counter';
@@ -524,7 +524,7 @@ const debouncedEffect = (fn, delay) => {
 Prevent tracking in part of an effect:
 
 ```javascript
-import { untrack } from './src/Effect.js';
+import { untrack } from 'veda-client';
 
 this.effect(() => {
   const count = this.state.count; // Tracked
@@ -540,7 +540,7 @@ this.effect(() => {
 Manually trigger updates (rarely needed):
 
 ```javascript
-import { trigger } from './src/Effect.js';
+import { trigger } from 'veda-client';
 
 trigger(this.state, 'count');
 ```

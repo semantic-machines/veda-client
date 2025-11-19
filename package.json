@@ -22,6 +22,14 @@
     "type": "git",
     "url": "git+https://github.com/semantic-machines/veda-client.git"
   },
+  "keywords": [
+    "reactive",
+    "web-components",
+    "semantic-web",
+    "rdf",
+    "veda",
+    "framework"
+  ],
   "author": "Roman Karpov",
   "license": "MIT",
   "bugs": {

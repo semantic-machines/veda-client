@@ -72,7 +72,7 @@ Base class for creating reactive Web Components.
 ### Usage
 
 ```javascript
-import Component, { html } from './src/components/Component.js';
+import Component, { html } from 'veda-client';
 
 class MyComponent extends Component(HTMLElement) {
   static tag = 'my-component';
@@ -397,7 +397,7 @@ Fine-grained reactivity system with automatic dependency tracking.
 Creates reactive proxy.
 
 ```javascript
-import { reactive } from './src/Reactive.js';
+import { reactive } from 'veda-client';
 
 const state = reactive({
   count: 0,
@@ -454,7 +454,7 @@ Prevents prototype pollution attacks where malicious code could modify Object.pr
 Creates computed value.
 
 ```javascript
-import { computed } from './src/Reactive.js';
+import { computed } from 'veda-client';
 
 const state = reactive({ count: 0 });
 const doubled = computed(() => state.count * 2);
@@ -471,7 +471,7 @@ console.log(doubled.value); // 10
 Creates auto-tracking effect.
 
 ```javascript
-import { effect } from './src/Effect.js';
+import { effect } from 'veda-client';
 
 const cleanup = effect(() => {
   console.log('Count:', state.count);
@@ -500,7 +500,7 @@ interface EffectOptions {
 **Scheduler Example:**
 
 ```javascript
-import { effect } from './src/Effect.js';
+import { effect } from 'veda-client';
 
 // Debounced effect
 let timeout;
@@ -537,7 +537,7 @@ This ensures computed values are always up-to-date before dependent effects run.
 Manually flush queued effects.
 
 ```javascript
-import { flushEffects } from './src/Effect.js';
+import { flushEffects } from 'veda-client';
 
 state.count = 5;
 await flushEffects(); // Wait for effects to run
@@ -552,7 +552,7 @@ await flushEffects(); // Wait for effects to run
 Temporarily pause dependency tracking.
 
 ```javascript
-import { pauseTracking, resumeTracking } from './src/Effect.js';
+import { pauseTracking, resumeTracking } from 'veda-client';
 
 effect(() => {
   const count = state.count; // Tracked
@@ -631,7 +631,7 @@ resumeTracking();
 Execute function without tracking dependencies.
 
 ```javascript
-import { untrack } from './src/Effect.js';
+import { untrack } from 'veda-client';
 
 effect(() => {
   const tracked = state.count; // Tracked
@@ -660,7 +660,7 @@ state.other++; // Effect does NOT run
 Manually trigger effects for a property.
 
 ```javascript
-import { trigger } from './src/Effect.js';
+import { trigger } from 'veda-client';
 
 // Rarely needed - mostly for internal use
 trigger(state, 'count'); // Force notify all effects tracking state.count
@@ -960,7 +960,7 @@ console.log(date instanceof Date); // false ❌
 Renders reactive lists with key-based reconciliation.
 
 ```javascript
-import { Loop } from './src/components/LoopComponent.js';
+import { Loop } from 'veda-client';
 
 <${Loop} items="{this.todos}" item-key="id">
   <li>{this.model.text}</li>
@@ -1152,7 +1152,7 @@ class TodoList extends Component(HTMLElement) {
 Conditional rendering.
 
 ```javascript
-import { If } from './src/components/IfComponent.js';
+import { If } from 'veda-client';
 
 <${If} condition="{this.isVisible}">
   <div>Content</div>
@@ -1687,7 +1687,7 @@ Represents semantic web resource with RDF properties.
 ### Constructor
 
 ```javascript
-import Model from './src/Model.js';
+import { Model } from 'veda-client';
 
 // Load by URI
 const model = new Model('d:MyModel');
@@ -1976,7 +1976,7 @@ Static class for backend communication.
 ### Authentication
 
 ```javascript
-import Backend from './src/Backend.js';
+import { Backend } from 'veda-client';
 
 Backend.init('http://localhost:8080');
 
@@ -2089,8 +2089,7 @@ WebSocket-based pub/sub channel used by `Model.subscribe()` to react to server-s
 ### Usage
 
 ```javascript
-import Subscription from './src/Subscription.js';
-import Model from './src/Model.js';
+import { Subscription, Model } from 'veda-client';
 
 Subscription.init('ws://localhost:8088'); // Optional in browsers where defaults are derived from location
 
@@ -2123,7 +2122,7 @@ Subscription.unsubscribe(model.id);
 Simple hash-based router.
 
 ```javascript
-import Router from './src/Router.js';
+import { Router } from 'veda-client';
 
 const router = new Router();
 
@@ -2157,7 +2156,7 @@ Helper functions for common tasks.
 Generates unique URI for new models.
 
 ```javascript
-import { genUri } from './src/Util.js';
+import { genUri } from 'veda-client';
 
 const uri = genUri();
 console.log(uri); // 'd:a1b2c3d4e5f6...'
@@ -2170,7 +2169,7 @@ console.log(uri); // 'd:a1b2c3d4e5f6...'
 Generates globally unique identifier (26 characters, base36).
 
 ```javascript
-import { guid } from './src/Util.js';
+import { guid } from 'veda-client';
 
 const id = guid();
 console.log(id); // 'a1b2c3d4e5f6g7h8i9j0k1l2m3'
@@ -2183,7 +2182,7 @@ console.log(id); // 'a1b2c3d4e5f6g7h8i9j0k1l2m3'
 Promise-based setTimeout wrapper for async/await code.
 
 ```javascript
-import { timeout } from './src/Util.js';
+import { timeout } from 'veda-client';
 
 async function delayedAction() {
   console.log('Starting...');
@@ -2199,7 +2198,7 @@ async function delayedAction() {
 Returns array of property names that differ between two objects.
 
 ```javascript
-import { diff } from './src/Util.js';
+import { diff } from 'veda-client';
 
 const obj1 = { a: 1, b: 2, c: 3 };
 const obj2 = { a: 1, b: 999, d: 4 };
@@ -2220,7 +2219,7 @@ console.log(changes); // ['b', 'c', 'd']
 Deep equality comparison for any values.
 
 ```javascript
-import { eq } from './src/Util.js';
+import { eq } from 'veda-client';
 
 // Primitives
 eq(42, 42);           // true
@@ -2241,7 +2240,7 @@ eq([1, 2, 3], [1, 2, 3]); // true
 Converts dash-case to camelCase.
 
 ```javascript
-import { dashToCamel } from './src/Util.js';
+import { dashToCamel } from 'veda-client';
 
 dashToCamel('my-component-name');  // 'myComponentName'
 dashToCamel('data-attr');          // 'dataAttr'
@@ -2255,7 +2254,7 @@ dashToCamel('already-camel');      // 'alreadyCamel'
 Universal function decorator (auto-detects async/sync).
 
 ```javascript
-import { decorator } from './src/Util.js';
+import { decorator } from 'veda-client';
 
 const myFunction = decorator(
   function action(x) {
@@ -2339,7 +2338,7 @@ RDF value serialization/deserialization utility.
 ### Constructor
 
 ```javascript
-import Value from './src/Value.js';
+import { Value } from 'veda-client';
 
 // Create from data and type
 const value = new Value('John', 'String', 'EN');
@@ -2429,7 +2428,7 @@ Weak reference cache for temporary object storage.
 ### Usage
 
 ```javascript
-import WeakCache from './src/WeakCache.js';
+import { WeakCache } from 'veda-client';
 
 const cache = new WeakCache();
 
@@ -2458,7 +2457,7 @@ Event emitter mixin for adding pub/sub capabilities to classes.
 ### Usage
 
 ```javascript
-import Emitter from './src/Emitter.js';
+import { Emitter } from 'veda-client';
 
 // Apply to a class
 class MyClass extends Emitter(Object) {
@@ -2647,7 +2646,7 @@ Custom error class for Backend API errors.
 ### Usage
 
 ```javascript
-import Backend, { BackendError } from './src/Backend.js';
+import { Backend, BackendError } from 'veda-client';
 
 try {
   await Backend.get_individual('invalid:id');
@@ -2712,15 +2711,15 @@ Full TypeScript definitions included.
 
 ```typescript
 // Import values and types
-import Component, { html } from './src/components/Component.js';
-import Model from './src/Model.js';
-import { Loop, If } from './src/index.js';
+import Component, { html } from 'veda-client';
+import { Model } from 'veda-client';
+import { Loop, If } from 'veda-client';
 
 // Import types only
-import type { ComponentInstance } from './src/components/Component.js';
-import type { Reactive } from './src/Reactive.js';
-import type { ModelValue } from './src/Model.js';
-import type { EmitterInstance } from './src/Emitter.js';
+import type { ComponentInstance } from 'veda-client';
+import type { Reactive } from 'veda-client';
+import type { ModelValue } from 'veda-client';
+import type { EmitterInstance } from 'veda-client';
 ```
 
 ### Component with Types
@@ -2728,10 +2727,10 @@ import type { EmitterInstance } from './src/Emitter.js';
 **Example with RDF properties (real-world usage):**
 
 ```typescript
-import Component, { html } from './src/components/Component.js';
-import Model from './src/Model.js';
-import type { Reactive } from './src/Reactive.js';
-import type { ModelValue } from './src/Model.js';
+import Component, { html } from 'veda-client';
+import { Model } from 'veda-client';
+import type { Reactive } from 'veda-client';
+import type { ModelValue } from 'veda-client';
 
 // Define RDF model interface
 interface TodoModel extends Model {
@@ -2812,8 +2811,8 @@ class TodoApp extends Component(HTMLElement) {
 **Recommended: Define RDF property interfaces**
 
 ```typescript
-import Model from './src/Model.js';
-import type { ModelValue } from './src/Model.js';
+import { Model } from 'veda-client';
+import type { ModelValue } from 'veda-client';
 
 // Define typed model interface
 interface TodoModel extends Model {
@@ -2881,10 +2880,10 @@ if (headEmail) {
 **With RDF Model types:**
 
 ```typescript
-import Component from './src/components/Component.js';
-import Model from './src/Model.js';
-import type { Reactive } from './src/Reactive.js';
-import type { ModelValue } from './src/Model.js';
+import Component from 'veda-client';
+import { Model } from 'veda-client';
+import type { Reactive } from 'veda-client';
+import type { ModelValue } from 'veda-client';
 
 // Define RDF Model interface
 interface TodoModel extends Model {
@@ -2931,7 +2930,7 @@ class TodoItem extends Component(HTMLLIElement) {
 **Using ModelValue type for RDF properties:**
 
 ```typescript
-import type { ModelValue } from './src/Model.js';
+import type { ModelValue } from 'veda-client';
 
 // Helper type for property arrays
 type RDFProperty<T> = ModelValue[];
@@ -2982,8 +2981,8 @@ typedPerson['v-s:name'] = [{ data: 123, type: 'Integer' }];     // ❌ Type erro
 ### Type-Safe Reactive State
 
 ```typescript
-import { reactive } from './src/Reactive.js';
-import type { Reactive } from './src/Reactive.js';
+import { reactive } from 'veda-client';
+import type { Reactive } from 'veda-client';
 
 interface AppState {
   count: number;
@@ -3015,7 +3014,7 @@ state.count = 'invalid';     // Error: Type 'string' not assignable to 'number'
 ### Type-Safe Effect and Watch
 
 ```typescript
-import { effect } from './src/Effect.js';
+import { effect } from 'veda-client';
 
 interface CounterState {
   count: number;
@@ -3055,9 +3054,8 @@ class MyComponent extends Component(HTMLElement) {
 ### Type-Safe Loop Component
 
 ```typescript
-import Component, { html } from './src/components/Component.js';
-import { Loop } from './src/components/LoopComponent.js';
-import type { Reactive } from './src/Reactive.js';
+import Component, { html, Loop } from 'veda-client';
+import type { Reactive } from 'veda-client';
 
 // Define item type
 interface TodoItem {
@@ -3112,8 +3110,8 @@ class TodoList extends Component(HTMLElement) {
 ### Type-Safe watch() Helper
 
 ```typescript
-import Component, { html } from './src/components/Component.js';
-import type { Reactive } from './src/Reactive.js';
+import Component, { html } from 'veda-client';
+import type { Reactive } from 'veda-client';
 
 interface EditableState {
   editing: boolean;
@@ -3196,12 +3194,12 @@ All type definitions available in `.d.ts` files:
 
 ```typescript
 // Core types
-import type { Reactive, ReactiveOptions } from './src/Reactive.js';
-import type { ComponentInstance, ComponentConstructor } from './src/components/Component.js';
-import type { LoopComponentInstance } from './src/components/LoopComponent.js';
-import type { IfComponentInstance } from './src/components/IfComponent.js';
-import type { EmitterInstance } from './src/Emitter.js';
-import type { ModelValue } from './src/Model.js';
+import type { Reactive, ReactiveOptions } from 'veda-client';
+import type { ComponentInstance, ComponentConstructor } from 'veda-client';
+import type { LoopComponentInstance } from 'veda-client';
+import type { IfComponentInstance } from 'veda-client';
+import type { EmitterInstance } from 'veda-client';
+import type { ModelValue } from 'veda-client';
 
 // Backend types
 import type {
@@ -3210,14 +3208,14 @@ import type {
   QueryResult,
   QueryParams,
   UploadFileParams
-} from './src/Backend.js';
+} from 'veda-client';
 
 // Value types
 import type {
   ValueData,
   ValueType,
   PrimitiveValue
-} from './src/Value.js';
+} from 'veda-client';
 ```
 
 ### Common TypeScript Patterns
@@ -3249,8 +3247,8 @@ class ProjectCard extends Component(HTMLElement) {
 #### Type-Safe Event Emitter
 
 ```typescript
-import Emitter from './src/Emitter.js';
-import type { EmitterInstance } from './src/Emitter.js';
+import { Emitter } from 'veda-client';
+import type { EmitterInstance } from 'veda-client';
 
 interface Events {
   save: [model: Model, options?: object];

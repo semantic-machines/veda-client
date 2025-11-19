@@ -16,6 +16,17 @@ A lightweight reactive framework for building semantic web applications with fin
 
 ### Installation
 
+**Using npm:**
+```bash
+npm install github:semantic-machines/veda-client
+```
+
+**Using pnpm:**
+```bash
+pnpm add github:semantic-machines/veda-client
+```
+
+**For development:**
 ```bash
 # Clone repository
 git clone https://github.com/semantic-machines/veda-client.git
@@ -34,7 +45,7 @@ pnpm test
 ### Your First Component
 
 ```javascript
-import Component, { html } from './src/components/Component.js';
+import Component, { html } from 'veda-client';
 
 class Counter extends Component(HTMLElement) {
   static tag = 'app-counter';
@@ -62,8 +73,7 @@ customElements.define(Counter.tag, Counter);
 ### Reactive List with Loop
 
 ```javascript
-import Component, { html } from './src/components/Component.js';
-import { Loop } from './src/components/LoopComponent.js';
+import Component, { html, Loop } from 'veda-client';
 
 class TodoList extends Component(HTMLElement) {
   constructor() {
@@ -153,7 +163,7 @@ See [API.md](./API.md) for complete API documentation.
 ### Reactivity
 
 ```javascript
-import { reactive, effect, computed } from './src/Reactive.js';
+import { reactive, effect, computed } from 'veda-client';
 
 const state = reactive({ count: 0 });
 
@@ -167,7 +177,7 @@ state.count++; // Logs: "Count: 1"
 ### Semantic Data Models
 
 ```javascript
-import Model from './src/Model.js';
+import { Model } from 'veda-client';
 
 const person = new Model('d:Person1');
 await person.load();
@@ -180,7 +190,7 @@ await person.save();
 ### Built-in Components
 
 ```javascript
-import { Loop, If } from './src/index.js';
+import { Loop, If } from 'veda-client';
 
 // Conditional rendering
 <${If} condition="{this.isVisible}">
@@ -235,8 +245,8 @@ Test coverage:
 Full TypeScript definitions included:
 
 ```typescript
-import Component, { html } from './src/components/Component.js';
-import type { Reactive } from './src/Reactive.js';
+import Component, { html } from 'veda-client';
+import type { Reactive } from 'veda-client';
 
 interface AppState {
   count: number;
