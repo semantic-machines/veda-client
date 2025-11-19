@@ -14,6 +14,7 @@ Complete API documentation for Veda Client Framework.
 - [Advanced Components](#advanced-components)
 - [Model](#model)
 - [Backend](#backend)
+- [Subscription](#subscription)
 - [Router](#router)
 - [Value](#value)
 - [WeakCache](#weakcache)
@@ -376,11 +377,13 @@ import { Loop } from './src/components/LoopComponent.js';
 - `item-key` - Property name for reconciliation (default: `'id'`)
 
 **Features:**
+- Works with reactive arrays: both mutating methods (`push`, `splice`, `reverse`, etc.) and replacing the array reference trigger reconciliation
 - Each child receives `model` prop with item value
 - Key-based reconciliation reuses DOM elements
-- Updates only when items array reference changes
 
 **Limitations:**
+- Source array must be reactive; plain arrays that never change reference will not emit updates
+- Watchers still compare by reference, so `this.watch(() => this.state.items, ...)` requires assigning a new array when you need the watcher to fire
 - Naive reconciliation (no LIS optimization, O(n²) for reordering)
 - No virtualization
 
@@ -799,6 +802,22 @@ model.on('afterSave', (data) => {
 });
 ```
 
+### Real-time Updates
+
+Use `model.subscribe()`/`model.unsubscribe()` to listen for backend push notifications via `Subscription`:
+
+```javascript
+const todo = new Model('d:Todo1');
+await todo.load();
+
+todo.subscribe(); // Registers WebSocket subscription, resets model when notified
+
+// Later, when live updates are no longer required
+todo.unsubscribe();
+```
+
+Components created with `Component(HTMLElement)` call `this.model.subscribe?.()` during `populate()`, so UI code usually gets live updates automatically whenever a model instance is present.
+
 ---
 
 ## Backend
@@ -914,6 +933,42 @@ const membership = await Backend.get_membership('d:User1');
 
 ---
 
+## Subscription
+
+WebSocket-based pub/sub channel used by `Model.subscribe()` to react to server-side changes.
+
+### Usage
+
+```javascript
+import Subscription from './src/Subscription.js';
+import Model from './src/Model.js';
+
+Subscription.init('ws://localhost:8088'); // Optional in browsers where defaults are derived from location
+
+const model = new Model('d:Item1');
+
+const callback = (id, updateCounter) => {
+  console.log('Server says', id, 'changed at', updateCounter);
+  model.reset(); // Pull fresh data when notified
+};
+
+Subscription.subscribe(model, [
+  model.id,
+  model['v-s:updateCounter']?.[0] ?? 0,
+  callback
+]);
+
+// Later, clean up explicitly for deterministic teardown
+Subscription.unsubscribe(model.id);
+```
+
+**Notes:**
+- Outgoing subscribe/unsubscribe commands are batched with a ~500 ms delay to reduce network chatter.
+- `FinalizationRegistry` automatically unsubscribes when the `ref` object is garbage-collected, but calling `unsubscribe()` is still recommended for predictable cleanup.
+- Tests can inject a mock socket through `Subscription.init(address, CustomWebSocketClass)`.
+
+---
+
 ## Router
 
 Simple hash-based router.
@@ -927,14 +982,19 @@ router.add('#/', () => {
   console.log('Home');
 });
 
-router.add('#/user/:id', (params) => {
-  console.log('User ID:', params.id);
+router.add('#/user/:id', (id) => {
+  console.log('User ID:', id);
 });
 
 if (!location.hash) {
   location.hash = '#/';
 }
 router.route(location.hash);
+
+// Handlers with multiple parameters receive positional arguments
+router.add('#/section/:slug/:id', (slug, id) => {
+  console.log(slug, id);
+});
 ```
 
 ---

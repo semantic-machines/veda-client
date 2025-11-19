@@ -138,20 +138,6 @@ render() {
 }
 ```
 
-### RDF Property Names Not Working
-
-**Symptom:**
-```javascript
-<span>{this.model.v-s:title}</span>
-// Error: Unexpected token ':'
-```
-
-**Solution:** Use bracket notation:
-
-```javascript
-<span>{this.model['v-s:title']}</span>
-```
-
 ---
 
 ## Model Issues

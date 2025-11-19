@@ -64,6 +64,7 @@
 **Package:** `@veda/react-adapter`
 
 **Location:** `/adapters/react/`
+*(Directory will be created when this phase starts; it does not exist in the repo yet.)*
 
 **Key features:**
 - Two-way binding with Veda Models
@@ -138,6 +139,7 @@
 **Package:** `@veda/solid-adapter`
 
 **Location:** `/adapters/solid/`
+*(Directory will be created together with the implementation; currently absent from the repo.)*
 
 **Why Solid:**
 - Fine-grained reactivity (like Veda core)
