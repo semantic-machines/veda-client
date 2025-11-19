@@ -532,14 +532,16 @@ export default function ({ test, assert }) {
     await flushEffects();
 
     const loop = component.querySelector('veda-loop');
-    // Multiple children get wrapped in a div
-    assert(loop.children.length === 1, 'Should wrap multiple children');
+    // Multiple children - only first element is used (with console warning)
+    assert(loop.children.length === 1, 'Should use only first child');
 
     const h3 = loop.querySelector('h3');
-    const p = loop.querySelector('p');
-    assert(h3 !== null && p !== null, 'Should have both elements');
+    assert(h3 !== null, 'Should have title element');
     assert(h3.textContent === 'Title 1', 'Should render title');
-    assert(p.textContent === 'Description 1', 'Should render description');
+
+    // Second child (p) is ignored
+    const p = loop.querySelector('p');
+    assert(p === null, 'Should not have second element (only first child used)');
 
     container.remove();
   });

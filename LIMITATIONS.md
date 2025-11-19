@@ -118,7 +118,7 @@ state.items = [...state.items]; // Or reassign
 
 **Workaround:** Use array mutation methods or reassignment
 
-**Status:** Same limitation as Vue 3
+**Status:** Veda-specific limitation (unlike Vue 3 which tracks index assignment via Proxy)
 
 ### 5. Watch Uses Reference Equality
 

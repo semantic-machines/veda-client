@@ -256,7 +256,7 @@ interface ReactiveOptions {
 - Prototype pollution prevention
 
 **Limitations:**
-- Array index assignment not reactive: `arr[0] = x` (use `arr.splice(0, 1, x)`)
+- **Array index assignment not reactive:** Direct index assignment (`arr[0] = x`) is not tracked. This is a Veda-specific limitation (unlike Vue 3 which does track index assignment via Proxy). Use array mutation methods instead: `arr.splice(0, 1, x)`
 - New properties need explicit wrapping
 - Date, RegExp, Promise not wrapped
 
@@ -379,6 +379,18 @@ state.count++; // Effect runs
 state.other++; // Effect does NOT run
 ```
 
+**⚠️ Warning:** These functions use a simple boolean flag. **Nested calls are NOT supported** and will break:
+
+```javascript
+// ❌ BROKEN - nested calls don't work
+pauseTracking();
+  pauseTracking();  // Second call is ignored
+  resumeTracking(); // Enables tracking prematurely!
+resumeTracking();   // Does nothing (already enabled)
+```
+
+**Recommendation:** Use `untrack(fn)` instead (supports nesting correctly).
+
 **Use cases:**
 - Reading state without creating dependencies
 - Performance optimization (skip tracking for known static values)
@@ -394,7 +406,7 @@ pauseTracking();
 resumeTracking();
 ```
 
-**Note:** Must be paired with `pauseTracking()`. Nested calls use reference counting.
+**Note:** Must be paired with `pauseTracking()`. Does NOT support nested calls.
 
 ### `untrack(fn)`
 
@@ -464,10 +476,30 @@ import { Loop } from './src/components/LoopComponent.js';
 - Key-based reconciliation reuses DOM elements
 
 **Limitations:**
+- **Single root element required:** Template must have exactly one root element. Multiple root elements will trigger a console warning and only the first element will be used.
 - Source array must be reactive; plain arrays that never change reference will not emit updates
 - Watchers still compare by reference, so `this.watch(() => this.state.items, ...)` requires assigning a new array when you need the watcher to fire
 - Naive reconciliation (no LIS optimization, O(n²) for reordering)
 - No virtualization
+
+**Important - Template Structure:**
+
+```javascript
+// ❌ WRONG - Multiple root elements
+<${Loop} items="{this.todos}" item-key="id">
+  <h3>{this.model.title}</h3>
+  <p>{this.model.description}</p>
+</${Loop}>
+// Console warning! Only <h3> will be rendered
+
+// ✅ CORRECT - Single root element
+<${Loop} items="{this.todos}" item-key="id">
+  <div class="todo-item">
+    <h3>{this.model.title}</h3>
+    <p>{this.model.description}</p>
+  </div>
+</${Loop}>
+```
 
 **Example:**
 

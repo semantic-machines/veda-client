@@ -195,11 +195,14 @@ export default function LoopComponent(Class = HTMLElement) {
         element = document.createElement('div');
         element.appendChild(fragment);
       } else {
-        // If there are multiple children, wrap them
+        // If there are multiple children, warn user to wrap them
         if (fragment.children.length > 1) {
-          const wrapper = document.createElement('div');
-          wrapper.appendChild(fragment);
-          element = wrapper;
+          console.warn(
+            'Loop component: Multiple root elements detected.',
+            'Please wrap them in a single root element (e.g. <div>, <li>, etc.).',
+            'Only the first element will be used, others will be ignored.'
+          );
+          // Use only the first element - don't wrap in div
         }
       }
 
