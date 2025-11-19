@@ -292,8 +292,12 @@ The Expression Parser evaluates template expressions like `{this.state.count}` i
 - Operators: `{this.a + this.b}` ❌
 - Function calls: `{this.format(date)}` ❌
 - Ternary operators: `{this.show ? 'yes' : 'no'}` ❌
-- Bracket notation: `{this.items['key']}` ❌
+- Bracket notation: `{this.items['key']}`, `{this.model['v-s:title']}` ❌
 - Method calls: `{this.items.map(x => x)}` ❌
+
+**Instead use:**
+- For numeric indices: `{this.items.0}` ✅
+- For properties with dashes: `{this.model.v-s:title.0}` ✅
 
 ### Examples
 

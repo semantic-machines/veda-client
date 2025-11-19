@@ -54,7 +54,8 @@ export default class Counter extends Component(HTMLElement) {
   - `{this.model.v-s:title.0}`
   - `{this.user?.name}`
 - ❌ Does NOT support: bracket notation, operators, function calls
-  - `{this.model['v-s:title']}` - ❌ Wrong
+  - `{this.model['v-s:title']}` - ❌ Wrong (use `{this.model.v-s:title}` instead)
+  - `{this.items['key']}` - ❌ Wrong
   - `{this.count + 1}` - ❌ Wrong
   - `{this.format(date)}` - ❌ Wrong
 - 💡 For complex logic: use computed properties (getters)

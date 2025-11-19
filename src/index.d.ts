@@ -7,8 +7,6 @@ export { default as Component, html, safe, raw, reactive, effect } from './compo
 export { computed } from './Reactive.js';
 export { flushEffects, trigger, untrack, pauseTracking, resumeTracking } from './Effect.js';
 export { default as Router } from './Router.js';
-export { default as Value } from './Value.js';
-export { default as WeakCache } from './WeakCache.js';
 
 // Built-in components for declarative rendering
 export { Loop } from './components/LoopComponent.js';
@@ -19,6 +17,11 @@ export { If } from './components/IfComponent.js';
 //   <span property="v-s:title"></span>  ✅ Use declarative attribute
 //   import PropertyComponent from '...' ❌ Not available from index.js
 // See API.md "Advanced Components" section for details.
+
+// Note: Value and WeakCache are internal APIs and not exported from index.
+// If you need them, import directly from source:
+//   import Value from 'veda-client/src/Value.js';
+//   import WeakCache from 'veda-client/src/WeakCache.js';
 
 export * from './Util.js';
 

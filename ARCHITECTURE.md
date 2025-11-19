@@ -134,8 +134,8 @@ effect(() => {
 ```
 
 **Parser:**
-- Supports: property access, optional chaining, bracket notation
-- Rejects: operators, function calls, ternaries
+- Supports: property access, optional chaining, numeric array access (via dot)
+- Rejects: operators, function calls, ternaries, bracket notation with string keys
 - Security: prevents eval/Function injection
 
 ### Loop Reconciliation
