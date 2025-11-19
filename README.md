@@ -148,8 +148,6 @@ The framework exports the following modules from `./src/index.js`:
 |  | `resumeTracking` | Resume dependency tracking |
 | **Utilities** | `Router` | Hash-based router |
 |  | `Emitter` | Event emitter mixin |
-|  | `Value` | RDF value serialization |
-|  | `WeakCache` | Weak reference cache |
 |  | `BackendError` | Backend error class |
 |  | `genUri`, `guid`, `timeout`, `diff`, `eq` | Utility functions |
 
@@ -157,6 +155,10 @@ The framework exports the following modules from `./src/index.js`:
 - `PropertyComponent` - Use `<span property="v-s:title"></span>`
 - `RelationComponent` - Use `<ul rel="v-s:hasTodo"></ul>`
 - `ValueComponent` - Internal base class
+
+**Not exported (internal APIs):**
+- `Value` - RDF value serialization (import directly: `import Value from 'veda-client/src/Value.js'`)
+- `WeakCache` - Weak reference cache (import directly: `import WeakCache from 'veda-client/src/WeakCache.js'`)
 
 See [API.md](./API.md) for complete API documentation.
 

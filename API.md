@@ -1016,7 +1016,9 @@ this.state.items = this.state.items.slice(); // Force reference change
   <h3>{this.model.title}</h3>
   <p>{this.model.description}</p>
 </${Loop}>
-// Console: "Loop template should have single root element. Multiple elements found, using first one."
+// Console: "Loop component: Multiple root elements detected.
+//           Please wrap them in a single root element (e.g. <div>, <li>, etc.).
+//           Only the first element will be used, others will be ignored."
 
 // ✅ CORRECT - Single root wraps everything
 <${Loop} items="{this.todos}" item-key="id">

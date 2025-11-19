@@ -216,6 +216,27 @@ async connectedCallback() {
       this.querySelector('.edit-input')?.focus();
     }
   });
+
+  // Watch with immediate option - runs callback immediately with current value
+  this.watch(
+    () => this.state.editing,
+    (editing) => {
+      this.classList.toggle('editing', editing);
+    },
+    { immediate: true } // Runs on mount, not just on changes
+  );
+
+  // Initial setup example - set focus when component mounts
+  this.watch(
+    () => this.state.autofocus,
+    (shouldFocus) => {
+      if (shouldFocus) {
+        const input = this.querySelector('input');
+        input?.focus();
+      }
+    },
+    { immediate: true } // Apply initial state immediately
+  );
 }
 ```
 
@@ -251,8 +272,34 @@ async connectedCallback() {
 
 **When to use which:**
 - Use `watch()` when you need old/new values or want reference equality checks
+- Use `watch()` with `{ immediate: true }` for initial setup that should run on mount
 - Use `effect()` for simpler code when tracking multiple dependencies
 - Both auto-cleanup on component disconnect
+
+**When to use `{ immediate: true }`:**
+- Applying initial CSS classes based on state
+- Setting up initial focus or scroll position
+- Synchronizing initial component state with DOM
+- Any side effect that should run both on mount and on changes
+
+**Example - with vs without immediate:**
+```javascript
+// ❌ Without immediate - class only added when editing changes
+this.watch(() => this.state.editing, (editing) => {
+  this.classList.toggle('editing', editing);
+});
+// If editing is true on mount, class won't be added until it changes
+
+// ✅ With immediate - class added immediately if editing is true
+this.watch(
+  () => this.state.editing,
+  (editing) => {
+    this.classList.toggle('editing', editing);
+  },
+  { immediate: true }
+);
+// Class added correctly on mount based on initial state
+```
 
 ### ⚠️ Important: Reference Equality
 

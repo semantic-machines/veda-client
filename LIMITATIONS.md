@@ -144,14 +144,14 @@ this.watch(() => state.items.length, callback);
 **Issue:** Component method search and parent context search have hard-coded depth limits.
 
 **Limits:**
-- **Method search depth:** 20 levels (Component.js line ~459)
+- **Method search depth:** 20 levels (Component.js line 460)
   ```javascript
   #findMethod(name) {
     let depth = 0;
     while (parent && depth < 20) { // Hard limit
   ```
 
-- **Loop parent context depth:** 10 levels (LoopComponent.js line ~237)
+- **Loop parent context depth:** 10 levels (LoopComponent.js line 237)
   ```javascript
   #findParentComponent() {
     let depth = 0;
