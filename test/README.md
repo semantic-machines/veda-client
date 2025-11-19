@@ -110,28 +110,41 @@ test('My integration test', async () => {
 ```javascript
 test('Benchmark - my operation', () => {
   const start = performance.now();
-  
+
   for (let i = 0; i < 1000; i++) {
     // Operation to benchmark
   }
-  
+
   const elapsed = performance.now() - start;
   console.log(`📊 My operation: ${elapsed.toFixed(2)}ms for 1000 iterations`);
-  
+
   assert(elapsed < 100, 'Should be fast');
 });
 ```
 
 ## 📊 Coverage
 
-Current coverage: **100%** 🎉
+### Full Coverage (with integration tests)
 
-- Statements: 100%
-- Branches: 100%
+Current coverage: **99.4%** 🎉
+
+- Statements: 99.4%
+- Branches: 97.19%
 - Functions: 100%
-- Lines: 100%
+- Lines: 99.4%
 
-**All 19 modules have perfect 100% coverage!**
+**643 tests** | **32 seconds**
+
+### Unit Tests Coverage
+
+- Statements: 91.08%
+- Branches: 96.93%
+- Functions: 87%
+- Lines: 91.08%
+
+**550 tests** | **7 seconds**
+
+**Note:** Lower unit test coverage is due to Backend.js (44% - requires real server) and some integration-only paths in Subscription.js
 
 ## 🔧 Test Utilities
 
@@ -162,12 +175,12 @@ Current coverage: **100%** 🎉
 
 | Type | Tests | Time | Server | Coverage |
 |------|-------|------|--------|----------|
-| Unit | 362  | ~3s  | ❌     | 100%     |
-| Integration | 93 | ~26s | ✅ Required | 100% (full coverage) |
+| Unit | 550  | ~6s  | ❌     | 91%     |
+| Integration | 93 | ~26s | ✅ Required | 99.4% (full coverage) |
 | Benchmarks | 12 | ~0.7s | ❌ | N/A (performance) |
-| All  | 455  | ~29s | ✅ Required | 100% |
+| All  | 643  | ~32s | ✅ Required | 99.4% |
 
-**Recommendation**: 
+**Recommendation**:
 - During development: `pnpm test:unit` (fast feedback)
 - Before commit: `pnpm test` (full validation)
 - Weekly/CI: `pnpm test:benchmark` (performance regression check)

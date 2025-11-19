@@ -187,8 +187,8 @@ pnpm test:integration
 ```
 
 Test coverage:
-- **>99%** with integration tests (requires backend: `pnpm c8`)
-- **>90%** unit tests only (`pnpm c8:unit`)
+- **99.4%** with integration tests (requires backend: `pnpm c8`)
+- **91.08%** unit tests only (`pnpm c8:unit`)
 
 **[See test/README.md for detailed testing guide](./test/README.md)**
 

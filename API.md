@@ -19,6 +19,7 @@ Complete API documentation for Veda Client Framework.
 - [Utility Functions](#utility-functions)
 - [Value](#value)
 - [WeakCache](#weakcache)
+- [Emitter](#emitter)
 - [BackendError](#backenderror)
 - [TypeScript](#typescript)
 
@@ -558,13 +559,19 @@ class ConditionalView extends Component(HTMLElement) {
 
 Renders RDF property values with language support and reactive updates.
 
+**Note:** PropertyComponent is **not exported** from the main package. It's designed for **declarative usage** only via the `property` attribute on standard HTML elements.
+
+#### Declarative Usage (Recommended)
+
 ```javascript
-// Declarative syntax (preferred)
+// Declarative syntax (recommended - ONLY way to use)
 <span property="v-s:title"></span>
 
-// Programmatic usage (advanced)
-import PropertyComponent from './src/components/PropertyComponent.js';
+// ❌ NOT AVAILABLE - PropertyComponent is not exported
+import PropertyComponent from './src/components/PropertyComponent.js'; // Won't work from index.js
 ```
+
+**Implementation Detail:** The framework automatically upgrades elements with `property` attribute to PropertyComponent instances. See [Advanced Components](#advanced-components) for details.
 
 **Attributes:**
 - `property` - RDF property name (required)
@@ -685,15 +692,21 @@ render() {
 
 Renders related RDF resources (URI values) with automatic model loading and custom templates.
 
+**Note:** RelationComponent is **not exported** from the main package. It's designed for **declarative usage** only via the `rel` attribute on standard HTML elements.
+
+#### Declarative Usage (Recommended)
+
 ```javascript
-// Declarative syntax (preferred)
+// Declarative syntax (recommended - ONLY way to use)
 <ul rel="v-s:hasTodo">
   <li>{this.model.v-s:title.0}</li>
 </ul>
 
-// Programmatic usage (advanced)
-import RelationComponent from './src/components/RelationComponent.js';
+// ❌ NOT AVAILABLE - RelationComponent is not exported
+import RelationComponent from './src/components/RelationComponent.js'; // Won't work from index.js
 ```
+
+**Implementation Detail:** The framework automatically upgrades elements with `rel` attribute to RelationComponent instances. See [Advanced Components](#advanced-components) for details.
 
 **Attributes:**
 - `rel` - RDF relation property name (required)
@@ -829,10 +842,38 @@ When you write:
 
 The framework automatically upgrades this `<div>` into a reactive `PropertyComponent`.
 
-1. **Detection:** The framework scans for elements with `property` or `rel` attributes.
+1. **Detection:** The framework scans for elements with `property` or `rel` attributes during component rendering.
 2. **Registration:** It dynamically registers a new Custom Element (e.g., `div-property-component`).
-3. **Upgrade:** The element is upgraded to use the special component class (extends `PropertyComponent`).
+3. **Upgrade:** The element is upgraded to use the special component class (extends `PropertyComponent` or `RelationComponent`).
 4. **Reactivity:** The component automatically subscribes to the model's property and re-renders on changes.
+
+### Why Not Exported?
+
+PropertyComponent, RelationComponent, and ValueComponent are **internal implementation details**. They:
+
+- Are designed to work through the declarative attribute mechanism
+- Require special setup that happens automatically during component rendering
+- Should not be instantiated manually
+
+If you need programmatic control, consider:
+- Using Loop component with manual model handling
+- Creating custom components that inherit model reactivity
+
+### Internal Components
+
+| Component | Purpose | Usage |
+|-----------|---------|-------|
+| `PropertyComponent` | Render RDF property values | `<span property="v-s:title"></span>` |
+| `RelationComponent` | Render related models | `<ul rel="v-s:hasTodo"></ul>` |
+| `ValueComponent` | Base for Property/Relation | Internal only - not used directly |
+
+**ValueComponent** is the base class that PropertyComponent extends. It handles:
+- Model subscription and reactivity
+- Template rendering with `<slot>` support
+- Shadow DOM support
+- Value change detection and updates
+
+**Note:** These components are fully tested and production-ready, but their internal API may change in future versions.
 
 ---
 
@@ -1541,6 +1582,195 @@ cache.delete('key');
 
 ---
 
+## Emitter
+
+Event emitter mixin for adding pub/sub capabilities to classes.
+
+### Usage
+
+```javascript
+import Emitter from './src/Emitter.js';
+
+// Apply to a class
+class MyClass extends Emitter(Object) {
+  constructor() {
+    super();
+  }
+
+  doSomething() {
+    // Emit event
+    this.emit('done', { result: 'success' });
+  }
+}
+
+const instance = new MyClass();
+
+// Subscribe to events
+instance.on('done', (data) => {
+  console.log('Event fired:', data);
+});
+
+instance.doSomething(); // Logs: "Event fired: { result: 'success' }"
+```
+
+### Methods
+
+#### `on(events: string, fn: Function): this`
+
+Subscribe to one or more events (space-separated).
+
+```javascript
+// Single event
+obj.on('save', handler);
+
+// Multiple events
+obj.on('save delete', handler);
+
+// Multiple calls stack
+obj.on('save', handler1);
+obj.on('save', handler2); // Both will be called
+```
+
+#### `off(events: string, fn?: Function): this`
+
+Unsubscribe from events.
+
+```javascript
+// Remove specific handler
+obj.off('save', handler);
+
+// Remove all handlers for event
+obj.off('save');
+
+// Remove all handlers for multiple events
+obj.off('save delete');
+```
+
+#### `one(event: string, fn: Function): this`
+
+Subscribe to event, auto-unsubscribe after first fire.
+
+```javascript
+obj.one('load', () => {
+  console.log('Loaded once');
+});
+
+obj.emit('load'); // Logs: "Loaded once"
+obj.emit('load'); // No log - already unsubscribed
+```
+
+#### `once(event: string, fn: Function): this`
+
+Alias for `one()`.
+
+```javascript
+obj.once('init', handler);
+```
+
+#### `emit(event: string, ...args: any[]): this`
+
+Emit event with arguments.
+
+```javascript
+obj.emit('save', model, options);
+
+// Handlers receive all arguments
+obj.on('save', (model, options) => {
+  console.log('Saving', model, options);
+});
+```
+
+#### `trigger(event: string, ...args: any[]): this`
+
+Alias for `emit()`.
+
+```javascript
+obj.trigger('change', newValue);
+```
+
+### Usage in Model
+
+`Model` uses `Emitter` internally for reactivity:
+
+```javascript
+model.on('modified', (property, value) => {
+  console.log(`${property} changed to`, value);
+});
+
+model.on('beforeSave', () => {
+  console.log('About to save');
+});
+
+model.on('afterSave', () => {
+  console.log('Saved successfully');
+});
+
+model['v-s:title'] = ['New Title'];
+// Logs: "v-s:title changed to ['New Title']"
+// Logs: "modified changed to v-s:title ['New Title']"
+
+await model.save();
+// Logs: "About to save"
+// Logs: "Saved successfully"
+```
+
+### Event Naming Convention
+
+Model events follow a pattern:
+
+```javascript
+// Property-specific
+model.on('v-s:title', handler);     // Fires when v-s:title changes
+
+// Generic
+model.on('modified', handler);       // Fires on any property change
+
+// Lifecycle
+model.on('beforeload', handler);
+model.on('afterload', handler);
+model.on('beforesave', handler);
+model.on('aftersave', handler);
+model.on('beforereset', handler);
+model.on('afterreset', handler);
+model.on('beforeremove', handler);
+model.on('afterremove', handler);
+```
+
+### Error Handling
+
+Event handlers can throw - errors are not caught:
+
+```javascript
+obj.on('event', () => {
+  throw new Error('Handler error');
+});
+
+try {
+  obj.emit('event'); // Throws
+} catch (error) {
+  console.error('Event handler failed:', error);
+}
+```
+
+**Best practice:** Handle errors inside event handlers.
+
+### Memory Management
+
+Handlers are automatically cleaned up when the object is garbage collected. For manual cleanup:
+
+```javascript
+const handler = (data) => console.log(data);
+
+obj.on('event', handler);
+
+// Later...
+obj.off('event', handler); // Clean up
+```
+
+**Component usage:** Component automatically cleans up event listeners on disconnect.
+
+---
+
 ## BackendError
 
 Custom error class for Backend API errors.
@@ -1574,6 +1804,55 @@ error.response  // Raw server response
 ## TypeScript
 
 Full TypeScript definitions included.
+
+### Configuration
+
+**tsconfig.json** for Veda Client projects:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "moduleResolution": "node",
+    "allowJs": true,
+    "checkJs": false,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+```
+
+**Key settings:**
+- `target: "ES2020"` - Modern JavaScript features (Proxy, WeakMap)
+- `module: "ES2020"` - ES modules
+- `lib: ["DOM"]` - Custom Elements, browser APIs
+- `strict: true` - Full type checking
+
+### Importing Types
+
+```typescript
+// Import values and types
+import Component, { html } from './src/components/Component.js';
+import Model from './src/Model.js';
+import { Loop, If } from './src/index.js';
+
+// Import types only
+import type { ComponentInstance } from './src/components/Component.js';
+import type { Reactive } from './src/Reactive.js';
+import type { ModelValue } from './src/Model.js';
+import type { EmitterInstance } from './src/Emitter.js';
+```
 
 ### Component with Types
 
@@ -1629,21 +1908,316 @@ if (todo['v-s:title']) {
 }
 ```
 
-**Note:** RDF property names with colons require bracket notation in TypeScript.
-
-### Type Definitions
-
-All type definitions available:
+### Generic Types for Components
 
 ```typescript
+import Component from './src/components/Component.js';
+import Model from './src/Model.js';
+import type { Reactive } from './src/Reactive.js';
+
+// Define custom Model interface
+interface TodoModel extends Model {
+  ['v-s:title']?: Array<{ data: string; type: string }>;
+  ['v-s:completed']?: Array<{ data: boolean; type: string }>;
+}
+
+interface TodoState {
+  editing: boolean;
+  editText: string;
+}
+
+// Type-safe component
+class TodoItem extends Component(HTMLLIElement) {
+  declare model: TodoModel;  // Override model type
+  state!: Reactive<TodoState>;
+
+  constructor() {
+    super();
+    this.state = this.reactive<TodoState>({
+      editing: false,
+      editText: ''
+    });
+  }
+
+  get title(): string {
+    return this.model?.['v-s:title']?.[0]?.data ?? '';
+  }
+
+  get completed(): boolean {
+    return this.model?.['v-s:completed']?.[0]?.data ?? false;
+  }
+}
+```
+
+### Type-Safe Model Properties
+
+```typescript
+// Option 1: Interface extending Model
+interface PersonModel extends Model {
+  ['v-s:name']?: ModelValue[];
+  ['v-s:age']?: ModelValue[];
+  ['v-s:email']?: ModelValue[];
+}
+
+const person = new Model('d:Person1') as PersonModel;
+await person.load();
+
+// Type-safe access
+const name = person['v-s:name']?.[0]; // Type: ModelValue | undefined
+
+// Option 2: Helper type
+type ModelProperty<T> = Array<{ data: T; type: string }>;
+
+interface TypedPerson extends Model {
+  ['v-s:name']: ModelProperty<string>;
+  ['v-s:age']: ModelProperty<number>;
+  ['v-s:isActive']: ModelProperty<boolean>;
+}
+
+const typedPerson = new Model() as TypedPerson;
+typedPerson['v-s:name'] = [{ data: 'John', type: 'String' }];
+typedPerson['v-s:age'] = [{ data: 30, type: 'Integer' }];
+```
+
+### Type-Safe Reactive State
+
+```typescript
+import { reactive } from './src/Reactive.js';
+import type { Reactive } from './src/Reactive.js';
+
+interface AppState {
+  count: number;
+  user: {
+    name: string;
+    email: string;
+  };
+  items: string[];
+}
+
+// Type-safe reactive state
+const state: Reactive<AppState> = reactive<AppState>({
+  count: 0,
+  user: {
+    name: 'Alice',
+    email: 'alice@example.com'
+  },
+  items: []
+});
+
+// TypeScript infers types
+state.count++;               // OK
+state.user.name = 'Bob';     // OK
+state.items.push('new');     // OK
+// @ts-expect-error
+state.count = 'invalid';     // Error: Type 'string' not assignable to 'number'
+```
+
+### Type-Safe Effect and Watch
+
+```typescript
+import { effect } from './src/Effect.js';
+
+interface CounterState {
+  count: number;
+  doubled: number;
+}
+
+const state = reactive<CounterState>({
+  count: 0,
+  doubled: 0
+});
+
+// Type-safe effect
+effect(() => {
+  // TypeScript knows types
+  const count: number = state.count;
+  const doubled: number = count * 2;
+  state.doubled = doubled;
+});
+
+// Type-safe watch
+class MyComponent extends Component(HTMLElement) {
+  state!: Reactive<CounterState>;
+
+  async connectedCallback() {
+    await super.connectedCallback();
+
+    this.watch<number>(
+      () => this.state.count,
+      (newValue: number, oldValue: number | undefined) => {
+        console.log(`Count: ${oldValue} -> ${newValue}`);
+      }
+    );
+  }
+}
+```
+
+### Type Definitions Reference
+
+All type definitions available in `.d.ts` files:
+
+```typescript
+// Core types
+import type { Reactive, ReactiveOptions } from './src/Reactive.js';
+import type { ComponentInstance, ComponentConstructor } from './src/components/Component.js';
+import type { LoopComponentInstance } from './src/components/LoopComponent.js';
+import type { IfComponentInstance } from './src/components/IfComponent.js';
+import type { EmitterInstance } from './src/Emitter.js';
+import type { ModelValue } from './src/Model.js';
+
+// Backend types
 import type {
-  ComponentInstance,
-  ComponentConstructor,
-  LoopComponentInstance,
-  IfComponentInstance,
-  Reactive,
-  ReactiveOptions
-} from './src/index.js';
+  IndividualData,
+  AuthResult,
+  QueryResult,
+  QueryParams,
+  UploadFileParams
+} from './src/Backend.js';
+
+// Value types
+import type {
+  ValueData,
+  ValueType,
+  PrimitiveValue
+} from './src/Value.js';
+```
+
+### Common TypeScript Patterns
+
+#### Custom Element with Typed Model
+
+```typescript
+interface ProjectModel extends Model {
+  ['v-s:title']: ModelValue[];
+  ['v-s:description']: ModelValue[];
+  ['v-s:members']: Model[];
+}
+
+class ProjectCard extends Component(HTMLElement) {
+  declare model: ProjectModel;
+
+  get title(): string {
+    return this.model['v-s:title']?.[0]?.data as string ?? '';
+  }
+
+  render() {
+    return html`
+      <h2>{this.title}</h2>
+    `;
+  }
+}
+```
+
+#### Type-Safe Event Emitter
+
+```typescript
+import Emitter from './src/Emitter.js';
+import type { EmitterInstance } from './src/Emitter.js';
+
+interface Events {
+  save: [model: Model, options?: object];
+  delete: [id: string];
+  error: [error: Error];
+}
+
+class TypedEmitter extends Emitter(Object) {
+  // Type-safe emit
+  emit<K extends keyof Events>(
+    event: K,
+    ...args: Events[K]
+  ): this {
+    return super.emit(event, ...args);
+  }
+
+  // Type-safe on
+  on<K extends keyof Events>(
+    event: K,
+    fn: (...args: Events[K]) => void
+  ): this {
+    return super.on(event, fn);
+  }
+}
+
+const emitter = new TypedEmitter();
+
+// Type-safe usage
+emitter.on('save', (model, options) => {
+  // model: Model, options: object | undefined
+});
+
+emitter.emit('save', new Model(), { force: true }); // OK
+// @ts-expect-error
+emitter.emit('save', 'invalid');  // Error: wrong type
+```
+
+### VSCode Configuration
+
+**.vscode/settings.json** for better development experience:
+
+```json
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "javascript.preferences.importModuleSpecifier": "relative"
+}
+```
+
+### Troubleshooting
+
+**Issue:** Type errors with RDF property names
+
+```typescript
+// ❌ Error: Property 'v-s:title' does not exist
+model['v-s:title']
+
+// ✅ Solution: Extend Model with interface
+interface MyModel extends Model {
+  ['v-s:title']?: ModelValue[];
+}
+const model = new Model() as MyModel;
+```
+
+**Issue:** Reactive type not inferring correctly
+
+```typescript
+// ❌ Type is 'any'
+const state = reactive({ count: 0 });
+
+// ✅ Explicitly type
+interface State { count: number }
+const state = reactive<State>({ count: 0 });
+
+// ✅ Or use type annotation
+const state: Reactive<{ count: number }> = reactive({ count: 0 });
+```
+
+**Issue:** Component methods not typed
+
+```typescript
+// ❌ 'this' type is unknown
+class MyComponent extends Component(HTMLElement) {
+  myMethod() {
+    this.state; // Type error
+  }
+}
+
+// ✅ Declare state type
+class MyComponent extends Component(HTMLElement) {
+  state!: Reactive<{ count: number }>;
+
+  constructor() {
+    super();
+    this.state = this.reactive({ count: 0 });
+  }
+
+  myMethod() {
+    this.state.count++; // OK
+  }
+}
 ```
 
 ---
