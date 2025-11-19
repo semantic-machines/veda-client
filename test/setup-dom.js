@@ -118,7 +118,11 @@ console.warn = (...args) => {
 
     // Suppress expected warnings from tests
     if (message.includes('Invalid expression') ||
-        message.includes('Handler expression')) {
+        message.includes('Handler expression') ||
+        message.includes('pauseTracking: nested calls') ||
+        message.includes('component requires') ||
+        message.includes('Multiple root elements detected') ||
+        message.includes('Blocked dangerous property name')) {
       return;
     }
   }

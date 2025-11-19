@@ -62,6 +62,7 @@ customElements.define(Counter.tag, Counter);
 ### Reactive List with Loop
 
 ```javascript
+import Component, { html } from './src/components/Component.js';
 import { Loop } from './src/components/LoopComponent.js';
 
 class TodoList extends Component(HTMLElement) {

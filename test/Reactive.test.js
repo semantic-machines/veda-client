@@ -463,6 +463,29 @@ export default ({test, assert}) => {
     assert(result === 10, 'untrack should return function result');
   });
 
+  test('Effect - pauseTracking nested calls warning', () => {
+    const originalWarn = console.warn;
+    const warnings = [];
+    console.warn = (...args) => warnings.push(args.join(' '));
+
+    // First call - no warning
+    pauseTracking();
+    assert(warnings.length === 0, 'First pauseTracking call should not warn');
+
+    // Second call (nested) - should warn
+    pauseTracking();
+    assert(warnings.length === 1, 'Nested pauseTracking call should warn');
+    assert(warnings[0].includes('nested calls are not supported'), 'Warning should mention nested calls');
+    assert(warnings[0].includes('Use untrack()'), 'Warning should recommend untrack()');
+
+    // Resume both
+    resumeTracking();
+    resumeTracking();
+
+    // Restore console.warn
+    console.warn = originalWarn;
+  });
+
   // ==================== COMPUTED VALUES ====================
 
   test('Reactive - computed basic reactivity', async () => {

@@ -185,12 +185,21 @@ function cleanup(effect) {
   }
 }
 
+let trackingDepth = 0;
+
 export function pauseTracking() {
+  if (trackingDepth > 0) {
+    console.warn('pauseTracking: nested calls are not supported and may cause bugs. Use untrack() instead for proper nesting support.');
+  }
+  trackingDepth++;
   shouldTrack = false;
 }
 
 export function resumeTracking() {
-  shouldTrack = true;
+  trackingDepth = Math.max(0, trackingDepth - 1);
+  if (trackingDepth === 0) {
+    shouldTrack = true;
+  }
 }
 
 /**

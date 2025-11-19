@@ -6,6 +6,7 @@ Complete API documentation for Veda Client Framework.
 
 - [Component](#component)
 - [Reactivity](#reactivity)
+- [Reactivity Edge Cases](#reactivity-edge-cases)
 - [Built-in Components](#built-in-components)
   - [Loop](#loop)
   - [If](#if)
@@ -449,6 +450,272 @@ trigger(state, 'count'); // Force notify all effects tracking state.count
 ```
 
 **Note:** Usually not needed as reactive system handles this automatically.
+
+---
+
+## Reactivity Edge Cases
+
+This section documents special behaviors and corner cases you might encounter.
+
+### Circular References
+
+The reactive system handles circular references automatically using WeakMap caching:
+
+```javascript
+const obj = reactive({ name: 'A' });
+obj.self = obj; // Circular reference
+
+// ✅ Works correctly - no infinite loop
+effect(() => {
+  console.log(obj.name, obj.self.name); // Both access the same proxy
+});
+```
+
+**How it works:**
+- Each object is wrapped only once (cached in WeakMap)
+- Subsequent access returns the same proxy
+- No memory leaks (WeakMap allows garbage collection)
+
+### Array Index Assignment
+
+**⚠️ Important limitation:** Direct index assignment is NOT reactive in Veda (unlike Vue 3):
+
+```javascript
+const state = reactive({ items: [1, 2, 3] });
+
+// ❌ NOT reactive - won't trigger effects
+state.items[0] = 99;
+
+// ✅ Reactive - use splice
+state.items.splice(0, 1, 99);
+
+// ✅ Reactive - reassign array
+state.items = [...state.items];
+state.items[0] = 99;
+state.items = state.items.slice(); // Force new reference
+```
+
+**Why:** Proxying array indices has performance implications. Use array mutation methods instead.
+
+### Dynamic item-key in Loop
+
+**⚠️ Not supported:** Changing `item-key` attribute dynamically will not trigger re-reconciliation:
+
+```javascript
+// ❌ BROKEN - item-key should be static
+<${Loop} items="{this.items}" item-key="{this.currentKey}">
+
+// ✅ CORRECT - item-key is static
+<${Loop} items="{this.items}" item-key="id">
+```
+
+**Reason:** Loop component reads `item-key` once during initialization. Dynamic keys would require complete re-initialization.
+
+### Expression Evaluation with undefined/null
+
+Expressions that evaluate to `undefined` or `null` render as empty strings:
+
+```javascript
+// Model has no 'v-s:title' property
+<div>{this.model.v-s:title.0}</div>
+// Renders as: <div></div>
+
+// Optional chaining prevents errors
+<div>{this.model?.title?.name}</div>
+// If any part is undefined, renders empty string
+```
+
+**Attributes:**
+
+```javascript
+// Boolean attributes with undefined/null
+<input checked="{this.completed}" />
+// If completed is undefined/null -> checked="false" -> unchecked
+
+// Regular attributes with undefined/null
+<div data-id="{this.id}">
+// If id is undefined -> data-id="" (empty string)
+```
+
+### Computed Values and Circular Dependencies
+
+Computed values can accidentally create circular dependencies:
+
+```javascript
+// ❌ INFINITE LOOP - computed depends on itself
+const state = reactive({ count: 0 });
+
+const doubled = computed(() => {
+  return doubled.value * 2; // Reads its own value!
+});
+
+// System detects this and throws after 100 iterations
+```
+
+**Solution:** Ensure computed values only depend on other state:
+
+```javascript
+// ✅ CORRECT - depends on external state
+const doubled = computed(() => state.count * 2);
+```
+
+### Nested pauseTracking Calls
+
+**⚠️ Not supported:** The tracking system uses a simple boolean flag with depth counter:
+
+```javascript
+// ❌ BROKEN - nested calls
+pauseTracking();
+  pauseTracking();  // Warning logged
+  // ... code ...
+  resumeTracking(); // Decrements depth
+resumeTracking();   // Decrements depth
+
+// ✅ CORRECT - use untrack for nesting
+untrack(() => {
+  // Can safely call untrack again inside
+  untrack(() => {
+    // Properly nested
+  });
+});
+```
+
+**Why untrack is better:**
+- Uses try/finally for automatic cleanup
+- Properly handles exceptions
+- Prevents tracking depth corruption
+
+### Model Property Reactivity
+
+Model properties become reactive automatically when component uses `this.reactive()`:
+
+```javascript
+class MyComponent extends Component(HTMLElement) {
+  constructor() {
+    super();
+    // ✅ Enables reactivity for model properties
+    this.state = this.reactive({});
+  }
+
+  render() {
+    // This expression will re-render when model changes
+    return html`<div>{this.model['v-s:title'].0}</div>`;
+  }
+}
+```
+
+**Without reactive state:**
+
+```javascript
+class MyComponent extends Component(HTMLElement) {
+  // No this.reactive() call
+
+  render() {
+    // ❌ Won't update when model changes
+    return html`<div>{this.model['v-s:title'].0}</div>`;
+  }
+}
+```
+
+### watch() Reference Equality
+
+The `watch()` helper uses strict equality (`===`) for change detection:
+
+```javascript
+const state = reactive({
+  items: [1, 2, 3],
+  user: { name: 'Alice' }
+});
+
+// ❌ Won't trigger - same array reference
+this.watch(() => state.items, callback);
+state.items.push(4); // Callback NOT called
+
+// ✅ Triggers - new array reference
+state.items = [...state.items, 4]; // Callback called
+
+// ❌ Won't trigger - same object reference
+this.watch(() => state.user, callback);
+state.user.name = 'Bob'; // Callback NOT called
+
+// ✅ Triggers - new object reference
+state.user = { ...state.user, name: 'Bob' }; // Callback called
+
+// ✅ Alternative - watch specific property
+this.watch(() => state.user.name, callback);
+state.user.name = 'Bob'; // Callback called
+```
+
+**Design decision:** Reference equality is fast and predictable. For deep watching, watch specific properties.
+
+### Effect Cleanup Timing
+
+Effects are cleaned up automatically but timing matters:
+
+```javascript
+class MyComponent extends Component(HTMLElement) {
+  async connectedCallback() {
+    await super.connectedCallback();
+
+    // ✅ Auto-cleanup on disconnect
+    this.effect(() => {
+      console.log('Count:', this.state.count);
+    });
+  }
+
+  disconnectedCallback() {
+    // Effects already cleaned up by Component base class
+    super.disconnectedCallback();
+  }
+}
+```
+
+**Manual effects:**
+
+```javascript
+// Create effect outside component
+const cleanup = effect(() => {
+  console.log(state.count);
+});
+
+// ❌ MEMORY LEAK - never cleaned up
+// Effect runs forever even if object is destroyed
+
+// ✅ CORRECT - manual cleanup
+cleanup();
+```
+
+### Reactive Proxy and instanceof
+
+Proxies maintain instanceof relationships:
+
+```javascript
+const model = new Model('d:Person1');
+const proxy = reactive(model);
+
+// ✅ Works correctly
+console.log(proxy instanceof Model); // true
+console.log(proxy.__isReactive); // true
+```
+
+**But:**
+
+```javascript
+const arr = reactive([1, 2, 3]);
+console.log(Array.isArray(arr)); // true ✅
+console.log(arr instanceof Array); // true ✅
+
+const date = reactive(new Date());
+console.log(date instanceof Date); // false ❌
+// Date objects are NOT wrapped (returned as-is)
+```
+
+**Objects not wrapped:**
+- `Date`
+- `RegExp`
+- `Promise`
+- `null`/`undefined`
+- Primitives (numbers, strings, booleans)
 
 ---
 
@@ -1033,13 +1300,32 @@ const headEmail = await employee.getPropertyChain(
 );
 ```
 
+**Parameters:**
+- `...props: string[]` - Sequence of property names to traverse
+
+**Returns:**
+- `Promise<any>` - Final value at end of chain, or `undefined` if chain breaks
+
 **How it works:**
 1. Starts with current model
 2. For each property name:
-   - Gets property value
-   - If value is URI, loads that model
+   - Gets property value (first element if array)
+   - If value is URI (Model instance), loads that model
    - Continues with next property on loaded model
 3. Returns final value
+
+**Array handling:**
+- Always takes first element of property array: `model[prop][0]`
+- To access other array elements, use manual traversal
+
+**Chain interruption:**
+- Returns `undefined` if any property doesn't exist
+- Returns `undefined` if intermediate value is not a Model
+- Doesn't throw errors - returns undefined gracefully
+
+**Caching:**
+- Intermediate models are loaded and cached by Model system
+- Subsequent calls with same chain reuse cached models
 
 **Use cases:**
 - Accessing nested related data
@@ -1058,6 +1344,53 @@ const creatorName = creator['v-s:name'][0];
 // ✅ With getPropertyChain (automatic)
 const creatorName = await task.getPropertyChain('v-s:creator', 'v-s:name');
 ```
+
+**Example - Handling missing properties:**
+
+```javascript
+// Chain may break at any point
+const email = await employee.getPropertyChain('v-s:department', 'v-s:head', 'v-s:email');
+
+if (email) {
+  console.log('Head email:', email);
+} else {
+  console.log('Chain broke - employee has no department, or department has no head, or head has no email');
+}
+```
+
+**Example - Complex chain:**
+
+```javascript
+// Multi-level traversal
+const task = new Model('d:Task123');
+await task.load();
+
+// Get project manager's phone
+// task -> project -> manager -> contactInfo -> phone
+const phone = await task.getPropertyChain(
+  'v-s:hasProject',
+  'v-s:hasManager',
+  'v-s:hasContactInfo',
+  'v-s:phone'
+);
+```
+
+**Example - Accessing specific property:**
+
+```javascript
+// Get the 'id' property of the end model
+const typeId = await model.getPropertyChain('rdf:type', 'rdf:type', 'id');
+// Returns: 'rdfs:Class'
+```
+
+**Limitations:**
+- Always uses first array element at each step
+- No support for filtering or multi-value traversal
+- For complex queries, use manual traversal or Backend.query()
+
+**Performance:**
+- Each step may trigger network request (if not cached)
+- Use sparingly in loops - consider bulk loading instead
 
 ### Rights & Permissions
 
@@ -2080,6 +2413,144 @@ class MyComponent extends Component(HTMLElement) {
         console.log(`Count: ${oldValue} -> ${newValue}`);
       }
     );
+  }
+}
+```
+
+### Type-Safe Loop Component
+
+```typescript
+import Component, { html } from './src/components/Component.js';
+import { Loop } from './src/components/LoopComponent.js';
+import type { Reactive } from './src/Reactive.js';
+
+// Define item type
+interface TodoItem {
+  id: number;
+  text: string;
+  done: boolean;
+}
+
+// Component state interface
+interface TodoListState {
+  todos: TodoItem[];
+  filter: 'all' | 'active' | 'completed';
+}
+
+class TodoList extends Component(HTMLElement) {
+  state!: Reactive<TodoListState>;
+
+  constructor() {
+    super();
+    this.state = this.reactive<TodoListState>({
+      todos: [
+        { id: 1, text: 'Learn TypeScript', done: false },
+        { id: 2, text: 'Build app', done: true }
+      ],
+      filter: 'all'
+    });
+  }
+
+  // Typed getter
+  get filteredTodos(): TodoItem[] {
+    const { todos, filter } = this.state;
+    if (filter === 'active') return todos.filter(t => !t.done);
+    if (filter === 'completed') return todos.filter(t => t.done);
+    return todos;
+  }
+
+  render() {
+    return html`
+      <ul>
+        <${Loop} items="{this.filteredTodos}" item-key="id">
+          <li>
+            <span>{this.model.text}</span>
+            <span>{this.model.done ? '✓' : '○'}</span>
+          </li>
+        </${Loop}>
+      </ul>
+    `;
+  }
+}
+```
+
+### Type-Safe watch() Helper
+
+```typescript
+import Component, { html } from './src/components/Component.js';
+import type { Reactive } from './src/Reactive.js';
+
+interface EditableState {
+  editing: boolean;
+  value: string;
+  savedValue: string;
+}
+
+class EditableField extends Component(HTMLElement) {
+  state!: Reactive<EditableState>;
+
+  constructor() {
+    super();
+    this.state = this.reactive<EditableState>({
+      editing: false,
+      value: '',
+      savedValue: ''
+    });
+  }
+
+  async connectedCallback() {
+    await super.connectedCallback();
+
+    // Type-safe watch with explicit type annotation
+    this.watch<boolean>(
+      () => this.state.editing,
+      (editing: boolean, wasEditing: boolean | undefined) => {
+        if (editing) {
+          // Entering edit mode
+          this.classList.add('editing');
+          const input = this.querySelector<HTMLInputElement>('input');
+          input?.focus();
+        } else {
+          // Exiting edit mode
+          this.classList.remove('editing');
+        }
+      },
+      { immediate: true }
+    );
+
+    // Watch for value changes (with type inference)
+    this.watch(
+      () => this.state.value,
+      (newValue, oldValue) => {
+        // TypeScript infers string type
+        console.log(`Value changed: "${oldValue}" -> "${newValue}"`);
+      }
+    );
+
+    // Watch array length
+    this.watch<number>(
+      () => this.state.value.length,
+      (newLen: number, oldLen: number | undefined) => {
+        const maxLen = 100;
+        if (newLen > maxLen) {
+          console.warn(`Value too long: ${newLen}/${maxLen}`);
+        }
+      }
+    );
+  }
+
+  render() {
+    return html`
+      <div>
+        <input value="{this.state.value}" />
+        <button onclick="{this.handleSave}">Save</button>
+      </div>
+    `;
+  }
+
+  handleSave() {
+    this.state.savedValue = this.state.value;
+    this.state.editing = false;
   }
 }
 ```
