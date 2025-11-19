@@ -178,6 +178,8 @@ async connectedCallback() {
 
 Watches reactive value changes and runs callback when value changes.
 
+**Note:** `watch()` is a Component method, available only within component classes via `this.watch()`.
+
 **Parameters:**
 - `getter: () => T` - Function that returns the value to watch
 - `callback: (newValue: T, oldValue: T | undefined) => void` - Called when value changes
@@ -414,8 +416,8 @@ state.count++; // Triggers effects
 **Options:**
 ```typescript
 interface ReactiveOptions {
-  onSet?: (key: string, value: any, oldValue: any) => void;
-  onDelete?: (key: string) => void;
+  onSet?: (key: string | symbol, value: any, oldValue: any) => void;
+  onDelete?: (key: string | symbol) => void;
 }
 ```
 

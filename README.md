@@ -150,6 +150,10 @@ The framework exports the following modules from `./src/index.js`:
 |  | `Emitter` | Event emitter mixin |
 |  | `BackendError` | Backend error class |
 |  | `genUri`, `guid`, `timeout`, `diff`, `eq` | Utility functions |
+| **Types** | `Reactive<T>` | TypeScript type for reactive proxy |
+|  | `ReactiveOptions` | Options for reactive() function |
+|  | `ComponentInstance` | Component instance type |
+|  | `ModelValue` | RDF value type |
 
 **Not exported (declarative syntax only):**
 - `PropertyComponent` - Use `<span property="v-s:title"></span>`

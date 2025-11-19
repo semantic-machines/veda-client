@@ -7,6 +7,11 @@ export interface ReactiveOptions {
 }
 
 /**
+ * Reactive proxy type - object wrapped with reactive()
+ */
+export type Reactive<T> = T;
+
+/**
  * Creates a reactive proxy that tracks property access and triggers updates
  */
 export function reactive<T extends object>(target: T, options?: ReactiveOptions): T;

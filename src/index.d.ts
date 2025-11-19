@@ -4,7 +4,7 @@ export { default as Subscription } from './Subscription.js';
 export { default as Emitter } from './Emitter.js';
 export { default as Model } from './Model.js';
 export { default as Component, html, safe, raw, reactive, effect } from './components/Component.js';
-export { computed } from './Reactive.js';
+export { computed, Reactive } from './Reactive.js';
 export { flushEffects, trigger, untrack, pauseTracking, resumeTracking } from './Effect.js';
 export { default as Router } from './Router.js';
 
@@ -33,5 +33,6 @@ export type { ModelValue } from './Model.js';
 export type { ComponentInstance } from './components/Component.js';
 export type { LoopComponentInstance } from './components/LoopComponent.js';
 export type { IfComponentInstance } from './components/IfComponent.js';
+export type { Reactive, ReactiveOptions } from './Reactive.js';
 
 
