@@ -1,4 +1,5 @@
 export {default as Backend} from './Backend.js';
+export {default as BackendError} from './BackendError.js';
 export {default as Subscription} from './Subscription.js';
 export {default as Emitter} from './Emitter.js';
 export {default as Observable} from './Observable.js';

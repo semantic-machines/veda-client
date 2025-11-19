@@ -1,5 +1,12 @@
 export function genUri(): string;
 export function guid(): string;
+export function asyncDecorator(fn: Function, pre?: Function, post?: Function, err?: Function): Function;
+export function syncDecorator(fn: Function, pre?: Function, post?: Function, err?: Function): Function;
+export function decorator(fn: Function, pre?: Function, post?: Function, err?: Function): Function;
+export function timeout(ms: number): Promise<void>;
+export function diff(first: object, second: object): string[];
+export function eq(first: any, second: any): boolean;
+export function dashToCamel(str: string): string;
 
 export function asyncDecorator<T extends (...args: any[]) => Promise<any>>(
   fn: T,

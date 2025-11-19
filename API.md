@@ -16,6 +16,7 @@ Complete API documentation for Veda Client Framework.
 - [Backend](#backend)
 - [Subscription](#subscription)
 - [Router](#router)
+- [Utility Functions](#utility-functions)
 - [Value](#value)
 - [WeakCache](#weakcache)
 - [BackendError](#backenderror)
@@ -356,6 +357,86 @@ await flushEffects(); // Wait for effects to run
 - Testing
 - Manual timing control
 
+### `pauseTracking()`
+
+Temporarily pause dependency tracking.
+
+```javascript
+import { pauseTracking, resumeTracking } from './src/Effect.js';
+
+effect(() => {
+  const count = state.count; // Tracked
+
+  pauseTracking();
+  const other = state.other; // NOT tracked
+  resumeTracking();
+
+  console.log(count, other);
+});
+
+state.count++; // Effect runs
+state.other++; // Effect does NOT run
+```
+
+**Use cases:**
+- Reading state without creating dependencies
+- Performance optimization (skip tracking for known static values)
+- Debugging (isolate which dependencies trigger effects)
+
+### `resumeTracking()`
+
+Resume dependency tracking after `pauseTracking()`.
+
+```javascript
+pauseTracking();
+// ... code without tracking ...
+resumeTracking();
+```
+
+**Note:** Must be paired with `pauseTracking()`. Nested calls use reference counting.
+
+### `untrack(fn)`
+
+Execute function without tracking dependencies.
+
+```javascript
+import { untrack } from './src/Effect.js';
+
+effect(() => {
+  const tracked = state.count; // Tracked
+
+  const untracked = untrack(() => {
+    return state.other + state.more; // NOT tracked
+  });
+
+  console.log(tracked, untracked);
+});
+
+state.count++; // Effect runs
+state.other++; // Effect does NOT run
+```
+
+**Difference from pauseTracking:**
+- `untrack()` - scoped to callback function (recommended)
+- `pauseTracking()` - manual control (requires resumeTracking())
+
+**Use cases:**
+- Same as `pauseTracking()` but safer (automatic cleanup)
+- Preferred over manual pause/resume
+
+### `trigger(target, key)`
+
+Manually trigger effects for a property.
+
+```javascript
+import { trigger } from './src/Effect.js';
+
+// Rarely needed - mostly for internal use
+trigger(state, 'count'); // Force notify all effects tracking state.count
+```
+
+**Note:** Usually not needed as reactive system handles this automatically.
+
 ---
 
 ## Built-in Components
@@ -539,6 +620,62 @@ render() {
 // Renders: "Привет"
 ```
 
+**Shadow DOM Isolation:**
+
+```javascript
+// Use shadow attribute for style isolation
+<div property="v-s:userContent" shadow>
+  <template>
+    <style>
+      /* Scoped styles - won't leak out */
+      p { color: blue; font-size: 14px; }
+    </style>
+    <p><slot></slot></p>
+  </template>
+</div>
+```
+
+**Benefits of Shadow DOM:**
+- Styles contained within component
+- Prevents CSS conflicts
+- Encapsulation for untrusted content
+
+**Custom Template Examples:**
+
+```javascript
+// Email with mailto link
+<div property="v-s:email">
+  <template>
+    <a href="mailto:"><slot></slot></a>
+  </template>
+</div>
+// Renders: <a href="mailto:">user@example.com</a>
+
+// Phone with tel link
+<span property="v-s:phone">
+  <template>
+    <a href="tel:"><slot></slot></a>
+  </template>
+</span>
+// Renders: <a href="tel:">+1234567890</a>
+
+// URL with link
+<div property="v-s:website">
+  <template>
+    <a href="{this.model.v-s:website.0}" target="_blank">
+      <slot></slot>
+    </a>
+  </template>
+</div>
+
+// Formatted date
+<time property="v-s:created">
+  <template>
+    <span class="date"><slot></slot></span>
+  </template>
+</time>
+```
+
 **How it works:**
 - Inherits `model` from parent component automatically
 - Creates reactive effect to re-render on property changes
@@ -551,7 +688,7 @@ Renders related RDF resources (URI values) with automatic model loading and cust
 ```javascript
 // Declarative syntax (preferred)
 <ul rel="v-s:hasTodo">
-  <li>{this.model['v-s:title']}</li>
+  <li>{this.model.v-s:title.0}</li>
 </ul>
 
 // Programmatic usage (advanced)
@@ -576,7 +713,7 @@ class TodoList extends Component(HTMLElement) {
   render() {
     return html`
       <ul rel="v-s:hasTodo">
-        <li>{this.model['v-s:title']}</li>
+        <li>{this.model.v-s:title.0}</li>
       </ul>
     `;
   }
@@ -595,6 +732,64 @@ render() {
 }
 // Each person-card receives related Person model
 ```
+
+**Shadow DOM with Relation:**
+
+```javascript
+// Isolate styles for related items
+<ul rel="v-s:hasAttachment" shadow>
+  <template>
+    <style>
+      li {
+        border: 1px solid #ccc;
+        padding: 8px;
+        margin: 4px 0;
+      }
+      a { color: blue; text-decoration: none; }
+    </style>
+    <li>
+      <a href="{this.model.v-s:url.0}">
+        {this.model.v-s:fileName.0}
+      </a>
+    </li>
+  </template>
+</ul>
+
+// Complex example with styled cards
+<div rel="v-s:hasTeamMember" shadow>
+  <template>
+    <style>
+      .member-card {
+        display: flex;
+        align-items: center;
+        padding: 16px;
+        background: #f5f5f5;
+        border-radius: 8px;
+        margin: 8px 0;
+      }
+      .avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        margin-right: 12px;
+      }
+    </style>
+    <div class="member-card">
+      <img class="avatar" src="{this.model.v-s:avatar.0}" alt="Avatar" />
+      <div>
+        <h4>{this.model.v-s:name.0}</h4>
+        <p>{this.model.v-s:role.0}</p>
+      </div>
+    </div>
+  </template>
+</div>
+```
+
+**Benefits of Shadow DOM with Relation:**
+- Each related item has isolated styles
+- No CSS conflicts between items
+- Clean encapsulation of item presentation
+- Reusable styling patterns
 
 **Difference from Loop:**
 
@@ -745,6 +940,50 @@ const label = model.toLabel();
 
 // Custom: use v-s:title and English
 const title = model.toLabel('v-s:title', ['EN']);
+```
+
+#### `getPropertyChain(...props: string[]): Promise<value>`
+
+Traverse property chain through related models to get a value.
+
+```javascript
+// Get creator's name through chain:
+// model -> v-s:creator -> v-s:name
+const creatorName = await model.getPropertyChain('v-s:creator', 'v-s:name');
+
+// Get department head's email:
+// employee -> v-s:department -> v-s:head -> v-s:email
+const headEmail = await employee.getPropertyChain(
+  'v-s:department',
+  'v-s:head',
+  'v-s:email'
+);
+```
+
+**How it works:**
+1. Starts with current model
+2. For each property name:
+   - Gets property value
+   - If value is URI, loads that model
+   - Continues with next property on loaded model
+3. Returns final value
+
+**Use cases:**
+- Accessing nested related data
+- Traversing RDF graph paths
+- Avoiding manual model loading chains
+
+**Example - Manual vs Chain:**
+
+```javascript
+// ❌ Without getPropertyChain (manual)
+const creatorUri = task['v-s:creator'][0];
+const creator = new Model(creatorUri);
+await creator.load();
+const creatorName = creator['v-s:name'][0];
+
+// ✅ With getPropertyChain (automatic)
+const creatorName = await task.getPropertyChain('v-s:creator', 'v-s:name');
 ```
 
 ### Rights & Permissions
@@ -996,6 +1235,190 @@ router.add('#/section/:slug/:id', (slug, id) => {
   console.log(slug, id);
 });
 ```
+
+---
+
+## Utility Functions
+
+Helper functions for common tasks.
+
+### `genUri(): string`
+
+Generates unique URI for new models.
+
+```javascript
+import { genUri } from './src/Util.js';
+
+const uri = genUri();
+console.log(uri); // 'd:a1b2c3d4e5f6...'
+```
+
+**Use case:** Creating new model instances with unique IDs.
+
+### `guid(): string`
+
+Generates globally unique identifier (26 characters, base36).
+
+```javascript
+import { guid } from './src/Util.js';
+
+const id = guid();
+console.log(id); // 'a1b2c3d4e5f6g7h8i9j0k1l2m3'
+```
+
+**Note:** Uses timestamp + performance.now() for better uniqueness.
+
+### `timeout(ms: number): Promise<void>`
+
+Promise-based setTimeout wrapper for async/await code.
+
+```javascript
+import { timeout } from './src/Util.js';
+
+async function delayedAction() {
+  console.log('Starting...');
+  await timeout(1000); // Wait 1 second
+  console.log('Done!');
+}
+```
+
+**Use case:** Delays in async functions, animations, rate limiting.
+
+### `diff(first: object, second: object): string[]`
+
+Returns array of property names that differ between two objects.
+
+```javascript
+import { diff } from './src/Util.js';
+
+const obj1 = { a: 1, b: 2, c: 3 };
+const obj2 = { a: 1, b: 999, d: 4 };
+
+const changes = diff(obj1, obj2);
+console.log(changes); // ['b', 'c', 'd']
+```
+
+**Features:**
+- Deep comparison (uses `eq()` internally)
+- Detects added, removed, and modified properties
+- Works with nested objects
+
+**Use case:** Change detection, model diffing before save.
+
+### `eq(first: any, second: any): boolean`
+
+Deep equality comparison for any values.
+
+```javascript
+import { eq } from './src/Util.js';
+
+// Primitives
+eq(42, 42);           // true
+eq('hello', 'world'); // false
+
+// Objects (deep comparison)
+eq({ a: 1, b: { c: 2 } }, { a: 1, b: { c: 2 } }); // true
+eq({ a: 1 }, { a: 2 });                            // false
+
+// Arrays
+eq([1, 2, 3], [1, 2, 3]); // true
+```
+
+**Note:** Compares object properties recursively, not references.
+
+### `dashToCamel(str: string): string`
+
+Converts dash-case to camelCase.
+
+```javascript
+import { dashToCamel } from './src/Util.js';
+
+dashToCamel('my-component-name');  // 'myComponentName'
+dashToCamel('data-attr');          // 'dataAttr'
+dashToCamel('already-camel');      // 'alreadyCamel'
+```
+
+**Use case:** Converting HTML attribute names to JavaScript property names.
+
+### `decorator(fn, pre?, post?, err?)`
+
+Universal function decorator (auto-detects async/sync).
+
+```javascript
+import { decorator } from './src/Util.js';
+
+const myFunction = decorator(
+  function action(x) {
+    return x * 2;
+  },
+  function pre(x) {
+    console.log('Before:', x);
+  },
+  function post(x) {
+    console.log('After:', x);
+  },
+  function err(error) {
+    console.error('Error:', error);
+  }
+);
+
+myFunction(5);
+// Logs: "Before: 5"
+// Returns: 10
+// Logs: "After: 5"
+```
+
+**Parameters:**
+- `fn` - Function to decorate
+- `pre` - Called before fn (optional)
+- `post` - Called after fn (optional)
+- `err` - Error handler (optional)
+
+**Note:** Automatically uses `asyncDecorator` or `syncDecorator` based on function type.
+
+### `asyncDecorator(fn, pre?, post?, err?)`
+
+Decorator for async functions with lifecycle hooks.
+
+```javascript
+import { asyncDecorator } from './src/Util.js';
+
+const saveWithHooks = asyncDecorator(
+  async function save(data) {
+    return await backend.save(data);
+  },
+  async function beforeSave(data) {
+    this.emit('beforeSave', data);
+  },
+  async function afterSave(data) {
+    this.emit('afterSave', data);
+  },
+  async function onError(error) {
+    console.error('Save failed:', error);
+  }
+);
+```
+
+**Use case:** Adding lifecycle hooks to Model methods (used internally).
+
+### `syncDecorator(fn, pre?, post?, err?)`
+
+Decorator for synchronous functions with lifecycle hooks.
+
+```javascript
+import { syncDecorator } from './src/Util.js';
+
+const validatedGetter = syncDecorator(
+  function getValue(key) {
+    return this.data[key];
+  },
+  function validate(key) {
+    if (!key) throw new Error('Key required');
+  }
+);
+```
+
+**Use case:** Adding validation, logging, or side effects to synchronous operations.
 
 ---
 

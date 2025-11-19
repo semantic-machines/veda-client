@@ -190,6 +190,8 @@ Test coverage:
 - **>99%** with integration tests (requires backend: `pnpm c8`)
 - **>90%** unit tests only (`pnpm c8:unit`)
 
+**[See test/README.md for detailed testing guide](./test/README.md)**
+
 ## TypeScript
 
 Full TypeScript definitions included:
@@ -222,7 +224,7 @@ Contributions are welcome! Please:
 4. Ensure all tests pass (`pnpm test`)
 5. Submit a pull request
 
-See [test/README.md](./test/README.md) for testing guidelines.
+**Testing guidelines:** See [test/README.md](./test/README.md) for test structure, best practices, and writing tests.
 
 ## License
 

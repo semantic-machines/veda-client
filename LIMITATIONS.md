@@ -82,7 +82,7 @@ Known limitations and when to use alternatives.
 // ✅ Supported
 {this.user.name}
 {this.items.0.title}
-{this.model['v-s:title']}
+{this.model.v-s:title.0}
 
 // ❌ Not supported
 {this.count + 1}

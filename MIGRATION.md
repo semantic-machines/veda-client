@@ -200,7 +200,7 @@ get incrementedCount() {
 ```javascript
 // Template wrapper optional (backward compatible)
 <div rel="v-s:hasTodo">
-  <li>{this.model['v-s:title']}</li>
+  <li>{this.model.v-s:title.0}</li>
 </div>
 
 // Or use with custom components
@@ -219,7 +219,7 @@ get incrementedCount() {
 ```javascript
 // ✅ Use Relation for RDF relations (auto-loads models)
 <ul rel="v-s:hasTodo">
-  <li>{this.model['v-s:title']}</li>
+  <li>{this.model.v-s:title.0}</li>
 </ul>
 
 // ✅ Use Loop for generic arrays (manual control)

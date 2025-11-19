@@ -48,6 +48,17 @@ export default class Counter extends Component(HTMLElement) {
 - Event handlers use `{methodName}` syntax
 - Only the specific text node or attribute updates (minimal DOM changes)
 
+**Expression syntax:**
+- ✅ Supports: dot notation with optional chaining
+  - `{this.state.count}`
+  - `{this.model.v-s:title.0}`
+  - `{this.user?.name}`
+- ❌ Does NOT support: bracket notation, operators, function calls
+  - `{this.model['v-s:title']}` - ❌ Wrong
+  - `{this.count + 1}` - ❌ Wrong
+  - `{this.format(date)}` - ❌ Wrong
+- 💡 For complex logic: use computed properties (getters)
+
 ## Basic Usage
 
 ### Reactive State

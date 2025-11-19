@@ -15,7 +15,7 @@ import { ComponentInstance, ComponentConstructor } from './Component.js';
 export interface LoopComponentInstance extends ComponentInstance {
   /**
    * Expression to get array of items
-   * @example "{this.todos}" or "{this.model['v-s:hasTodo']}"
+   * @example "{this.todos}" or "{this.model.v-s:hasTodo}"
    */
   items?: string;
   
