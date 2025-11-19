@@ -6,41 +6,54 @@ Common questions and solutions for Veda Client Framework.
 
 ## Common Issues
 
-### Q1: Why isn't my array updating?
+### Q1: Why isn't my array updating in the UI?
 
 **Problem:**
 ```javascript
-this.state.items[0] = newValue;  // Not reactive!
+this.effect(() => {
+  console.log(this.state.items.length); // Only tracking length
+});
+
+this.state.items[0] = newValue;  // Won't trigger the effect!
 ```
 
 **Solution:**
 
-Array index assignment is **not reactive** by design (performance optimization).
+Array index assignment **IS reactive**, but only when the effect tracks that specific index or property:
 
-**Use array mutation methods:**
 ```javascript
-// ✅ Reactive - use splice
+// ✅ Reactive - effect tracks the specific index
+this.effect(() => {
+  console.log(this.state.items[0]); // Tracks index 0
+});
+this.state.items[0] = newValue; // Will trigger!
+
+// ✅ Reactive - effect tracks the whole array
+this.effect(() => {
+  this.state.items.forEach(item => console.log(item)); // Tracks all indices
+});
+this.state.items[0] = newValue; // Will trigger!
+
+// ❌ NOT reactive - effect only tracks length
+this.effect(() => {
+  console.log(this.state.items.length); // Only tracks length property
+});
+this.state.items[0] = newValue; // Won't trigger!
+```
+
+**This is fine-grained reactivity** - effects only re-run when dependencies they actually read change.
+
+**If you need to track array changes without reading specific indices:**
+```javascript
+// Use array mutation methods (they trigger all tracking)
 this.state.items.splice(0, 1, newValue);
-
-// ✅ Reactive - push/pop/shift/unshift
 this.state.items.push(newItem);
-this.state.items.pop();
-```
 
-**Or reassign the array:**
-```javascript
-// ✅ Reactive - create new array reference
+// Or reassign the array
 this.state.items = [...this.state.items];
-this.state.items[0] = newValue;
-this.state.items = this.state.items.slice();
 ```
 
-**Why this limitation?**
-- Deliberate design decision to optimize for array method performance
-- Intercepting numeric keys has performance implications
-- Array mutation methods (push, splice, etc.) ARE tracked
-
-**See:** [LIMITATIONS.md section 4](./LIMITATIONS.md#4-array-index-assignment-not-reactive) for technical details.
+**Key insight:** Track what you need to react to!
 
 ---
 
@@ -114,14 +127,18 @@ this.state.count = 5;
 this.state = { count: 5 };  // Breaks reactivity!
 ```
 
-**3. For arrays, are you using mutation methods?**
+**3. For arrays, is the template tracking what changes?**
 ```javascript
-// ✅ Correct
-this.state.items.push(newItem);
-this.state.items = [...this.state.items, newItem];
+// ✅ Correct - template reads the index that changes
+<div>{this.state.items[0]}</div>
+<!-- Will update when items[0] changes -->
 
-// ❌ Wrong
-this.state.items[0] = newItem;  // Not reactive!
+// ✅ Correct - loop reads all items
+<${Loop} items="{this.state.items}" item-key="id">
+
+// ⚠️ If template doesn't read items, changes won't show
+<div>{this.state.items.length} items</div>
+<!-- Won't update when items[0] changes, only when length changes -->
 ```
 
 **4. Are expressions in template correct?**

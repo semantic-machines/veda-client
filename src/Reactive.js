@@ -88,18 +88,21 @@ export function reactive(target, options = {}) {
       return true; // Return true to avoid TypeError in strict mode
     }
 
-    // Note: Array index assignment (arr[0] = x) will pass through this trap,
-    // but we intentionally DON'T special-case numeric keys for reactivity.
-    // This is a documented limitation - use splice() or array reassignment instead.
-    // Rationale: Intercepting numeric keys has performance implications and
-    // adds complexity. Array mutation methods (push, pop, etc.) ARE tracked.
-    // See LIMITATIONS.md section 4 for details and workarounds.
-
     const oldValue = target[key];
+    const oldLength = Array.isArray(target) ? target.length : undefined;
+    
     const result = Reflect.set(target, key, value, receiver);
 
     if (oldValue !== value) {
       trigger(target, key);
+
+      // For arrays: if index assignment changed length, trigger length too
+      if (Array.isArray(target) && oldLength !== undefined) {
+        const newLength = target.length;
+        if (oldLength !== newLength) {
+          trigger(target, 'length');
+        }
+      }
 
       if (options.onSet && typeof key !== 'symbol') {
         options.onSet.call(proxy, key, value, oldValue);

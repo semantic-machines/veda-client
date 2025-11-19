@@ -403,25 +403,26 @@ get getActiveCount() { ... } // Don't prefix with 'get'
 
 ### Array Mutations
 
-**Always create new array references** for reactivity:
+**Understand fine-grained reactivity:**
 
 ```javascript
-// ❌ Bad - direct mutation not reactive (index assignment)
-this.state.items[0] = newValue;
+// ✅ Good - effect tracks the index that changes
+effect(() => {
+  console.log(this.state.items[0]); // Tracks index 0
+});
+this.state.items[0] = newValue; // Triggers!
 
-// ✅ Good - use splice
-this.state.items.splice(0, 1, newValue);
-
-// ✅ Good - or reassign
-this.state.items = [...this.state.items];
-this.state.items[0] = newValue;
-this.state.items = this.state.items.slice();
+// ⚠️ Understand what you're tracking
+effect(() => {
+  console.log(this.state.items.length); // Only tracks length
+});
+this.state.items[0] = newValue; // Won't trigger (length unchanged)
 ```
 
-**Use mutation methods** when possible (they are tracked):
+**Use mutation methods** for global changes (they trigger all effects):
 
 ```javascript
-// ✅ Good - tracked mutations
+// ✅ Good - tracked mutations trigger all effects
 this.state.items.push(newItem);
 this.state.items.pop();
 this.state.items.shift();

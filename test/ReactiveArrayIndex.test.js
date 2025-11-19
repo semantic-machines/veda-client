@@ -2,103 +2,145 @@ import {reactive} from '../src/Reactive.js';
 import {effect, flushEffects} from '../src/Effect.js';
 
 /**
- * Tests for documented limitation: Array index assignment is NOT reactive
- * See LIMITATIONS.md for details
+ * Tests for array index reactivity
+ * Array index assignment IS reactive when the effect reads that specific index
  */
 export default ({test, assert}) => {
-  test('Reactive - array index assignment is NOT reactive (documented limitation)', async () => {
+  test('Reactive - array index assignment IS reactive when tracked', async () => {
     const obj = reactive({ items: [1, 2, 3] });
     let triggered = 0;
 
     effect(() => {
-      obj.items.length; // Track array
+      obj.items[0]; // Track specific index
       triggered++;
     });
 
     await flushEffects();
     assert(triggered === 1, 'Initial effect run');
 
-    // ❌ This is documented as NOT reactive
+    // ✅ This IS reactive when index is tracked
     obj.items[0] = 99;
     await flushEffects();
-    assert(triggered === 1, 'Index assignment should NOT trigger effect');
-    assert(obj.items[0] === 99, 'Value is changed, but no reactivity');
+    assert(triggered === 2, 'Index assignment should trigger effect when tracked');
+    assert(obj.items[0] === 99, 'Value is changed');
 
-    // ✅ This IS reactive - mutation methods
-    obj.items.splice(0, 1, 100);
+    // ✅ Multiple indices can be tracked independently
+    obj.items[1] = 50;
     await flushEffects();
-    assert(triggered === 2, 'splice() should trigger effect');
+    assert(triggered === 2, 'Changing untracked index should NOT trigger');
 
-    // ✅ Reassignment IS reactive
-    obj.items = [...obj.items];
-    obj.items[0] = 200;
-    obj.items = obj.items.slice();
+    obj.items[0] = 100;
     await flushEffects();
-    assert(triggered === 3, 'Array reassignment should trigger effect');
+    assert(triggered === 3, 'Changing tracked index should trigger');
   });
 
-  test('Reactive - sparse array with index assignment (edge case)', async () => {
-    const obj = reactive({ items: [] });
+  test('Reactive - tracking length does NOT react to index changes', async () => {
+    const obj = reactive({ items: [1, 2, 3] });
     let triggered = 0;
 
     effect(() => {
-      obj.items.length; // Track length
+      obj.items.length; // Only track length
       triggered++;
     });
 
     await flushEffects();
     assert(triggered === 1);
+
+    // Length doesn't change, so no trigger
+    obj.items[0] = 99;
+    await flushEffects();
+    assert(triggered === 1, 'Length unchanged, should NOT trigger');
+    assert(obj.items[0] === 99, 'Value is changed');
+
+    // But push changes length, so it triggers
+    obj.items.push(4);
+    await flushEffects();
+    assert(triggered === 2, 'push() changes length, should trigger');
+  });
+
+  test('Reactive - sparse array with index assignment', async () => {
+    const obj = reactive({ items: [] });
+    let lengthTriggers = 0;
+    let indexTriggers = 0;
+
+    effect(() => {
+      obj.items.length;
+      lengthTriggers++;
+    });
+
+    effect(() => {
+      obj.items[999];
+      indexTriggers++;
+    });
+
+    await flushEffects();
+    assert(lengthTriggers === 1);
+    assert(indexTriggers === 1);
 
     // Direct index assignment far beyond current length
     obj.items[999] = 'value';
     await flushEffects();
-    assert(triggered === 1, 'Sparse array index assignment should NOT trigger');
+    assert(indexTriggers === 2, 'Index 999 should trigger its effect');
+    assert(lengthTriggers === 2, 'Length changed from 0 to 1000, should trigger');
     assert(obj.items[999] === 'value', 'Value is set');
     assert(obj.items.length === 1000, 'Array length updated');
+  });
 
-    // But length change via push WILL trigger
-    obj.items.push('another');
+  test('Reactive - multiple indices tracked independently', async () => {
+    const obj = reactive({ items: [1, 2, 3] });
+    let trigger0 = 0;
+    let trigger1 = 0;
+
+    effect(() => {
+      obj.items[0];
+      trigger0++;
+    });
+
+    effect(() => {
+      obj.items[1];
+      trigger1++;
+    });
+
+    await flushEffects();
+    assert(trigger0 === 1);
+    assert(trigger1 === 1);
+
+    // Change index 0
+    obj.items[0] = 99;
+    await flushEffects();
+    assert(trigger0 === 2, 'Effect tracking index 0 should trigger');
+    assert(trigger1 === 1, 'Effect tracking index 1 should NOT trigger');
+
+    // Change index 1
+    obj.items[1] = 88;
+    await flushEffects();
+    assert(trigger0 === 2, 'Effect tracking index 0 should NOT trigger');
+    assert(trigger1 === 2, 'Effect tracking index 1 should trigger');
+  });
+
+  test('Reactive - array methods still work and trigger all effects', async () => {
+    const obj = reactive({ items: [1, 2, 3] });
+    let triggered = 0;
+
+    effect(() => {
+      obj.items[0];
+      obj.items.length;
+      triggered++;
+    });
+
+    await flushEffects();
+    assert(triggered === 1);
+
+    // Array methods trigger all tracked properties
+    obj.items.push(4);
     await flushEffects();
     assert(triggered === 2, 'push() should trigger');
-  });
+    assert(obj.items.length === 4);
 
-  test('Reactive - workaround 1: use splice for index assignment', async () => {
-    const obj = reactive({ items: [1, 2, 3] });
-    let triggered = 0;
-
-    effect(() => {
-      obj.items.length; // Track array
-      triggered++;
-    });
-
+    obj.items.splice(0, 1, 99);
     await flushEffects();
-    assert(triggered === 1);
-
-    // ✅ splice works
-    obj.items.splice(1, 1, 99); // Replace index 1
-    await flushEffects();
-    assert(triggered === 2, 'splice should trigger');
-    assert(obj.items[1] === 99, 'Value updated');
-  });
-
-  test('Reactive - workaround 2: reassign array after modification', async () => {
-    const obj = reactive({ items: [1, 2, 3] });
-    let triggered = 0;
-
-    effect(() => {
-      obj.items.length; // Track array
-      triggered++;
-    });
-
-    await flushEffects();
-    assert(triggered === 1);
-
-    // ✅ Reassign after modification
-    obj.items[0] = 99;
-    obj.items = obj.items.slice(); // Force new reference
-    await flushEffects();
-    assert(triggered === 2, 'Reassignment should trigger');
-    assert(obj.items[0] === 99, 'Value updated');
+    assert(triggered === 3, 'splice() should trigger');
+    assert(obj.items[0] === 99);
   });
 };
 

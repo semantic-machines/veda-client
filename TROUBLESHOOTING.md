@@ -32,22 +32,27 @@ constructor() {
 }
 ```
 
-2. **Array index assignment not reactive**
+2. **Effect not tracking array changes**
 
 ```javascript
-// ❌ Index assignment won't trigger update
-this.state.items[0] = newValue;
+// ❌ Effect only tracks length - won't react to index changes
+effect(() => {
+  console.log(this.state.items.length); // Only tracks length
+});
+this.state.items[0] = newValue; // Won't trigger (length unchanged)
 
-// ✅ Use array mutation methods (these ARE reactive)
-this.state.items.splice(0, 1, newValue);  // Triggers update
-this.state.items.push(newValue);          // Triggers update
-this.state.items.pop();                   // Triggers update
+// ✅ Effect tracks the index - will react
+effect(() => {
+  console.log(this.state.items[0]); // Tracks index 0
+});
+this.state.items[0] = newValue; // Triggers!
 
-// ✅ Or reassign array
-this.state.items = [...this.state.items];
+// ✅ Array methods trigger all effects
+this.state.items.push(newValue);  // Triggers all tracking
+this.state.items.splice(0, 1, v); // Triggers all tracking
 ```
 
-**Note:** Array mutation methods (`push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse`) are fully reactive. Only direct index assignment (`arr[0] = x`) is not tracked.
+**Note:** This is fine-grained reactivity - effects only re-run when properties they **actually read** change.
 
 3. **Watch not triggering on array/object changes**
 

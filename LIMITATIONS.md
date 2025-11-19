@@ -143,39 +143,7 @@ get incrementedCount() {
 
 **Status:** By design (security and simplicity)
 
-### 4. Array Index Assignment Not Reactive
-
-**Issue:**
-```javascript
-const state = reactive({ items: [1, 2, 3] });
-
-// ❌ NOT reactive
-state.items[0] = 99;
-
-// ✅ Reactive
-state.items.splice(0, 1, 99);
-state.items = [...state.items]; // Or reassign
-```
-
-**Workaround:** Use array mutation methods or reassignment
-
-**Why:** Intercepting numeric keys has performance implications and adds complexity. This is a **deliberate design decision** to optimize for array method performance, not a technical limitation.
-
-**Technical Details:**
-- While Proxy CAN intercept index assignment (`arr[0] = x`), we choose not to track it
-- Array mutation methods (`push`, `pop`, `splice`, etc.) ARE tracked and reactive
-- This avoids performance overhead for array-heavy applications
-
-**Comparison with other frameworks:**
-- **Vue 3:** Tracks index assignment via Proxy (different performance trade-off)
-- **Solid.js:** Uses fine-grained signals (different approach entirely)
-- **Veda:** Optimizes for mutation method performance
-
-**Tests:** See `test/ReactiveArrayIndex.test.js` for comprehensive tests and workarounds
-
-**Status:** Documented limitation (intentional design choice)
-
-### 5. Watch Uses Reference Equality
+### 4. Watch Uses Reference Equality
 
 **Issue:**
 ```javascript
@@ -202,7 +170,7 @@ this.watch(() => state.items.length, callback);
 
 **Status:** By design (performance and predictability)
 
-### 6. Component Tree Depth Limits
+### 5. Component Tree Depth Limits
 
 **Issue:** Component method search and parent context search have hard-coded depth limits.
 

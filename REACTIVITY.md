@@ -120,27 +120,38 @@ state.items.reverse();      // Reverse in place
 state.items = [5, 6, 7];
 ```
 
-### ⚠️ Important: Array Index Assignment
+### Fine-Grained Array Reactivity
 
-Direct array index assignment is **NOT reactive**:
+Array index assignment **IS reactive** when effects track specific indices:
 
 ```javascript
 const state = reactive({ items: [1, 2, 3] });
 
-// ❌ NOT reactive - won't trigger effects
-state.items[0] = 99;
+// ✅ Effect tracks items[0] - will react to index 0 changes
+effect(() => {
+  console.log('First item:', state.items[0]);
+});
 
-// ✅ Reactive - use splice
-state.items.splice(0, 1, 99);
+state.items[0] = 99; // ✅ Triggers the effect!
 
-// ✅ Reactive - or reassign array
-state.items = [...state.items];
-state.items[0] = 99;
-state.items = state.items.slice();
+// ❌ Effect only tracks length - won't react to index changes
+effect(() => {
+  console.log('Length:', state.items.length);
+});
+
+state.items[0] = 88; // ❌ Won't trigger (length unchanged)
+state.items.push(4);  // ✅ Triggers (length changed)
 ```
 
-**Why:** This is a deliberate design decision to optimize for array method performance.
-**See:** [LIMITATIONS.md section 4](./LIMITATIONS.md#4-array-index-assignment-not-reactive) for technical details.
+**This is fine-grained reactivity** - effects only re-run when properties they actually read change.
+
+**Array methods trigger all tracking:**
+```javascript
+// These methods trigger all effects tracking the array
+state.items.push(4);      // Modifies multiple properties
+state.items.splice(0, 1); // Modifies indices and length
+state.items.sort();       // Modifies all indices
+```
 
 ### Reactive Components
 

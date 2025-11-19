@@ -532,9 +532,11 @@ state.prototype = maliciousProto;      // Silently ignored + warning
 Prevents prototype pollution attacks where malicious code could modify Object.prototype and affect all objects in your application.
 
 **Limitations:**
-- **Array index assignment not reactive:** Direct index assignment (`arr[0] = x`) is not tracked due to performance considerations. While technically possible via Proxy, this design decision avoids overhead for array-heavy applications. Use array mutation methods instead: `arr.splice(0, 1, x)` or reassign the array: `arr = [...arr]`
 - New properties need explicit wrapping
 - Date, RegExp, Promise not wrapped
+
+**Note on array reactivity:**
+Array index assignment IS reactive when effects track specific indices. This is fine-grained reactivity - effects only re-run when they access properties that change. See [REACTIVITY.md](./REACTIVITY.md#fine-grained-array-reactivity) for details.
 
 ### `computed<T>(getter: () => T)`
 
@@ -850,38 +852,53 @@ effect(() => {
 - Subsequent access returns the same proxy
 - No memory leaks (WeakMap allows garbage collection)
 
-### Array Index Assignment
+### Fine-Grained Array Reactivity
 
-**⚠️ Important limitation:** Direct index assignment is NOT reactive:
+Array index assignment **IS reactive** with fine-grained tracking:
 
 ```javascript
 const state = reactive({ items: [1, 2, 3] });
 
-// ❌ NOT reactive - won't trigger effects
-state.items[0] = 99;
+// ✅ Effect tracks items[0] - will react to changes
+effect(() => {
+  console.log('First:', state.items[0]);
+});
 
-// ✅ Reactive - use splice
-state.items.splice(0, 1, 99);
+state.items[0] = 99; // ✅ Triggers effect!
 
-// ✅ Reactive - reassign array
-state.items = [...state.items];
-state.items[0] = 99;
-state.items = state.items.slice(); // Force new reference
+// ✅ Effect tracks specific indices independently
+effect(() => {
+  console.log('Second:', state.items[1]);
+});
+
+state.items[0] = 88; // ✅ Triggers first effect only
+state.items[1] = 77; // ✅ Triggers second effect only
 ```
 
-**Why this limitation exists:**
+**Key insight:** Effects only re-run when properties they **actually read** change.
 
-While Proxy can technically intercept index assignment (`arr[0] = x`), Veda chooses not to track it for performance reasons:
-- Array index access is extremely frequent in JavaScript
-- Intercepting every index read/write adds overhead
-- Most array operations use methods (`push`, `splice`) which ARE tracked
+```javascript
+// Effect only tracks length
+effect(() => {
+  console.log('Length:', state.items.length);
+});
 
-This is a **deliberate design decision**, not a technical limitation. If you need index assignment, use `splice()` or reassign the array.
+state.items[0] = 99; // ❌ Won't trigger (length unchanged)
+state.items.push(4);  // ✅ Triggers (length changed)
+```
+
+**Array methods trigger all tracking:**
+```javascript
+// These methods modify multiple properties and trigger all effects
+state.items.push(4);      // Modifies length and new index
+state.items.splice(0, 1); // Modifies indices and length
+state.items.sort();       // Modifies all indices
+```
 
 **Comparison with other frameworks:**
-- Vue 3: Also uses Proxy but tracks index assignment (different performance trade-off)
-- Solid.js: Uses fine-grained signals (different approach)
-- Veda: Optimizes for array method performance
+- Vue 3: Also uses Proxy with index tracking
+- Solid.js: Uses fine-grained signals (similar approach)
+- Veda: Proxy-based fine-grained reactivity
 
 ### Dynamic item-key in Loop
 
@@ -1156,7 +1173,7 @@ import { Loop } from 'veda-client';
 1. **Loop not updating:**
 
 ```javascript
-// ✅ CORRECT - Array mutation methods work automatically
+// ✅ CORRECT - Array mutation methods trigger all effects
 this.state.items.push(newItem);        // Works!
 this.state.items.splice(0, 1, newItem); // Works!
 this.state.items.sort();                // Works!
@@ -1164,11 +1181,11 @@ this.state.items.sort();                // Works!
 // ✅ CORRECT - Reference change also works
 this.state.items = [...this.state.items, newItem];
 
-// ❌ WRONG - Direct index assignment (not reactive)
-this.state.items[0] = updatedItem; // Won't trigger Loop!
+// ✅ CORRECT - Index assignment works if Loop tracks it
+this.state.items[0] = updatedItem; // Works! Loop iterates all items
 
-// ✅ CORRECT - Use splice for index assignment
-this.state.items.splice(0, 1, updatedItem);
+// ⚠️ Note: Loop tracks all items it renders
+// If you need finer control, use effects with specific indices
 ```
 
 **Note:** If Loop still doesn't update, check that:
