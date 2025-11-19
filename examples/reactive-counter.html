@@ -47,7 +47,7 @@
   </div>
 
   <script type="module">
-    import { Component, html, reactive } from '../dist/index.js';
+    import Component, { html } from '../dist/index.js';
 
     class ReactiveCounter extends Component(HTMLElement) {
       static tag = 'reactive-counter';
@@ -55,7 +55,7 @@
       constructor() {
         super();
         // Reactive state
-        this.state = reactive({
+        this.state = this.reactive({
           count: 0
         });
       }

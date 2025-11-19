@@ -256,13 +256,19 @@ newItems.forEach((item, index) => {
 
 **Complexity Analysis:**
 
-| Operation | Complexity | Notes |
-|-----------|-----------|-------|
-| Add items | O(n) | Create n new elements |
-| Remove items | O(m) | Remove m old elements |
-| Update items | O(n) | Update n changed items |
-| Reorder items | O(n²) | Naive sequential insertion |
-| Total | O(n²) | Dominated by reordering |
+| Operation | Complexity | Measured (500 items) | Notes |
+|-----------|-----------|---------------------|-------|
+| Add items | O(n) | ~9ms | Create n new elements |
+| Remove items | O(m) | ~8ms | Remove m old elements |
+| Update items | O(n) | ~7ms | Update n changed items |
+| Reorder items | O(n²) | ~17ms | Naive sequential insertion |
+| Total | O(n²) | ~17ms | Dominated by reordering |
+
+**Benchmark Results:**
+- 100 items reorder: 2.31ms
+- 500 items reorder: 17.24ms
+- 1000 items reorder: 53.62ms
+- Scaling factor: ~0.05ms per item² (quadratic)
 
 **Why O(n²) for reordering:**
 
@@ -373,13 +379,17 @@ state.c = 3;  // Queued
 
 ## Performance Characteristics
 
-| Operation | Complexity | Notes |
-|-----------|-----------|-------|
-| Property access | O(1) | Proxy overhead ~10% |
-| Effect trigger | O(n) | n = dependent effects |
-| Loop add/remove | O(n) | n = items |
-| Loop reorder | O(n²) | Naive algorithm |
-| Computed access | O(1) | When cached |
+| Operation | Complexity | Measured | Notes |
+|-----------|-----------|----------|-------|
+| Property access | O(1) | 0.16μs | Proxy overhead ~10% |
+| Effect trigger | O(n) | 1.1ms/1000 | n = dependent effects |
+| Loop add/remove | O(n) | 8-9ms/500 | n = items |
+| Loop reorder | O(n²) | 17ms/500 | Naive algorithm |
+| Computed access | O(1) | <0.001ms | When cached |
+| Component create | O(1) | 0.27ms | Per component |
+| Component update | O(1) | 0.001ms | Per update |
+
+**Benchmark source:** `test/benchmarks/LoopPerformance.test.js` and `test/benchmarks/Performance.test.js`
 
 ## Comparison with Other Frameworks
 

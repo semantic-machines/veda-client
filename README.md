@@ -104,6 +104,7 @@ class TodoList extends Component(HTMLElement) {
 - **[API Reference](./API.md)** - Complete API documentation
 - **[Architecture Guide](./ARCHITECTURE.md)** - Framework internals and design decisions
 - **[Reactivity Guide](./REACTIVITY.md)** - Comprehensive reactivity tutorial
+- **[Performance Benchmarks](./BENCHMARKS.md)** - Measured performance metrics
 - **[Style Guide](./STYLE_GUIDE.md)** - Best practices and coding patterns
 - **[Changelog](./CHANGELOG.md)** - Version history and breaking changes
 - **[Migration Guide](./MIGRATION.md)** - Upgrading from previous versions
