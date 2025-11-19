@@ -11,6 +11,7 @@ Complete API documentation for Veda Client Framework.
   - [If](#if)
   - [Property](#property)
   - [Relation](#relation)
+- [Advanced Components](#advanced-components)
 - [Model](#model)
 - [Backend](#backend)
 - [Router](#router)
@@ -617,6 +618,26 @@ render() {
 
 ---
 
+## Advanced Components
+
+The framework supports powerful declarative syntax using `property` and `rel` attributes on ANY HTML element. This works through an automatic component upgrade mechanism.
+
+### The "Magic" Mechanism
+
+When you write:
+```html
+<div property="v-s:title"></div>
+```
+
+The framework automatically upgrades this `<div>` into a reactive `PropertyComponent`.
+
+1. **Detection:** The framework scans for elements with `property` or `rel` attributes.
+2. **Registration:** It dynamically registers a new Custom Element (e.g., `div-property-component`).
+3. **Upgrade:** The element is upgraded to use the special component class (extends `PropertyComponent`).
+4. **Reactivity:** The component automatically subscribes to the model's property and re-renders on changes.
+
+---
+
 ## Model
 
 Represents semantic web resource with RDF properties.
@@ -642,26 +663,16 @@ model.id = 'd:NewModel';
 model['rdf:type'] = [new Model('v-s:Person')];
 ```
 
-### Static Methods
-
-#### `Model.load(uri: string | string[]): Promise<Model | Model[]>`
-
-Load model(s) by URI.
-
-```javascript
-const model = await Model.load('d:Person1');
-const models = await Model.load(['d:Person1', 'd:Person2']);
-```
-
 ### Instance Methods
 
-#### `load(): Promise<Model>`
+#### `load(cache?: boolean): Promise<Model>`
 
 Load model data from backend.
 
 ```javascript
 const model = new Model('d:Person1');
-await model.load();
+await model.load(); // Uses cache by default
+await model.load(false); // Force reload
 ```
 
 #### `save(): Promise<Model>`
@@ -673,12 +684,20 @@ model['v-s:title'] = [{ data: 'New Title', type: 'String' }];
 await model.save();
 ```
 
-#### `remove(): Promise<void>`
+#### `remove(): Promise<Model>`
 
-Remove model from backend.
+Remove model from backend (sets `isNew` to true).
 
 ```javascript
 await model.remove();
+```
+
+#### `reset(): Promise<Model>`
+
+Reload model data from backend, bypassing cache.
+
+```javascript
+await model.reset();
 ```
 
 #### `hasValue(property: string, value?: any): boolean`
@@ -697,7 +716,7 @@ if (model.hasValue('v-s:title', 'Specific Title')) {
 
 #### `addValue(property: string, value: any): void`
 
-Add value to property.
+Add value to property (appends to array).
 
 ```javascript
 model.addValue('v-s:tag', 'important');
@@ -712,6 +731,40 @@ Remove value from property.
 ```javascript
 model.removeValue('v-s:tag', 'urgent');
 ```
+
+#### `toLabel(prop?: string, lang?: string[]): string`
+
+Get the display label for the object, respecting language preferences.
+
+```javascript
+// Default: uses rdfs:label and RU language
+const label = model.toLabel();
+
+// Custom: use v-s:title and English
+const title = model.toLabel('v-s:title', ['EN']);
+```
+
+### Rights & Permissions
+
+#### `canCreate(): Promise<boolean>`
+Check if current user can create this type of object. Useful when called with a class individual (object of type rdfs:Class or owl:Class).
+
+#### `canRead(): Promise<boolean>`
+Check if current user can read this object.
+
+#### `canUpdate(): Promise<boolean>`
+Check if current user can update this object.
+
+#### `canDelete(): Promise<boolean>`
+Check if current user can delete this object.
+
+### Membership
+
+#### `loadMemberships(): Promise<Model>`
+Load groups/organizations this object belongs to.
+
+#### `isMemberOf(uri: string): Promise<boolean>`
+Check if object is a member of a specific group/org.
 
 ### Properties
 
@@ -737,12 +790,12 @@ model.on('modified', (property, value) => {
   console.log(`${property} changed to`, value);
 });
 
-model.on('beforeSave', () => {
-  console.log('About to save');
+model.on('beforeSave', (data) => {
+  console.log('About to save', data);
 });
 
-model.on('afterSave', () => {
-  console.log('Saved successfully');
+model.on('afterSave', (data) => {
+  console.log('Saved successfully', data);
 });
 ```
 
@@ -765,27 +818,98 @@ await Backend.logout();
 
 ### Individual Operations
 
+#### Single Operations
+
 ```javascript
-// Get
+// Get one
 const data = await Backend.get_individual('d:Person1');
 
-// Update
+// Update one (full replace)
 await Backend.put_individual(data);
 
-// Delete
+// Remove one
 await Backend.remove_individual('d:Person1');
+```
+
+#### Batch Operations
+
+```javascript
+// Get multiple
+const items = await Backend.get_individuals(['d:1', 'd:2']);
+
+// Update multiple
+await Backend.put_individuals([data1, data2]);
+```
+
+#### Atomic Operations (Concurrent Safe)
+
+Use these methods to modify specific fields without overwriting the entire object, which is safer for concurrent multi-user access.
+
+```javascript
+// Add values (append)
+await Backend.add_to_individual({
+  '@': 'd:Task1',
+  'v-s:comment': [{ data: 'New comment', type: 'String' }]
+});
+
+// Set values (replace specific fields)
+await Backend.set_in_individual({
+  '@': 'd:Task1',
+  'v-s:status': [{ data: 'v-s:Completed', type: 'Uri' }]
+});
+
+// Remove values
+await Backend.remove_from_individual({
+  '@': 'd:Task1',
+  'v-s:tag': [{ data: 'OldTag', type: 'String' }]
+});
 ```
 
 ### Query
 
+#### Basic Search
+
 ```javascript
 const result = await Backend.query({
-  query: 'v-s:Person',
+  query: "'rdf:type' == 'v-s:Person'",
   sort: "'v-s:created' desc",
-  top: 100
+  top: 100,
+  limit: 10,
+  from: 0
 });
 
 console.log(result.result); // Array of URIs
+console.log(result.count);  // Total count
+```
+
+#### Advanced Search
+
+```javascript
+// Search string format: "field == 'value' && field2 == 'value2'"
+const result = await Backend.query("'v-s:creator' == 'd:User1' && 'rdf:type' == 'v-s:Task'");
+```
+
+### File Upload
+
+```javascript
+await Backend.uploadFile({
+  path: 'files',
+  uri: 'd:File1',
+  file: fileInput.files[0]
+});
+```
+
+### Permissions & Metadata
+
+```javascript
+// Get effective rights
+const rights = await Backend.get_rights('d:Resource1');
+
+// Get rights origin (why I have rights)
+const origin = await Backend.get_rights_origin('d:Resource1');
+
+// Get membership info
+const membership = await Backend.get_membership('d:User1');
 ```
 
 ---
@@ -1041,323 +1165,7 @@ import type {
 
 ---
 
-## Template Functions
-
-### `html(strings, ...values): string`
-
-Safe template with automatic escaping.
-
-```javascript
-import { html } from './src/components/Component.js';
-
-const userInput = '<script>alert("XSS")</script>';
-const template = html`<div>${userInput}</div>`;
-// Result: <div>&lt;script&gt;alert("XSS")&lt;/script&gt;</div>
-```
-
-### `raw(strings, ...values): string`
-
-Unescaped template for trusted content.
-
-```javascript
-import { raw } from './src/components/Component.js';
-
-const trustedHTML = '<strong>Bold</strong>';
-const template = raw`<div>${trustedHTML}</div>`;
-// Result: <div><strong>Bold</strong></div>
-```
-
-⚠️ **Warning:** Use only with trusted content to avoid XSS vulnerabilities.
-
-### `safe(value: any): string | string[]`
-
-Escapes HTML characters.
-
-```javascript
-import { safe } from './src/components/Component.js';
-
-const escaped = safe('<script>alert("XSS")</script>');
-// Result: '&lt;script&gt;alert("XSS")&lt;/script&gt;'
-```
-
----
-
-## Expression Syntax
-
-Templates support reactive expressions with `{expression}`:
-
-### Supported
-
-```javascript
-// Property access
-{this.count}
-{this.user.name}
-
-// RDF properties (no quotes needed)
-{this.model['v-s:title']}
-{this.model['rdfs:label']}
-
-// Array indexing
-{this.items.0.title}
-
-// Optional chaining
-{this.user?.email}
-{this.items?.0?.id}
-```
-
-### Not Supported
-
-```javascript
-// ❌ Operators
-{this.count + 1}
-{this.price * 1.2}
-
-// ❌ Ternary
-{this.isActive ? 'Yes' : 'No'}
-
-// ❌ Function calls
-{this.formatDate(date)}
-```
-
-**Solution:** Use computed properties (getters):
-
-```javascript
-get totalPrice() {
-  return this.price * 1.2;
-}
-
-get statusText() {
-  return this.isActive ? 'Yes' : 'No';
-}
-
-render() {
-  return html`
-    <div>Price: {this.totalPrice}</div>
-    <div>Status: {this.statusText}</div>
-  `;
-}
-```
-
----
-
----
-
-## TypeScript Types
-
-Complete reference for exported TypeScript types.
-
-### Core Types
-
-#### `Reactive<T>`
-
-Type for reactive proxy objects:
-
-```typescript
-import type { Reactive } from 'veda-client';
-
-interface State {
-  count: number;
-  items: string[];
-}
-
-const state: Reactive<State> = reactive({
-  count: 0,
-  items: []
-});
-```
-
-#### `ReactiveOptions`
-
-Options for reactive() function:
-
-```typescript
-interface ReactiveOptions {
-  onSet?: (key: string, value: any, oldValue: any) => void;
-  onDelete?: (key: string) => void;
-}
-```
-
-### Component Types
-
-#### `ComponentInstance`
-
-Base component instance type:
-
-```typescript
-import type { ComponentInstance } from 'veda-client';
-
-const component: ComponentInstance = document.querySelector('my-component');
-```
-
-#### `LoopComponentInstance`
-
-Loop component instance:
-
-```typescript
-import type { LoopComponentInstance } from 'veda-client';
-```
-
-#### `IfComponentInstance`
-
-If component instance:
-
-```typescript
-import type { IfComponentInstance } from 'veda-client';
-```
-
-### Backend Types
-
-#### `IndividualData`
-
-RDF individual data structure:
-
-```typescript
-import type { IndividualData } from 'veda-client';
-
-const data: IndividualData = {
-  '@': 'd:Resource',
-  'v-s:title': [{ data: 'Title', type: 'String' }]
-};
-```
-
-#### `AuthResult`
-
-Authentication result:
-
-```typescript
-import type { AuthResult } from 'veda-client';
-
-const result: AuthResult = await Backend.authenticate(user, pass);
-```
-
-#### `QueryResult`
-
-Search query result:
-
-```typescript
-import type { QueryResult } from 'veda-client';
-
-const result: QueryResult = await Backend.query({
-  query: 'v-s:Person',
-  top: 100
-});
-```
-
-#### `QueryParams`
-
-Query parameters:
-
-```typescript
-import type { QueryParams } from 'veda-client';
-
-const params: QueryParams = {
-  query: 'v-s:Person',
-  sort: "'v-s:created' desc",
-  top: 100,
-  from: 0
-};
-```
-
-#### `UploadFileParams`
-
-File upload parameters:
-
-```typescript
-import type { UploadFileParams } from 'veda-client';
-```
-
-### Value Types
-
-#### `ValueData`
-
-RDF value structure:
-
-```typescript
-import type { ValueData } from 'veda-client';
-
-const value: ValueData = {
-  data: 'Hello',
-  type: 'String',
-  lang: 'EN'
-};
-```
-
-#### `ValueType`
-
-Supported RDF types:
-
-```typescript
-import type { ValueType } from 'veda-client';
-
-type ValueType = 'String' | 'Integer' | 'Decimal' | 'Boolean' | 'Datetime' | 'Uri';
-```
-
-#### `PrimitiveValue`
-
-JavaScript primitive values:
-
-```typescript
-import type { PrimitiveValue } from 'veda-client';
-
-type PrimitiveValue = string | number | boolean | Date;
-```
-
-### Model Types
-
-#### `ModelValue`
-
-Model property value:
-
-```typescript
-import type { ModelValue } from 'veda-client';
-
-const title: ModelValue = model['v-s:title'];
-```
-
-### Emitter Types
-
-#### `EmitterInstance`
-
-Event emitter instance:
-
-```typescript
-import type { EmitterInstance } from 'veda-client';
-```
-
-### Using Types in Your Code
-
-```typescript
-import Component, { html } from 'veda-client';
-import type { Reactive, ComponentInstance } from 'veda-client';
-
-interface TodoState {
-  todos: Array<{ id: number; text: string; done: boolean }>;
-  filter: 'all' | 'active' | 'completed';
-}
-
-class TodoApp extends Component(HTMLElement) {
-  static tag = 'todo-app';
-
-  state!: Reactive<TodoState>;
-
-  constructor() {
-    super();
-    this.state = this.reactive<TodoState>({
-      todos: [],
-      filter: 'all'
-    });
-  }
-
-  render() {
-    return html`<div>...</div>`;
-  }
-}
-```
-
----
-
 **See also:**
 - [Reactivity Guide](./REACTIVITY.md) - Comprehensive reactivity tutorial
 - [Limitations](./LIMITATIONS.md) - Known limitations and performance
 - [Security](./SECURITY.md) - Security best practices
-

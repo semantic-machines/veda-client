@@ -23,11 +23,21 @@ const DANGEROUS_PROPS = new Set([
   'prototype'
 ]);
 
+/**
+ * Semantic Data Model.
+ * Represents an RDF resource with properties.
+ * Automatically handles loading, saving, and reactivity.
+ */
 export default class Model extends Emitter(Object) {
   static cache = new WeakCache();
 
+  /**
+   * Create or retrieve a Model instance.
+   * @param {string|Object} [data] - URI string or JSON resource data object. If undefined, creates new blank model.
+   * @returns {Model} Reactive model instance
+   */
   constructor (data) {
-    super();
+    super(); // eslint-disable-line constructor-super
 
     // Note: For cached models returning early, this listener is already attached
     // from the first construction, so we don't duplicate it
@@ -44,7 +54,7 @@ export default class Model extends Emitter(Object) {
       const cached = Model.cache.get(this.id);
       if (cached) {
         // Factory pattern: return existing instance from cache
-        // eslint-disable-next-line sonarjs/no-return-in-constructor
+        // eslint-disable-next-line no-constructor-return
         return cached; // Already reactive and has listener
       }
     } else if (typeof data === 'undefined' || data === null) {
@@ -63,7 +73,7 @@ export default class Model extends Emitter(Object) {
         cached.isSync(true);
         cached.isLoaded(true);
         // Factory pattern: return existing instance from cache
-        // eslint-disable-next-line sonarjs/no-return-in-constructor
+        // eslint-disable-next-line no-constructor-return
         return cached; // Already reactive and has listener
       }
 
@@ -93,10 +103,14 @@ export default class Model extends Emitter(Object) {
     Model.cache.set(this.id, reactiveModel);
 
     // Factory pattern: return reactive proxy instead of this
-    // eslint-disable-next-line sonarjs/no-return-in-constructor
+    // eslint-disable-next-line no-constructor-return
     return reactiveModel;
   }
 
+  /**
+   * Apply data to the model.
+   * @param {Object} data - JSON resource data
+   */
   apply (data) {
     const thisProps = new Set(Object.getOwnPropertyNames(this));
     const dataProps = new Set(Object.getOwnPropertyNames(data));
@@ -125,6 +139,10 @@ export default class Model extends Emitter(Object) {
     });
   }
 
+  /**
+   * Convert model to JSON resource data.
+   * @returns {Object} JSON resource data
+   */
   toJSON () {
     const keys = Object.getOwnPropertyNames(this);
     const json = keys.reduce((acc, key) => {
@@ -149,6 +167,9 @@ export default class Model extends Emitter(Object) {
     return this.id;
   }
 
+  /**
+   * Subscribe to server-side updates for this individual.
+   */
   subscribe () {
     const updater = (id) => {
       const model = new Model(id);
@@ -159,10 +180,18 @@ export default class Model extends Emitter(Object) {
     Subscription.subscribe(this, [this.id, this.hasValue('v-s:updateCounter') ? this['v-s:updateCounter'][0] : 0, updater]);
   }
 
+  /**
+   * Unsubscribe from server-side updates.
+   */
   unsubscribe () {
     Subscription.unsubscribe(this.id);
   }
 
+  /**
+   * Check if model is new (not saved).
+   * @param {boolean} [value] - Set value
+   * @returns {boolean}
+   */
   isNew (value) {
     if (typeof value === 'undefined') {
       return this[IS_NEW];
@@ -171,6 +200,11 @@ export default class Model extends Emitter(Object) {
     return this[IS_NEW];
   }
 
+  /**
+   * Check if model is synced with backend.
+   * @param {boolean} [value] - Set value
+   * @returns {boolean}
+   */
   isSync (value) {
     if (typeof value === 'undefined') {
       return this[IS_SYNC];
@@ -179,6 +213,11 @@ export default class Model extends Emitter(Object) {
     return this[IS_SYNC];
   }
 
+  /**
+   * Check if model data is loaded.
+   * @param {boolean} [value] - Set value
+   * @returns {boolean}
+   */
   isLoaded (value) {
     if (typeof value === 'undefined') {
       return this[IS_LOADED];
@@ -187,6 +226,12 @@ export default class Model extends Emitter(Object) {
     return this[IS_LOADED];
   }
 
+  /**
+   * Check if property has specific value(s).
+   * @param {string} prop - Property URI
+   * @param {any} [value] - Value to check. If undefined, checks if property exists.
+   * @returns {boolean}
+   */
   hasValue (prop, value) {
     if (!prop && typeof value !== 'undefined') {
       return Object.getOwnPropertyNames(this).reduce((prev, prop) => prev || this.hasValue(prop, value), false);
@@ -202,6 +247,11 @@ export default class Model extends Emitter(Object) {
     return found;
   }
 
+  /**
+   * Add value to a property.
+   * @param {string} prop - Property URI
+   * @param {any} value - Value to add
+   */
   addValue (prop, value) {
     if (!this.hasValue(prop)) {
       this[prop] = value;
@@ -216,6 +266,11 @@ export default class Model extends Emitter(Object) {
     }
   }
 
+  /**
+   * Remove value from a property.
+   * @param {string} prop - Property URI
+   * @param {any} value - Value to remove
+   */
   removeValue (prop, value) {
     if (!prop && typeof value !== 'undefined') {
       return Object.getOwnPropertyNames(this).forEach((prop) => this.removeValue(prop, value));
@@ -232,6 +287,11 @@ export default class Model extends Emitter(Object) {
     }
   }
 
+  /**
+   * Get property value chain (traversal).
+   * @param {...string} props - Property chain
+   * @returns {Promise<any>} Resulting value
+   */
   async getPropertyChain (...props) {
     await this.load();
     const prop = props.shift();
@@ -241,6 +301,11 @@ export default class Model extends Emitter(Object) {
     return next.getPropertyChain(...props);
   }
 
+  /**
+   * Load data from backend.
+   * @param {boolean} [cache=true] - Use cache
+   * @returns {Promise<Model>} This model
+   */
   async load (cache = true) {
     if (this[LOAD_PROMISE]) {
       return this[LOAD_PROMISE];
@@ -266,6 +331,10 @@ export default class Model extends Emitter(Object) {
     return this[LOAD_PROMISE];
   }
 
+  /**
+   * Reload data from backend (bypass cache).
+   * @returns {Promise<Model>} This model
+   */
   async reset () {
     if (this[RESET_PROMISE]) {
       return this[RESET_PROMISE];
@@ -283,6 +352,10 @@ export default class Model extends Emitter(Object) {
     return this[RESET_PROMISE];
   }
 
+  /**
+   * Save model to backend.
+   * @returns {Promise<Model>} This model
+   */
   async save () {
     if (this[SAVE_PROMISE]) {
       return this[SAVE_PROMISE];
@@ -306,6 +379,10 @@ export default class Model extends Emitter(Object) {
     return this[SAVE_PROMISE];
   }
 
+  /**
+   * Remove model from backend.
+   * @returns {Promise<Model>} This model (marked as new/removed)
+   */
   async remove () {
     if (this[REMOVE_PROMISE]) {
       return this[REMOVE_PROMISE];
@@ -326,6 +403,12 @@ export default class Model extends Emitter(Object) {
     return this[REMOVE_PROMISE];
   }
 
+  /**
+   * Get label for this object based on preferred language.
+   * @param {string} [prop="rdfs:label"] - Property to use for label
+   * @param {string[]} [lang=['RU']] - Preferred languages (e.g. ['EN', 'RU'])
+   * @returns {string} Label text
+   */
   toLabel (prop="rdfs:label", lang = ['RU']) {
     if (!this.hasValue(prop)) return '';
     let label = '';
@@ -343,6 +426,10 @@ export default class Model extends Emitter(Object) {
     return label.replace(/\^\^../g, "");
   }
 
+  /**
+   * Load membership information (groups/orgs).
+   * @returns {Promise<Model>} Memberships model
+   */
   async loadMemberships () {
     const membershipJSON = await Backend.get_membership(this.id);
     membershipJSON['@'] = genUri();
@@ -350,11 +437,20 @@ export default class Model extends Emitter(Object) {
     return this[MEMBERSHIPS];
   }
 
+  /**
+   * Check if model is a member of a group/org.
+   * @param {string} id - Group/Org URI
+   * @returns {Promise<boolean>}
+   */
   async isMemberOf (id) {
     if (!this[MEMBERSHIPS]) await this.loadMemberships();
     return this[MEMBERSHIPS].hasValue('v-s:memberOf', id);
   }
 
+  /**
+   * Load effective rights for current user on this object.
+   * @returns {Promise<Model>} Rights model
+   */
   async loadRight () {
     if (this[RIGHTS]) return this[RIGHTS];
     if (this.isNew()) {
@@ -371,21 +467,37 @@ export default class Model extends Emitter(Object) {
     return this[RIGHTS];
   }
 
+  /**
+   * Check if current user can create this type of object.
+   * @returns {Promise<boolean>}
+   */
   async canCreate () {
     await this.loadRight();
     return this[RIGHTS].hasValue('v-s:canCreate', true);
   }
 
+  /**
+   * Check if current user can read this object.
+   * @returns {Promise<boolean>}
+   */
   async canRead () {
     await this.loadRight();
     return this[RIGHTS].hasValue('v-s:canRead', true);
   }
 
+  /**
+   * Check if current user can update this object.
+   * @returns {Promise<boolean>}
+   */
   async canUpdate () {
     await this.loadRight();
     return this[RIGHTS].hasValue('v-s:canUpdate', true);
   }
 
+  /**
+   * Check if current user can delete this object.
+   * @returns {Promise<boolean>}
+   */
   async canDelete () {
     await this.loadRight();
     return this[RIGHTS].hasValue('v-s:canDelete', true);

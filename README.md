@@ -131,7 +131,8 @@ state.count++; // Logs: "Count: 1"
 ```javascript
 import Model from './src/Model.js';
 
-const person = await Model.load('d:Person1');
+const person = new Model('d:Person1');
+await person.load();
 console.log(person['v-s:name']); // ['John Doe']
 
 person['v-s:age'] = [30];
