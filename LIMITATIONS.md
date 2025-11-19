@@ -118,6 +118,8 @@ state.items = [...state.items]; // Or reassign
 
 **Workaround:** Use array mutation methods or reassignment
 
+**Why:** Intercepting numeric keys has performance implications and adds complexity. Use array mutation methods instead.
+
 **Status:** Veda-specific limitation (unlike Vue 3 which tracks index assignment via Proxy)
 
 ### 5. Watch Uses Reference Equality
@@ -136,6 +138,41 @@ this.watch(() => state.items.length, callback);
 ```
 
 **Status:** By design (performance)
+
+### 6. Component Tree Depth Limits
+
+**Issue:** Component method search and parent context search have hard-coded depth limits.
+
+**Limits:**
+- **Method search depth:** 20 levels (Component.js line ~459)
+  ```javascript
+  #findMethod(name) {
+    let depth = 0;
+    while (parent && depth < 20) { // Hard limit
+  ```
+
+- **Loop parent context depth:** 10 levels (LoopComponent.js line ~237)
+  ```javascript
+  #findParentComponent() {
+    let depth = 0;
+    while (context && depth < 10) { // Hard limit
+  ```
+
+**Impact:**
+- Method handlers won't work if component is nested >20 levels deep
+- Loop components won't find parent context if nested >10 levels deep
+
+**Workaround:**
+- Keep component nesting shallow (< 10-15 levels)
+- For deep trees, pass methods explicitly via props
+- Refactor deeply nested structures
+
+**Why limits exist:**
+- Prevent infinite loops in circular DOM structures
+- Performance optimization (limit tree traversal)
+- Deep nesting is usually a design smell
+
+**Status:** Documented limitation (intentional safeguard)
 
 ---
 

@@ -2,6 +2,45 @@
 
 Complete API documentation for Veda Client Framework.
 
+## Terminology Glossary
+
+Understanding key terms used throughout this documentation:
+
+**Reactive Proxy:**
+The Proxy object returned by `reactive()` that wraps your data and enables automatic dependency tracking. This is the low-level mechanism.
+
+```javascript
+const proxy = reactive({ count: 0 });
+console.log(proxy.__isReactive); // true
+```
+
+**Reactive State:**
+Component state created with `this.reactive()`. Specifically refers to component-local state that enables automatic re-rendering.
+
+```javascript
+class MyComponent extends Component(HTMLElement) {
+  constructor() {
+    super();
+    this.state = this.reactive({ count: 0 }); // ← reactive state
+  }
+}
+```
+
+**Reactive Object:**
+Any object wrapped with `reactive()`, whether in a component or standalone. Generic term for reactive data.
+
+```javascript
+// Standalone reactive object (not in component)
+const store = reactive({ users: [] });
+```
+
+**Usage Guidelines:**
+- **"Reactive proxy"** - when discussing the technical Proxy wrapper
+- **"Reactive state"** - when referring to component state (`this.state`)
+- **"Reactive object"** - when referring to standalone reactive data or generic reactive objects
+
+---
+
 ## Table of Contents
 
 - [Component](#component)
@@ -152,37 +191,50 @@ Watches reactive value changes and runs callback when value changes.
 **Examples:**
 
 ```javascript
-// Basic usage
-this.watch(
-  () => this.state.count,
-  (newValue, oldValue) => {
-    console.log(`Count changed from ${oldValue} to ${newValue}`);
+// Note: watch() is a Component method, use within component class
+
+class MyComponent extends Component(HTMLElement) {
+  constructor() {
+    super();
+    this.state = this.reactive({ count: 0, editing: false, items: [], active: true });
   }
-);
 
-// With immediate option
-this.watch(
-  () => this.state.editing,
-  (editing) => {
-    this.classList.toggle('editing', editing);
-  },
-  { immediate: true }
-);
+  async connectedCallback() {
+    await super.connectedCallback();
 
-// Watching array length (not array itself)
-this.watch(
-  () => this.state.items.length,
-  (length) => console.log('Items count:', length)
-);
+    // Basic usage
+    this.watch(
+      () => this.state.count,
+      (newValue, oldValue) => {
+        console.log(`Count changed from ${oldValue} to ${newValue}`);
+      }
+    );
 
-// Manual cleanup
-const stopWatching = this.watch(
-  () => this.state.active,
-  (active) => console.log('Active:', active)
-);
+    // With immediate option
+    this.watch(
+      () => this.state.editing,
+      (editing) => {
+        this.classList.toggle('editing', editing);
+      },
+      { immediate: true }
+    );
 
-// Later...
-stopWatching(); // Stop watching
+    // Watching array length (not array itself)
+    this.watch(
+      () => this.state.items.length,
+      (length) => console.log('Items count:', length)
+    );
+
+    // Manual cleanup
+    const stopWatching = this.watch(
+      () => this.state.active,
+      (active) => console.log('Active:', active)
+    );
+
+    // Later...
+    stopWatching(); // Stop watching
+  }
+}
 ```
 
 **Notes:**
@@ -223,6 +275,119 @@ Populate component from model (internal use).
 
 ---
 
+## Expression Parser
+
+The Expression Parser evaluates template expressions like `{this.state.count}` in a safe, restricted manner.
+
+### Supported Syntax
+
+**✅ Supported:**
+- Dot notation: `{this.state.count}`
+- Optional chaining: `{this.user?.name}`
+- Numeric array access: `{this.items.0}`
+- Nested access: `{this.model.v-s:title.0}`
+- Dashes in property names: `{this.model.v-s:hasValue}`
+
+**❌ Not Supported:**
+- Operators: `{this.a + this.b}` ❌
+- Function calls: `{this.format(date)}` ❌
+- Ternary operators: `{this.show ? 'yes' : 'no'}` ❌
+- Bracket notation: `{this.items['key']}` ❌
+- Method calls: `{this.items.map(x => x)}` ❌
+
+### Examples
+
+```javascript
+// ✅ Simple property access
+<div>{this.state.count}</div>
+
+// ✅ Nested property
+<div>{this.user.profile.name}</div>
+
+// ✅ Optional chaining
+<div>{this.user?.email}</div>
+
+// ✅ Array element access
+<li>{this.todos.0.title}</li>
+
+// ✅ RDF property names with dashes/colons
+<span>{this.model.v-s:title.0}</span>
+
+// ❌ Complex expression - use computed property instead
+get incrementedCount() {
+  return this.state.count + 1;
+}
+<div>{this.incrementedCount}</div>
+
+// ❌ Ternary - use computed property
+get statusText() {
+  return this.isActive ? 'Active' : 'Inactive';
+}
+<span>{this.statusText}</span>
+```
+
+### Error Handling
+
+When an expression fails to evaluate:
+- Returns empty string `''`
+- Logs warning to console
+- Does not throw (prevents render breaking)
+
+```javascript
+<div>{this.nonExistent.property}</div>
+// Console: "Invalid expression 'this.nonExistent.property': ..."
+// Renders: <div></div>
+```
+
+### Evaluation Context
+
+Expressions are evaluated in the component's context:
+
+```javascript
+class MyComponent extends Component(HTMLElement) {
+  constructor() {
+    super();
+    this.state = this.reactive({ count: 0 });
+  }
+
+  render() {
+    // 'this' refers to the component instance
+    return html`<div>{this.state.count}</div>`;
+  }
+}
+```
+
+In Loop/If components, `this` refers to the item:
+
+```javascript
+<${Loop} items="{this.todos}" item-key="id">
+  <li>{this.model.text}</li>
+  <!-- 'this.model' is the current todo item -->
+</${Loop}>
+```
+
+### Performance
+
+- Expression parsing happens once during template compilation
+- Reactive tracking is automatic (via Effect system)
+- No runtime eval() or Function() - secure and fast
+
+### Why Limited Syntax?
+
+**Security:**
+- No eval() or Function() constructor
+- Cannot execute arbitrary code
+- Safe for user-provided templates
+
+**Simplicity:**
+- Easy to understand what expressions do
+- Predictable behavior
+- Encourages computed properties for complex logic
+
+**Recommendation:** For any logic beyond simple property access, use computed properties (getters).
+
+---
+
 ## Reactivity
 
 Fine-grained reactivity system with automatic dependency tracking.
@@ -255,6 +420,29 @@ interface ReactiveOptions {
 - Array mutation tracking (push, pop, shift, unshift, splice, sort, reverse)
 - Circular reference handling
 - Prototype pollution prevention
+
+**Security - Prototype Pollution Protection:**
+
+The reactive system blocks setting dangerous property names to prevent prototype pollution attacks:
+
+```javascript
+const state = reactive({});
+
+// ❌ Blocked - dangerous property names
+state.__proto__ = maliciousObject;     // Silently ignored + warning
+state.constructor = maliciousFunction; // Silently ignored + warning
+state.prototype = maliciousProto;      // Silently ignored + warning
+
+// Console warning: "Reactive.set: Blocked dangerous property name: __proto__"
+```
+
+**Dangerous properties list:**
+- `__proto__`
+- `constructor`
+- `prototype`
+
+**Why this matters:**
+Prevents prototype pollution attacks where malicious code could modify Object.prototype and affect all objects in your application.
 
 **Limitations:**
 - **Array index assignment not reactive:** Direct index assignment (`arr[0] = x`) is not tracked. This is a Veda-specific limitation (unlike Vue 3 which does track index assignment via Proxy). Use array mutation methods instead: `arr.splice(0, 1, x)`
@@ -380,22 +568,51 @@ state.count++; // Effect runs
 state.other++; // Effect does NOT run
 ```
 
-**⚠️ Warning:** These functions use a simple boolean flag. **Nested calls are NOT supported** and will break:
+**⚠️ Warning:** While these functions use a depth counter and technically support nesting, manual nesting is error-prone. **Use `untrack(fn)` instead** for safe nesting.
+
+**How it works:**
+- Uses `trackingDepth` counter (not a simple boolean flag)
+- `pauseTracking()` increments depth and logs warning if already paused
+- `resumeTracking()` decrements depth
+- Tracking resumes only when depth reaches 0
+
+**Why nested calls are discouraged:**
 
 ```javascript
-// ❌ BROKEN - nested calls don't work
+// ⚠️ FRAGILE - manual nesting works but is error-prone
 pauseTracking();
-  pauseTracking();  // Second call is ignored
-  resumeTracking(); // Enables tracking prematurely!
-resumeTracking();   // Does nothing (already enabled)
+  pauseTracking(); // depth=2, warning logged, tracking still OFF
+  // If you forget matching resumeTracking(), tracking stays OFF forever!
+  resumeTracking(); // depth=1, tracking still OFF
+resumeTracking(); // depth=0, tracking ON
+
+// ❌ DANGEROUS - exception breaks tracking
+pauseTracking();
+throw new Error('Boom!'); // Exception thrown
+resumeTracking(); // ← Never executes! Tracking stays OFF forever!
+
+// ✅ SAFE - use untrack() instead
+untrack(() => {
+  // Nested untrack automatically works:
+  untrack(() => {
+    // Properly nested, exception-safe
+  });
+  // Even if exception thrown, tracking resumes (via finally)
+});
 ```
 
-**Recommendation:** Use `untrack(fn)` instead (supports nesting correctly).
+**Why `untrack()` is better:**
+- Automatic cleanup (via try/finally)
+- Exception-safe (resumeTracking() always called)
+- Proper nesting out of the box
+- Returns function result
 
 **Use cases:**
 - Reading state without creating dependencies
 - Performance optimization (skip tracking for known static values)
 - Debugging (isolate which dependencies trigger effects)
+
+**Recommendation:** Always prefer `untrack(fn)` over manual pause/resume.
 
 ### `resumeTracking()`
 
@@ -407,7 +624,7 @@ pauseTracking();
 resumeTracking();
 ```
 
-**Note:** Must be paired with `pauseTracking()`. Does NOT support nested calls.
+**Note:** Must be paired with `pauseTracking()`. Supports nested calls via depth counter, but manual nesting is error-prone. Use `untrack(fn)` for safe nesting.
 
 ### `untrack(fn)`
 
@@ -561,16 +778,20 @@ const doubled = computed(() => state.count * 2);
 
 ### Nested pauseTracking Calls
 
-**⚠️ Not supported:** The tracking system uses a simple boolean flag with depth counter:
+The tracking system uses a depth counter (not a simple boolean flag):
 
 ```javascript
-// ❌ BROKEN - nested calls
-pauseTracking();
-  pauseTracking();  // Warning logged
-  // ... code ...
-  resumeTracking(); // Decrements depth
-resumeTracking();   // Decrements depth
+// Works correctly but logs warning
+pauseTracking();      // depth=1, tracking OFF
+  pauseTracking();    // depth=2, warning logged, tracking still OFF
+  resumeTracking();   // depth=1, tracking still OFF
+resumeTracking();     // depth=0, tracking ON
 
+// Tracking resumes ONLY when depth reaches 0
+```
+
+**Why untrack is better:**
+```javascript
 // ✅ CORRECT - use untrack for nesting
 untrack(() => {
   // Can safely call untrack again inside
@@ -580,10 +801,23 @@ untrack(() => {
 });
 ```
 
-**Why untrack is better:**
-- Uses try/finally for automatic cleanup
-- Properly handles exceptions
-- Prevents tracking depth corruption
+**The real danger:**
+```javascript
+// ❌ BROKEN by exception
+pauseTracking();
+throw new Error('Boom!'); // Exception thrown
+resumeTracking(); // ← Never executes! Tracking stays OFF forever!
+
+// ✅ SAFE - untrack uses try/finally
+untrack(() => {
+  throw new Error('Boom!');
+}); // resumeTracking() still called via finally
+```
+
+**Why the warning exists:**
+- Not because nested calls break (they work via depth counter)
+- But because manual pause/resume is error-prone without try/finally
+- `untrack()` automatically handles cleanup and exceptions
 
 ### Model Property Reactivity
 
@@ -744,6 +978,7 @@ import { Loop } from './src/components/LoopComponent.js';
 
 **Limitations:**
 - **Single root element required:** Template must have exactly one root element. Multiple root elements will trigger a console warning and only the first element will be used.
+- **Duplicate keys warning:** If multiple items have the same key value, a warning is logged. Each item must have a unique key for proper reconciliation.
 - Source array must be reactive; plain arrays that never change reference will not emit updates
 - Watchers still compare by reference, so `this.watch(() => this.state.items, ...)` requires assigning a new array when you need the watcher to fire
 - Naive reconciliation (no LIS optimization, O(n²) for reordering)

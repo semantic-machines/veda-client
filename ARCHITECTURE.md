@@ -153,6 +153,117 @@ Loop component uses key-based reconciliation:
 5. Reorder: A → C → D
 ```
 
+**Algorithm Details:**
+
+**Phase 1: Build New Items Map** - O(n)
+```javascript
+newItems.forEach((item, index) => {
+  const key = getKey(item, keyAttr, index);
+
+  // Duplicate key detection
+  if (newItemsMap.has(key)) {
+    console.warn('Duplicate key:', key);
+  }
+
+  newKeys.add(key);
+  newItemsMap.set(key, {item, index});
+});
+```
+
+**Phase 2: Remove Old Items** - O(m), m = old items count
+```javascript
+for (const [key, {element}] of this.#itemsMap) {
+  if (!newKeys.has(key)) {
+    element.remove();           // DOM removal
+    this.#itemsMap.delete(key); // Map cleanup
+  }
+}
+```
+
+**Phase 3: Add/Reorder Items** - O(n²) worst case
+```javascript
+let previousElement = null;
+
+newItems.forEach((item, index) => {
+  const key = getKey(item, keyAttr, index);
+
+  // Get or create item data
+  let itemData = this.#itemsMap.get(key);
+  if (!itemData) {
+    // Create new element (O(1))
+    const element = this.#createItemElement(item);
+    itemData = {element, item};
+    this.#itemsMap.set(key, itemData);
+  } else if (itemData.item !== item) {
+    // Update existing (O(1))
+    this.#updateItemElement(itemData.element, item);
+    itemData.item = item;
+  }
+
+  // Reorder if needed (O(n) DOM traversal)
+  const {element} = itemData;
+  if (previousElement) {
+    if (previousElement.nextSibling !== element) {
+      previousElement.after(element); // DOM reorder
+    }
+  } else {
+    if (this.firstChild !== element) {
+      this.insertBefore(element, this.firstChild);
+    }
+  }
+
+  previousElement = element;
+});
+```
+
+**Complexity Analysis:**
+
+| Operation | Complexity | Notes |
+|-----------|-----------|-------|
+| Add items | O(n) | Create n new elements |
+| Remove items | O(m) | Remove m old elements |
+| Update items | O(n) | Update n changed items |
+| Reorder items | O(n²) | Naive sequential insertion |
+| Total | O(n²) | Dominated by reordering |
+
+**Why O(n²) for reordering:**
+
+Each `insertBefore()` or `after()` call may traverse the DOM tree to find the insertion point. For a complete reorder (e.g., reverse), this becomes O(n²).
+
+**Comparison with LIS (Longest Increasing Subsequence):**
+
+| Algorithm | Best Case | Worst Case | Memory |
+|-----------|-----------|------------|--------|
+| Current (naive) | O(n) | O(n²) | O(n) |
+| LIS-based | O(n log n) | O(n log n) | O(n) |
+
+**Why not LIS (yet)?**
+- MVP simplicity - naive algorithm is easier to understand and debug
+- Performance acceptable for < 500 items (typical use case)
+- Can optimize later if benchmarks show need
+
+**Memory Usage:**
+- `#itemsMap`: O(n) - stores element references
+- Element references are strong references (GC only on remove)
+- No memory leaks: old elements properly cleaned up in Phase 2
+
+**Duplicate Key Handling:**
+
+```javascript
+const key = this.#getKey(item, keyAttr, index);
+
+if (newItemsMap.has(key)) {
+  console.warn(
+    `Loop component: Duplicate key "${key}" found.`,
+    'Each item in the list must have a unique key.',
+    'Current item:', item,
+    'Previous item:', newItemsMap.get(key).item
+  );
+}
+```
+
+Duplicate keys are logged but don't break reconciliation. Last item with duplicate key wins.
+
 **Algorithm:** O(n) for additions/removals, O(n²) for reordering
 **Why not LIS?** MVP simplicity. May optimize if benchmarks show need.
 
