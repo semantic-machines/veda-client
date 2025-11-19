@@ -104,6 +104,7 @@ class TodoList extends Component(HTMLElement) {
 - **[API Reference](./API.md)** - Complete API documentation
 - **[Architecture Guide](./ARCHITECTURE.md)** - Framework internals and design decisions
 - **[Reactivity Guide](./REACTIVITY.md)** - Comprehensive reactivity tutorial
+- **[FAQ](./FAQ.md)** - Frequently asked questions and solutions
 - **[Performance Benchmarks](./BENCHMARKS.md)** - Measured performance metrics
 - **[Style Guide](./STYLE_GUIDE.md)** - Best practices and coding patterns
 - **[Changelog](./CHANGELOG.md)** - Version history and breaking changes
@@ -132,7 +133,7 @@ The framework exports the following modules from `./src/index.js`:
 |  | `html` | Template tag for safe HTML rendering |
 |  | `safe` | Function to escape HTML and remove expressions |
 |  | `raw` | Template tag for raw HTML (use with caution) |
-|  | `reactive` | Create reactive proxy for state management |
+|  | `reactive` | Create reactive objects for state management |
 |  | `effect` | Create auto-tracking effect |
 |  | `computed` | Create computed value |
 | **Components** | `Loop` | List rendering with reconciliation |
@@ -150,7 +151,7 @@ The framework exports the following modules from `./src/index.js`:
 |  | `Emitter` | Event emitter mixin |
 |  | `BackendError` | Backend error class |
 |  | `genUri`, `guid`, `timeout`, `diff`, `eq` | Utility functions |
-| **Types** | `Reactive<T>` | TypeScript type for reactive proxy |
+| **Types** | `Reactive<T>` | TypeScript type for reactive objects |
 |  | `ReactiveOptions` | Options for reactive() function |
 |  | `ComponentInstance` | Component instance type |
 |  | `ModelValue` | RDF value type |
@@ -293,4 +294,4 @@ Inspired by:
 
 ---
 
-**[📖 Read the API docs](./API.md)** | **[🚀 View examples](./examples/)** | **[💬 Report issues](https://github.com/semantic-machines/veda-client/issues)**
+**[📖 Read the API docs](./API.md)** | **[🚀 View examples](./examples/)** | **[❓ FAQ](./FAQ.md)** | **[💬 Report issues](https://github.com/semantic-machines/veda-client/issues)**

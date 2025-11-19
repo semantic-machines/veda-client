@@ -160,20 +160,6 @@ constructor() {
 }
 ```
 
-#### `effect(fn: () => void): () => void`
-
-Creates effect with automatic cleanup.
-
-```javascript
-async connectedCallback() {
-  await super.connectedCallback();
-
-  this.effect(() => {
-    console.log('Count:', this.state.count);
-  });
-}
-```
-
 #### `watch<T>(getter, callback, options?): () => void`
 
 Watches reactive value changes and runs callback when value changes.
@@ -252,7 +238,7 @@ class MyComponent extends Component(HTMLElement) {
 
 **Notes:**
 - Cleanup is automatic on component disconnect
-- Uses reference equality - see Limitations for details
+- Uses reference equality - see section below for details
 - Returns cleanup function for manual control
 
 **Common pitfalls:**
@@ -304,6 +290,51 @@ this.watch(
   },
   { immediate: true } // Apply focus on mount if autofocus is true
 );
+```
+
+**Reference Equality Details:**
+
+The `watch()` helper uses strict equality (`===`) for change detection:
+
+```javascript
+const state = reactive({
+  items: [1, 2, 3],
+  user: { name: 'Alice' }
+});
+
+// ❌ Won't trigger - same array reference
+this.watch(() => state.items, callback);
+state.items.push(4); // Callback NOT called
+
+// ✅ Triggers - new array reference
+state.items = [...state.items, 4]; // Callback called
+
+// ❌ Won't trigger - same object reference
+this.watch(() => state.user, callback);
+state.user.name = 'Bob'; // Callback NOT called
+
+// ✅ Triggers - new object reference
+state.user = { ...state.user, name: 'Bob' }; // Callback called
+
+// ✅ Alternative - watch specific property
+this.watch(() => state.user.name, callback);
+state.user.name = 'Bob'; // Callback called
+```
+
+**Design decision:** Reference equality is fast and predictable. For deep watching, watch specific properties.
+
+#### `effect(fn: () => void): () => void`
+
+Creates effect with automatic cleanup.
+
+```javascript
+async connectedCallback() {
+  await super.connectedCallback();
+
+  this.effect(() => {
+    console.log('Count:', this.state.count);
+  });
+}
 ```
 
 ### Other Methods
@@ -988,37 +1019,6 @@ class MyComponent extends Component(HTMLElement) {
   }
 }
 ```
-
-### watch() Reference Equality
-
-The `watch()` helper uses strict equality (`===`) for change detection:
-
-```javascript
-const state = reactive({
-  items: [1, 2, 3],
-  user: { name: 'Alice' }
-});
-
-// ❌ Won't trigger - same array reference
-this.watch(() => state.items, callback);
-state.items.push(4); // Callback NOT called
-
-// ✅ Triggers - new array reference
-state.items = [...state.items, 4]; // Callback called
-
-// ❌ Won't trigger - same object reference
-this.watch(() => state.user, callback);
-state.user.name = 'Bob'; // Callback NOT called
-
-// ✅ Triggers - new object reference
-state.user = { ...state.user, name: 'Bob' }; // Callback called
-
-// ✅ Alternative - watch specific property
-this.watch(() => state.user.name, callback);
-state.user.name = 'Bob'; // Callback called
-```
-
-**Design decision:** Reference equality is fast and predictable. For deep watching, watch specific properties.
 
 ### Effect Cleanup Timing
 

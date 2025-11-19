@@ -51,7 +51,7 @@ Known limitations and when to use alternatives.
 | Remove    | 500→250 | ~8    | Fast removal |
 | Reorder   | 100     | ~2    | Very fast for small lists |
 | Reorder   | 500     | ~17   | Acceptable |
-| Reorder   | 1000    | ~54   | Noticeable delay (O(n²)) |
+| Reorder   | 1000    | 53.62 | Noticeable delay (O(n²)) |
 | Update    | 500     | ~7    | Fast value updates |
 | Mixed     | 500     | ~9    | Combined operations efficient |
 

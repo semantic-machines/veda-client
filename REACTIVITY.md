@@ -62,9 +62,9 @@ export default class Counter extends Component(HTMLElement) {
 
 ## Basic Usage
 
-### Reactive State
+### Reactive Objects
 
-Create reactive state using the `reactive()` function:
+Create reactive objects using the `reactive()` function:
 
 ```javascript
 import { reactive } from 'veda-client';
@@ -79,7 +79,7 @@ const state = reactive({
 state.count++; // Triggers all effects that depend on count
 ```
 
-**In components, use `this.reactive()`:**
+**In components, use `this.reactive()` for reactive state:**
 
 ```javascript
 import Component from 'veda-client';
@@ -119,6 +119,28 @@ state.items.reverse();      // Reverse in place
 // Array replacement also works
 state.items = [5, 6, 7];
 ```
+
+### ⚠️ Important: Array Index Assignment
+
+Direct array index assignment is **NOT reactive**:
+
+```javascript
+const state = reactive({ items: [1, 2, 3] });
+
+// ❌ NOT reactive - won't trigger effects
+state.items[0] = 99;
+
+// ✅ Reactive - use splice
+state.items.splice(0, 1, 99);
+
+// ✅ Reactive - or reassign array
+state.items = [...state.items];
+state.items[0] = 99;
+state.items = state.items.slice();
+```
+
+**Why:** This is a deliberate design decision to optimize for array method performance.
+**See:** [LIMITATIONS.md section 4](./LIMITATIONS.md#4-array-index-assignment-not-reactive) for technical details.
 
 ### Reactive Components
 
@@ -192,6 +214,31 @@ export default class TodoList extends Component(HTMLElement) {
   }
 }
 ```
+
+### Computed Values and Priority
+
+When using `computed()` from the framework, computed values automatically recalculate before regular effects:
+
+```javascript
+import { reactive, computed, effect } from 'veda-client';
+
+const state = reactive({ count: 0 });
+
+// This runs FIRST (computed priority)
+const doubled = computed(() => state.count * 2);
+
+// This runs SECOND (regular effect)
+effect(() => {
+  console.log('Doubled:', doubled.value);
+});
+
+state.count = 5;
+// Execution order: computed recalculates → regular effects run
+```
+
+**Why this matters:** Ensures computed values are always up-to-date before dependent effects run, preventing stale values.
+
+**Note:** Component getters (like `filteredTodos` above) don't have priority - use `computed()` if you need guaranteed ordering.
 
 ## Side Effects
 
@@ -513,12 +560,12 @@ See the TodoMVC implementation in `app-todo/` for complete examples:
 
 ### `reactive(obj)`
 
-Creates a reactive proxy of an object.
+Creates a reactive object from a plain object.
 
 **Parameters:**
 - `obj` - Object to make reactive
 
-**Returns:** Reactive proxy
+**Returns:** Reactive object
 
 ### `effect(fn, options?)`
 
@@ -537,7 +584,7 @@ Creates a reactive component class.
 **Methods:**
 - `watch(getter, callback)` - Watch a value
 - `effect(fn)` - Create an effect
-- `reactive(obj)` - Create reactive state
+- `reactive(obj)` - Create reactive objects
 
 ## Architecture
 
@@ -559,7 +606,103 @@ Creates a reactive component class.
 - Only manual `update()` calls
 - Standard Component behavior
 
+### Effect Batching Explained
+
+Multiple state changes automatically batch into a single update via microtask:
+
+```javascript
+// These three changes trigger only ONE effect execution
+this.state.count = 1;
+this.state.name = 'Jane';
+this.state.active = true;
+// Microtask → flushEffects() → single DOM update
+```
+
+**Benefits:**
+- ✅ Prevents multiple unnecessary DOM updates
+- ✅ Better performance for rapid state changes
+- ✅ Automatic - no manual optimization needed
+
+**How it works:**
+1. First state change queues effect in microtask
+2. Additional changes reuse the same microtask
+3. All effects run once when microtask executes
+
+**Implementation:** Uses `queueMicrotask()` internally (see `src/Effect.js` lines 35-40)
+
+**Example - Without Batching:**
+```javascript
+// If effects ran immediately:
+state.a = 1;  // Effect runs → DOM update
+state.b = 2;  // Effect runs → DOM update
+state.c = 3;  // Effect runs → DOM update
+// Total: 3 DOM updates ❌
+```
+
+**Example - With Batching (actual behavior):**
+```javascript
+state.a = 1;  // Queued
+state.b = 2;  // Queued (reuses microtask)
+state.c = 3;  // Queued (reuses microtask)
+// Microtask executes → 1 DOM update ✅
+```
+
 ## Advanced Topics
+
+### Infinite Loop Detection
+
+The framework automatically detects and prevents infinite loops when effects modify their own dependencies:
+
+```javascript
+import { reactive, effect } from 'veda-client';
+
+const state = reactive({ count: 0 });
+
+// ❌ DANGER - effect modifies what it reads
+effect(() => {
+  state.count++;  // Reads AND writes state.count
+});
+// After 100 iterations: Error thrown with helpful message
+```
+
+**Error message:**
+```
+Infinite loop detected: Effect triggered 100 times in a single update cycle.
+This usually means an effect is modifying state it depends on.
+```
+
+**Limit:** MAX_TRIGGER_COUNT = 100 (configurable in `src/Effect.js` line 15)
+
+**Why 100?** Catches most infinite loops while allowing legitimate cascading updates (e.g., state → computed → derived state).
+
+**Correct pattern:**
+```javascript
+// ✅ SAFE - effect only reads, doesn't modify dependencies
+effect(() => {
+  console.log('Count:', state.count);  // Read only
+});
+
+// Modify state elsewhere
+function increment() {
+  state.count++;  // Separate from effect
+}
+```
+
+**Legitimate cascading updates:**
+```javascript
+const state = reactive({
+  price: 100,
+  quantity: 2,
+  total: 0
+});
+
+// ✅ SAFE - cascading but terminates
+effect(() => {
+  state.total = state.price * state.quantity;
+  // Reads price, quantity → writes total
+  // Only triggers once per price/quantity change
+});
+```
 
 ### Custom Effects
 
