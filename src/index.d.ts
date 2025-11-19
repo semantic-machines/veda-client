@@ -9,8 +9,17 @@ export { flushEffects, trigger, untrack, pauseTracking, resumeTracking } from '.
 export { default as Router } from './Router.js';
 export { default as Value } from './Value.js';
 export { default as WeakCache } from './WeakCache.js';
+
+// Built-in components for declarative rendering
 export { Loop } from './components/LoopComponent.js';
 export { If } from './components/IfComponent.js';
+
+// Note: PropertyComponent, RelationComponent, and ValueComponent are NOT exported.
+// They are internal components used via declarative syntax:
+//   <span property="v-s:title"></span>  ✅ Use declarative attribute
+//   import PropertyComponent from '...' ❌ Not available from index.js
+// See API.md "Advanced Components" section for details.
+
 export * from './Util.js';
 
 // Re-export types
@@ -21,4 +30,5 @@ export type { ModelValue } from './Model.js';
 export type { ComponentInstance } from './components/Component.js';
 export type { LoopComponentInstance } from './components/LoopComponent.js';
 export type { IfComponentInstance } from './components/IfComponent.js';
+
 

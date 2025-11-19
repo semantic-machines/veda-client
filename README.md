@@ -113,6 +113,43 @@ class TodoList extends Component(HTMLElement) {
 
 ## Core Concepts
 
+### Exported API
+
+The framework exports the following modules from `./src/index.js`:
+
+| Module | Export | Description |
+|--------|--------|-------------|
+| **Core** | `Component` | Base class for creating reactive web components |
+|  | `html` | Template tag for safe HTML rendering |
+|  | `safe` | Function to escape HTML and remove expressions |
+|  | `raw` | Template tag for raw HTML (use with caution) |
+|  | `reactive` | Create reactive proxy for state management |
+|  | `effect` | Create auto-tracking effect |
+|  | `computed` | Create computed value |
+| **Components** | `Loop` | List rendering with reconciliation |
+|  | `If` | Conditional rendering |
+| **Data** | `Model` | RDF/semantic data model |
+|  | `Backend` | Backend API communication |
+|  | `Subscription` | WebSocket subscriptions |
+| **Reactivity** | `flushEffects` | Manually flush effect queue |
+|  | `trigger` | Manually trigger effects |
+|  | `untrack` | Disable tracking in callback |
+|  | `pauseTracking` | Pause dependency tracking |
+|  | `resumeTracking` | Resume dependency tracking |
+| **Utilities** | `Router` | Hash-based router |
+|  | `Emitter` | Event emitter mixin |
+|  | `Value` | RDF value serialization |
+|  | `WeakCache` | Weak reference cache |
+|  | `BackendError` | Backend error class |
+|  | `genUri`, `guid`, `timeout`, `diff`, `eq` | Utility functions |
+
+**Not exported (declarative syntax only):**
+- `PropertyComponent` - Use `<span property="v-s:title"></span>`
+- `RelationComponent` - Use `<ul rel="v-s:hasTodo"></ul>`
+- `ValueComponent` - Internal base class
+
+See [API.md](./API.md) for complete API documentation.
+
 ### Reactivity
 
 ```javascript

@@ -15,7 +15,7 @@ The reactivity system consists of three main parts:
 Use single braces `{expression}` in templates for reactive interpolation:
 
 ```javascript
-import { Component, html } from 'veda-client';
+import Component, { html } from './src/components/Component.js';
 
 export default class Counter extends Component(HTMLElement) {
   static tag = 'my-counter';
@@ -66,7 +66,7 @@ export default class Counter extends Component(HTMLElement) {
 Create reactive state using the `reactive()` function:
 
 ```javascript
-import { reactive } from 'veda-client';
+import { reactive } from './src/Reactive.js';
 
 // Outside components - use global reactive()
 const state = reactive({
@@ -81,7 +81,7 @@ state.count++; // Triggers all effects that depend on count
 **In components, use `this.reactive()`:**
 
 ```javascript
-import { Component } from 'veda-client';
+import Component from './src/components/Component.js';
 
 class MyComponent extends Component(HTMLElement) {
   constructor() {
@@ -124,7 +124,7 @@ state.items = [5, 6, 7];
 Use `this.reactive()` to create reactive state - Component automatically detects it and enables reactivity:
 
 ```javascript
-import { Component, html } from 'veda-client';
+import Component, { html } from './src/components/Component.js';
 
 export default class Counter extends Component(HTMLElement) {
   static tag = 'my-counter';
@@ -192,9 +192,13 @@ export default class TodoList extends Component(HTMLElement) {
 }
 ```
 
-## Watchers
+## Side Effects
 
-Use `watch()` to run side effects when values change:
+You can use **either** `watch()` or `effect()` for side effects:
+
+### Using watch() - Callback-based
+
+`watch()` provides a callback with new and old values:
 
 ```javascript
 async connectedCallback() {
@@ -213,6 +217,41 @@ async connectedCallback() {
   });
 }
 ```
+
+### Using effect() - Direct tracking
+
+`effect()` tracks dependencies automatically - simpler for complex logic:
+
+```javascript
+async connectedCallback() {
+  await super.connectedCallback();
+
+  // Effect tracks this.completed automatically
+  this.effect(() => {
+    this.classList.toggle('completed', this.completed);
+  });
+
+  // Effect for editing state and focus
+  this.effect(() => {
+    this.classList.toggle('editing', this.state.editing);
+
+    if (this.state.editing) {
+      const input = this.querySelector('.edit');
+      if (input) {
+        requestAnimationFrame(() => {
+          input.focus();
+          input.setSelectionRange(input.value.length, input.value.length);
+        });
+      }
+    }
+  });
+}
+```
+
+**When to use which:**
+- Use `watch()` when you need old/new values or want reference equality checks
+- Use `effect()` for simpler code when tracking multiple dependencies
+- Both auto-cleanup on component disconnect
 
 ### ⚠️ Important: Reference Equality
 
@@ -238,9 +277,9 @@ state.items.push(5);  // Triggers! (length changed)
 - Only reassigning the whole object/array will trigger
 - To watch deep changes, watch specific properties or use `effect()` directly
 
-## Effects
+## Using Effect for Complex Logic
 
-Use `effect()` for more complex reactive logic:
+Use `effect()` for more complex reactive logic where automatic tracking is easier:
 
 ```javascript
 async connectedCallback() {
@@ -392,7 +431,8 @@ export default class TodoItem extends Component(HTMLLIElement) {
 - Use `this.reactive()` in components for automatic reactivity
 - Use global `reactive()` only outside components
 - Use getters for computed properties
-- Use `watch()` for side effects (DOM manipulation, focus, etc.)
+- Use `effect()` for side effects that track multiple dependencies
+- Use `watch()` for side effects where you need old/new value comparison
 - Keep render() pure - no side effects
 - Use plain properties when manual control is needed
 
@@ -404,11 +444,13 @@ export default class TodoItem extends Component(HTMLLIElement) {
 
 ## Examples
 
-See the TodoMVC implementation in `app-todo/` for a complete example:
+See the TodoMVC implementation in `app-todo/` for complete examples:
 
-- `TodoItem.js` - Local state, computed properties, watchers
-- `TodoApp.js` - Complex state, model integration, list rendering
+- `TodoItem.js` - Local state, computed properties, effects for classList updates
+- `TodoApp.js` - Complex state, model integration, list rendering with Loop
 - `TodoFooter.js` - Reactive attributes
+
+**Note:** The real TodoMVC examples use `effect()` for side effects. Both `effect()` and `watch()` are valid - choose based on your needs.
 
 ## API Reference
 
@@ -482,7 +524,7 @@ const debouncedEffect = (fn, delay) => {
 Prevent tracking in part of an effect:
 
 ```javascript
-import { untrack } from 'veda-client';
+import { untrack } from './src/Effect.js';
 
 this.effect(() => {
   const count = this.state.count; // Tracked
@@ -498,7 +540,7 @@ this.effect(() => {
 Manually trigger updates (rarely needed):
 
 ```javascript
-import { trigger } from 'veda-client';
+import { trigger } from './src/Effect.js';
 
 trigger(this.state, 'count');
 ```

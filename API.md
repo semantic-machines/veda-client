@@ -979,10 +979,118 @@ import { Loop } from './src/components/LoopComponent.js';
 **Limitations:**
 - **Single root element required:** Template must have exactly one root element. Multiple root elements will trigger a console warning and only the first element will be used.
 - **Duplicate keys warning:** If multiple items have the same key value, a warning is logged. Each item must have a unique key for proper reconciliation.
+- **Static item-key:** The `item-key` attribute must be static. Dynamic keys (e.g., `item-key="{this.keyName}"`) are not supported and will cause reconciliation issues.
 - Source array must be reactive; plain arrays that never change reference will not emit updates
 - Watchers still compare by reference, so `this.watch(() => this.state.items, ...)` requires assigning a new array when you need the watcher to fire
 - Naive reconciliation (no LIS optimization, O(n²) for reordering)
 - No virtualization
+
+**Common Issues and Solutions:**
+
+1. **Loop not updating after array mutation:**
+
+```javascript
+// ❌ WRONG - Direct mutation doesn't trigger Loop
+this.state.items.push(newItem);
+
+// ✅ CORRECT - Create new array reference
+this.state.items = [...this.state.items, newItem];
+
+// ❌ WRONG - Direct index assignment
+this.state.items[0] = updatedItem;
+
+// ✅ CORRECT - Use splice
+this.state.items.splice(0, 1, updatedItem);
+this.state.items = this.state.items.slice(); // Force reference change
+```
+
+2. **Multiple root elements warning:**
+
+```javascript
+// ❌ WRONG - Multiple roots
+<${Loop} items="{this.todos}" item-key="id">
+  <h3>{this.model.title}</h3>
+  <p>{this.model.description}</p>
+</${Loop}>
+// Console: "Loop template should have single root element. Multiple elements found, using first one."
+
+// ✅ CORRECT - Single root wraps everything
+<${Loop} items="{this.todos}" item-key="id">
+  <div class="todo-item">
+    <h3>{this.model.title}</h3>
+    <p>{this.model.description}</p>
+  </div>
+</${Loop}>
+```
+
+3. **Duplicate keys cause wrong reconciliation:**
+
+```javascript
+// ❌ WRONG - Duplicate keys
+const items = [
+  { id: 1, text: 'First' },
+  { id: 1, text: 'Second' },  // Duplicate id!
+  { id: 2, text: 'Third' }
+];
+// Console: "Loop component: Duplicate key "1" found. ..."
+
+// ✅ CORRECT - Unique keys
+const items = [
+  { id: 1, text: 'First' },
+  { id: 2, text: 'Second' },
+  { id: 3, text: 'Third' }
+];
+```
+
+4. **Performance degradation with large lists:**
+
+```javascript
+// ⚠️ SLOW - 1000+ items with frequent reordering
+<${Loop} items="{this.largeList}" item-key="id">
+  <div>{this.model.name}</div>
+</${Loop}>
+
+// ✅ BETTER - Pagination
+get currentPage() {
+  const { page, pageSize } = this.state;
+  return this.allItems.slice(page * pageSize, (page + 1) * pageSize);
+}
+
+<${Loop} items="{this.currentPage}" item-key="id">
+  <div>{this.model.name}</div>
+</${Loop}>
+```
+
+5. **Missing item-key causes full re-render:**
+
+```javascript
+// ❌ WRONG - No key, every update re-creates all elements
+<${Loop} items="{this.items}">
+  <div>{this.model.name}</div>
+</${Loop}>
+
+// ✅ CORRECT - With key, reuses existing elements
+<${Loop} items="{this.items}" item-key="id">
+  <div>{this.model.name}</div>
+</${Loop}>
+```
+
+**Performance Characteristics:**
+
+| Operation | Time Complexity | Notes |
+|-----------|----------------|-------|
+| Add new items | O(n) | Create n new DOM elements |
+| Remove items | O(m) | Remove m DOM elements |
+| Update items | O(n) | Update n changed elements |
+| Reorder items | O(n²) | Naive sequential insertion |
+| Lookup by key | O(1) | Uses Map for key lookup |
+
+**Recommendations:**
+- Always provide `item-key` for efficient reconciliation
+- Keep lists under 500 items for optimal performance
+- Use pagination for large datasets (1000+ items)
+- Avoid frequent reordering of large lists
+- Consider virtual scrolling for very large lists (see LIMITATIONS.md)
 
 **Important - Template Structure:**
 
@@ -1399,12 +1507,173 @@ If you need programmatic control, consider:
 |-----------|---------|-------|
 | `PropertyComponent` | Render RDF property values | `<span property="v-s:title"></span>` |
 | `RelationComponent` | Render related models | `<ul rel="v-s:hasTodo"></ul>` |
-| `ValueComponent` | Base for Property/Relation | Internal only - not used directly |
+| `ValueComponent` | Base for Property/Relation | `<div property="...">` or `<div rel="...">` |
 
-**ValueComponent** is the base class that PropertyComponent extends. It handles:
-- Model subscription and reactivity
-- Template rendering with `<slot>` support
-- Shadow DOM support
+#### ValueComponent - Base Class
+
+**ValueComponent** is the foundation for both PropertyComponent and RelationComponent. It provides common functionality for rendering model properties.
+
+**Location:** `./src/components/ValueComponent.js`
+
+**Export status:** NOT exported from `index.js` - internal use only
+
+**Inheritance hierarchy:**
+```
+Component (base)
+  └── ValueComponent
+       ├── PropertyComponent
+       └── RelationComponent
+```
+
+**Core responsibilities:**
+
+1. **Automatic model integration** - Inherits `model` from parent component
+2. **Reactive rendering** - Creates effect that auto-updates when model properties change
+3. **Template support** - Processes `<template>` elements for custom rendering
+4. **Shadow DOM support** - Optional style isolation via `shadow` attribute
+
+**Implementation details:**
+
+```javascript
+export default function ValueComponent (Class = HTMLElement) {
+  return class ValueComponentClass extends Component(Class) {
+    #propEffect = null;
+    #valueNodes = new Map();
+
+    added() {
+      this.prop = this.getAttribute('property') ?? this.getAttribute('rel');
+
+      // Create reactive effect
+      if (!this.#propEffect) {
+        this.#propEffect = effect(() => {
+          this.render();
+        });
+      }
+    }
+
+    removed() {
+      // Cleanup
+      if (this.#propEffect) {
+        this.#propEffect();
+        this.#propEffect = null;
+      }
+      this.#valueNodes.clear();
+    }
+
+    render() {
+      const container = this.hasAttribute('shadow')
+        ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
+        : this;
+
+      const values = this.model.hasValue(this.prop)
+        ? (Array.isArray(this.model[this.prop]) ? this.model[this.prop] : [this.model[this.prop]])
+        : [];
+
+      container.replaceChildren();
+      this.#valueNodes.clear();
+
+      values.forEach((value, index) => {
+        this.renderValue(value, container, index);
+      });
+    }
+
+    renderValue(value, container, index) {
+      const node = document.createTextNode(value.toString());
+      container.appendChild(node);
+      this.#valueNodes.set(index, {value, node});
+    }
+  };
+}
+```
+
+**When to use ValueComponent:**
+
+❌ **Don't use directly** - it's an internal base class
+
+✅ **Use PropertyComponent or RelationComponent** via declarative syntax:
+```javascript
+// Property for simple values
+<span property="v-s:title"></span>
+
+// Relation for linked resources
+<ul rel="v-s:hasTodo">
+  <li>{this.model.text}</li>
+</ul>
+```
+
+**Extending ValueComponent:**
+
+If you need custom behavior, you can extend PropertyComponent or RelationComponent directly (not from index.js):
+
+```javascript
+import PropertyComponent from './src/components/PropertyComponent.js';
+
+// Custom property component with formatting
+const FormattedProperty = PropertyComponent(HTMLElement);
+
+class MyFormattedProperty extends FormattedProperty {
+  renderValue(value, container, index) {
+    // Custom formatting logic
+    const formatted = this.formatValue(value);
+    const node = document.createTextNode(formatted);
+    container.appendChild(node);
+  }
+
+  formatValue(value) {
+    // Example: uppercase
+    return value.toString().toUpperCase();
+  }
+}
+
+customElements.define('my-formatted-property', MyFormattedProperty);
+```
+
+**Key features inherited from ValueComponent:**
+
+1. **Automatic model detection** - Looks for `model` property in parent chain
+2. **Reactive updates** - Effect tracks `this.model[this.prop]` automatically
+3. **Cleanup on disconnect** - Effect and value nodes cleaned up properly
+4. **Shadow DOM support** - Via `shadow` attribute
+5. **Template processing** - Calls `this._process(fragment)` for expression evaluation
+
+**Lifecycle:**
+
+```
+constructor → added() → render() → renderValue()
+                ↓
+            effect created
+                ↓
+        model property changed
+                ↓
+            render() again
+                ↓
+        disconnected → removed() → effect cleanup
+```
+
+**Memory management:**
+
+- Uses `#propEffect` private field to store effect cleanup function
+- Uses `#valueNodes` Map to track rendered nodes
+- Both cleaned up in `removed()` lifecycle method
+- No memory leaks due to proper cleanup
+
+**Performance notes:**
+
+- Creates one effect per component instance
+- Effect tracks `this.model[this.prop]` access
+- Re-renders only when tracked property changes
+- Does NOT re-render on unrelated model changes
+
+**Testing ValueComponent:**
+
+ValueComponent is tested indirectly through PropertyComponent and RelationComponent tests:
+- `test/ValueComponent.test.js` - Direct tests
+- `test/PropertyComponent.test.js` - PropertyComponent behavior
+- `test/RelationComponent.test.js` - RelationComponent behavior
+
+**Note:** This component is considered part of the internal API. While it's stable and production-ready, its interface may evolve in future versions. For public API, use the declarative syntax.
+
+---
 - Value change detection and updates
 
 **Note:** These components are fully tested and production-ready, but their internal API may change in future versions.
@@ -2456,10 +2725,58 @@ import type { EmitterInstance } from './src/Emitter.js';
 
 ### Component with Types
 
+**Example with RDF properties (real-world usage):**
+
 ```typescript
 import Component, { html } from './src/components/Component.js';
+import Model from './src/Model.js';
 import type { Reactive } from './src/Reactive.js';
+import type { ModelValue } from './src/Model.js';
 
+// Define RDF model interface
+interface TodoModel extends Model {
+  ['v-s:title']?: ModelValue[];
+  ['v-s:completed']?: ModelValue[];
+  ['v-s:created']?: ModelValue[];
+}
+
+// Component state interface
+interface TodoState {
+  todos: TodoModel[];
+  filter: 'all' | 'active' | 'completed';
+  editing: boolean;
+}
+
+class TodoApp extends Component(HTMLElement) {
+  state!: Reactive<TodoState>;
+
+  constructor() {
+    super();
+    this.state = this.reactive<TodoState>({
+      todos: [],
+      filter: 'all',
+      editing: false
+    });
+  }
+
+  get filteredTodos() {
+    return this.state.todos.filter(todo => {
+      const completed = todo['v-s:completed']?.[0]?.data || false;
+      return this.state.filter === 'all' ||
+        (this.state.filter === 'active' && !completed) ||
+        (this.state.filter === 'completed' && completed);
+    });
+  }
+
+  render() {
+    return html`<div>...</div>`;
+  }
+}
+```
+
+**Simplified example (for quick prototyping):**
+
+```typescript
 interface TodoState {
   todos: Array<{ id: number; text: string; done: boolean }>;
   filter: 'all' | 'active' | 'completed';
@@ -2492,35 +2809,91 @@ class TodoApp extends Component(HTMLElement) {
 
 ### Model with Types
 
+**Recommended: Define RDF property interfaces**
+
 ```typescript
 import Model from './src/Model.js';
+import type { ModelValue } from './src/Model.js';
 
+// Define typed model interface
 interface TodoModel extends Model {
-  ['v-s:title']?: Array<{ data: string; type: string }>;
-  ['v-s:completed']?: Array<{ data: boolean; type: string }>;
+  ['v-s:title']?: ModelValue[];
+  ['v-s:completed']?: ModelValue[];
+  ['v-s:priority']?: ModelValue[];
+  ['v-s:created']?: ModelValue[];
+  ['v-s:assignedTo']?: Model[];  // Relation to another model
 }
 
-const todo = new Model('d:Todo1') as TodoModel;
+const todo = new Model('d:Todo_12345') as TodoModel;
 await todo.load();
 
+// Type-safe property access
 if (todo['v-s:title']) {
-  console.log(todo['v-s:title'][0].data);
+  const title = todo['v-s:title'][0].data;  // Type: string | number | boolean
+  console.log('Title:', title);
+}
+
+// Setting properties with type safety
+todo['v-s:title'] = [{ data: 'New Title', type: 'String' }];
+todo['v-s:completed'] = [{ data: true, type: 'Boolean' }];
+
+// Relation properties
+if (todo['v-s:assignedTo']) {
+  const assignee = todo['v-s:assignedTo'][0];  // Type: Model
+  await assignee.load();
+  console.log('Assigned to:', assignee['v-s:name']?.[0]?.data);
+}
+
+await todo.save();
+```
+
+**Using getPropertyChain with types:**
+
+```typescript
+interface PersonModel extends Model {
+  ['v-s:name']?: ModelValue[];
+  ['v-s:email']?: ModelValue[];
+  ['v-s:department']?: Model[];
+}
+
+interface DepartmentModel extends Model {
+  ['v-s:title']?: ModelValue[];
+  ['v-s:head']?: Model[];
+}
+
+const employee = new Model('d:Employee_123') as PersonModel;
+await employee.load();
+
+// Type-safe property chain traversal
+const headEmail = await employee.getPropertyChain(
+  'v-s:department',
+  'v-s:head',
+  'v-s:email'
+);
+
+if (headEmail) {
+  console.log('Department head email:', headEmail.data);
 }
 ```
 
 ### Generic Types for Components
 
+**With RDF Model types:**
+
 ```typescript
 import Component from './src/components/Component.js';
 import Model from './src/Model.js';
 import type { Reactive } from './src/Reactive.js';
+import type { ModelValue } from './src/Model.js';
 
-// Define custom Model interface
+// Define RDF Model interface
 interface TodoModel extends Model {
-  ['v-s:title']?: Array<{ data: string; type: string }>;
-  ['v-s:completed']?: Array<{ data: boolean; type: string }>;
+  ['v-s:title']?: ModelValue[];
+  ['v-s:completed']?: ModelValue[];
+  ['v-s:priority']?: ModelValue[];
 }
 
+// Component state interface
 interface TodoState {
   editing: boolean;
   editText: string;
@@ -2540,43 +2913,70 @@ class TodoItem extends Component(HTMLLIElement) {
   }
 
   get title(): string {
-    return this.model?.['v-s:title']?.[0]?.data ?? '';
+    return this.model?.['v-s:title']?.[0]?.data as string ?? '';
   }
 
   get completed(): boolean {
-    return this.model?.['v-s:completed']?.[0]?.data ?? false;
+    return this.model?.['v-s:completed']?.[0]?.data as boolean ?? false;
+  }
+
+  get priority(): number {
+    return this.model?.['v-s:priority']?.[0]?.data as number ?? 0;
   }
 }
 ```
 
 ### Type-Safe Model Properties
 
+**Using ModelValue type for RDF properties:**
+
 ```typescript
-// Option 1: Interface extending Model
+import type { ModelValue } from './src/Model.js';
+
+// Helper type for property arrays
+type RDFProperty<T> = ModelValue[];
+
+// Model interfaces with typed properties
 interface PersonModel extends Model {
-  ['v-s:name']?: ModelValue[];
-  ['v-s:age']?: ModelValue[];
-  ['v-s:email']?: ModelValue[];
+  ['v-s:name']: RDFProperty<string>;
+  ['v-s:age']: RDFProperty<number>;
+  ['v-s:isActive']: RDFProperty<boolean>;
+  ['v-s:email']: RDFProperty<string>;
+  ['v-s:department']: Model[];  // Relation
 }
 
-const person = new Model('d:Person1') as PersonModel;
+const person = new Model('d:Person_123') as PersonModel;
 await person.load();
 
 // Type-safe access
-const name = person['v-s:name']?.[0]; // Type: ModelValue | undefined
+const name = person['v-s:name'][0].data;  // Type: string | number | boolean
+const age = person['v-s:age'][0].data as number;
+const isActive = person['v-s:isActive'][0].data as boolean;
 
-// Option 2: Helper type
-type ModelProperty<T> = Array<{ data: T; type: string }>;
+// Type-safe setting
+person['v-s:name'] = [{ data: 'John Doe', type: 'String' }];
+person['v-s:age'] = [{ data: 30, type: 'Integer' }];
+person['v-s:isActive'] = [{ data: true, type: 'Boolean' }];
+```
+
+**Alternative: Strongly typed properties:**
+
+```typescript
+// More strict typing for specific value types
+type StringProperty = Array<{ data: string; type: 'String' }>;
+type IntegerProperty = Array<{ data: number; type: 'Integer' }>;
+type BooleanProperty = Array<{ data: boolean; type: 'Boolean' }>;
 
 interface TypedPerson extends Model {
-  ['v-s:name']: ModelProperty<string>;
-  ['v-s:age']: ModelProperty<number>;
-  ['v-s:isActive']: ModelProperty<boolean>;
+  ['v-s:name']: StringProperty;
+  ['v-s:age']: IntegerProperty;
+  ['v-s:isActive']: BooleanProperty;
 }
 
 const typedPerson = new Model() as TypedPerson;
-typedPerson['v-s:name'] = [{ data: 'John', type: 'String' }];
-typedPerson['v-s:age'] = [{ data: 30, type: 'Integer' }];
+typedPerson['v-s:name'] = [{ data: 'John', type: 'String' }];  // ✅
+// @ts-expect-error
+typedPerson['v-s:name'] = [{ data: 123, type: 'Integer' }];     // ❌ Type error
 ```
 
 ### Type-Safe Reactive State
