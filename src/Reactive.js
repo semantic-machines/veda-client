@@ -81,26 +81,33 @@ export function reactive(target, options = {}) {
       return value;
     },
 
-    set(target, key, value, receiver) {
-      // Silently ignore dangerous property names to prevent prototype pollution
-      if (typeof key === 'string' && DANGEROUS_PROPS.has(key)) {
-        console.warn(`Reactive.set: Blocked dangerous property name: ${key}`);
-        return true; // Return true to avoid TypeError in strict mode
+  set(target, key, value, receiver) {
+    // Security: Silently ignore dangerous property names to prevent prototype pollution
+    if (typeof key === 'string' && DANGEROUS_PROPS.has(key)) {
+      console.warn(`Reactive.set: Blocked dangerous property name: ${key}`);
+      return true; // Return true to avoid TypeError in strict mode
+    }
+
+    // Note: Array index assignment (arr[0] = x) will pass through this trap,
+    // but we intentionally DON'T special-case numeric keys for reactivity.
+    // This is a documented limitation - use splice() or array reassignment instead.
+    // Rationale: Intercepting numeric keys has performance implications and
+    // adds complexity. Array mutation methods (push, pop, etc.) ARE tracked.
+    // See LIMITATIONS.md section 4 for details and workarounds.
+
+    const oldValue = target[key];
+    const result = Reflect.set(target, key, value, receiver);
+
+    if (oldValue !== value) {
+      trigger(target, key);
+
+      if (options.onSet && typeof key !== 'symbol') {
+        options.onSet.call(proxy, key, value, oldValue);
       }
+    }
 
-      const oldValue = target[key];
-      const result = Reflect.set(target, key, value, receiver);
-
-      if (oldValue !== value) {
-        trigger(target, key);
-
-        if (options.onSet && typeof key !== 'symbol') {
-          options.onSet.call(proxy, key, value, oldValue);
-        }
-      }
-
-      return result;
-    },
+    return result;
+  },
 
     deleteProperty(target, key) {
       const hadKey = key in target;

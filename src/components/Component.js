@@ -664,24 +664,29 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       return cleanup;
     }
 
-    /**
-     * Helper: watch a value and run callback when it changes
-     *
-     * NOTE: Uses reference equality (===) for comparison.
-     * For objects/arrays, callback will only trigger if the reference changes,
-     * not when properties inside are modified.
-     *
-     * Examples:
-     *   this.watch(() => state.count, (val) => ...);  // Triggers on count change
-     *   this.watch(() => state.items, (val) => ...);  // Only triggers if items = newArray
-     *   state.items.push(x);  // Won't trigger (same reference)
-     *   state.items = [...state.items, x];  // Triggers (new reference)
-     *
-     * @param {Function} getter - Function that returns the value to watch
-     * @param {Function} callback - Callback to run when value changes
-     * @param {Object} options - Options { immediate: true } to run callback immediately
-     */
-    watch(getter, callback, options = {}) {
+  /**
+   * Helper: watch a value and run callback when it changes
+   *
+   * NOTE: Uses reference equality (===) for comparison.
+   * For objects/arrays, callback will only trigger if the reference changes,
+   * not when properties inside are modified.
+   *
+   * Examples:
+   *   this.watch(() => state.count, (val) => ...);  // Triggers on count change
+   *   this.watch(() => state.items, (val) => ...);  // Only triggers if items = newArray
+   *   state.items.push(x);  // Won't trigger (same reference)
+   *   state.items = [...state.items, x];  // Triggers (new reference)
+   *
+   * WORKAROUNDS for arrays/objects:
+   *   1. Watch specific property: this.watch(() => state.items.length, ...)
+   *   2. Watch nested property: this.watch(() => state.user.name, ...)
+   *   3. Reassign after mutation: state.items.push(x); state.items = state.items.slice();
+   *
+   * @param {Function} getter - Function that returns the value to watch
+   * @param {Function} callback - Callback to run when value changes
+   * @param {Object} options - Options { immediate: true } to run callback immediately
+   */
+  watch(getter, callback, options = {}) {
       let oldValue;
       let isFirst = true;
 

@@ -23,26 +23,36 @@ export default class TodoItem extends Component(HTMLLIElement) {
   async connectedCallback() {
     await super.connectedCallback();
 
-    // Separate effect for completed class - only runs when completed changes
-    this.effect(() => {
-      this.classList.toggle('completed', this.completed);
-    });
+    // Using watch() with immediate option for CSS class management
+    // This approach is useful when you want to ensure initial state is applied on mount
+    this.watch(
+      () => this.completed,
+      (isCompleted) => {
+        this.classList.toggle('completed', isCompleted);
+      },
+      { immediate: true } // Apply class immediately on mount
+    );
 
-    // Separate effect for editing class and focus management - only runs when editing changes
-    this.effect(() => {
-      this.classList.toggle('editing', this.state.editing);
+    // Using watch() for editing state - demonstrates old/new value comparison
+    // and side effects that need to run on initial mount
+    this.watch(
+      () => this.state.editing,
+      (editing, wasEditing) => {
+        this.classList.toggle('editing', editing);
 
-      if (this.state.editing) {
-        // Focus input when entering edit mode
-        const input = this.querySelector('.edit');
-        if (input) {
-          requestAnimationFrame(() => {
-            input.focus();
-            input.setSelectionRange(input.value.length, input.value.length);
-          });
+        if (editing) {
+          // Focus input when entering edit mode
+          const input = this.querySelector('.edit');
+          if (input) {
+            requestAnimationFrame(() => {
+              input.focus();
+              input.setSelectionRange(input.value.length, input.value.length);
+            });
+          }
         }
-      }
-    });
+      },
+      { immediate: true } // Ensure initial editing state is reflected
+    );
   }
 
   handleToggle() {

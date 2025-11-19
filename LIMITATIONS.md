@@ -118,9 +118,21 @@ state.items = [...state.items]; // Or reassign
 
 **Workaround:** Use array mutation methods or reassignment
 
-**Why:** Intercepting numeric keys has performance implications and adds complexity. Use array mutation methods instead.
+**Why:** Intercepting numeric keys has performance implications and adds complexity. This is a **deliberate design decision** to optimize for array method performance, not a technical limitation.
 
-**Status:** Veda-specific limitation (unlike Vue 3 which tracks index assignment via Proxy)
+**Technical Details:**
+- While Proxy CAN intercept index assignment (`arr[0] = x`), we choose not to track it
+- Array mutation methods (`push`, `pop`, `splice`, etc.) ARE tracked and reactive
+- This avoids performance overhead for array-heavy applications
+
+**Comparison with other frameworks:**
+- **Vue 3:** Tracks index assignment via Proxy (different performance trade-off)
+- **Solid.js:** Uses fine-grained signals (different approach entirely)
+- **Veda:** Optimizes for mutation method performance
+
+**Tests:** See `test/ReactiveArrayIndex.test.js` for comprehensive tests and workarounds
+
+**Status:** Documented limitation (intentional design choice)
 
 ### 5. Watch Uses Reference Equality
 
@@ -137,7 +149,17 @@ state.items = [...state.items, 4];
 this.watch(() => state.items.length, callback);
 ```
 
-**Status:** By design (performance)
+**Workarounds:**
+1. **Watch specific property:** `this.watch(() => state.items.length, ...)`
+2. **Watch nested value:** `this.watch(() => state.user.name, ...)`
+3. **Reassign after mutation:** `state.items.push(x); state.items = state.items.slice();`
+4. **Use effect() instead:** `this.effect(() => { console.log(state.items.length); })`
+
+**Why:** Reference equality (`===`) is fast and predictable. Deep equality checking would be expensive and could cause unexpected triggers.
+
+**Tests:** See `test/WatchReferenceEquality.test.js` for comprehensive examples
+
+**Status:** By design (performance and predictability)
 
 ### 6. Component Tree Depth Limits
 

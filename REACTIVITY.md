@@ -195,65 +195,22 @@ export default class TodoList extends Component(HTMLElement) {
 
 ## Side Effects
 
-You can use **either** `watch()` or `effect()` for side effects:
+You can use **either** `effect()` or `watch()` for side effects. Both are valid approaches with different strengths.
 
-### Using watch() - Callback-based
+### Recommended: effect() - Automatic tracking
 
-`watch()` provides a callback with new and old values:
-
-```javascript
-async connectedCallback() {
-  await super.connectedCallback();
-
-  // Watch a computed property
-  this.watch(() => this.completed, (isCompleted) => {
-    this.classList.toggle('completed', isCompleted);
-  });
-
-  // Watch state
-  this.watch(() => this.state.editing, (editing) => {
-    if (editing) {
-      this.querySelector('.edit-input')?.focus();
-    }
-  });
-
-  // Watch with immediate option - runs callback immediately with current value
-  this.watch(
-    () => this.state.editing,
-    (editing) => {
-      this.classList.toggle('editing', editing);
-    },
-    { immediate: true } // Runs on mount, not just on changes
-  );
-
-  // Initial setup example - set focus when component mounts
-  this.watch(
-    () => this.state.autofocus,
-    (shouldFocus) => {
-      if (shouldFocus) {
-        const input = this.querySelector('input');
-        input?.focus();
-      }
-    },
-    { immediate: true } // Apply initial state immediately
-  );
-}
-```
-
-### Using effect() - Direct tracking
-
-`effect()` tracks dependencies automatically - simpler for complex logic:
+`effect()` is simpler for most use cases - it automatically tracks all dependencies:
 
 ```javascript
 async connectedCallback() {
   await super.connectedCallback();
 
-  // Effect tracks this.completed automatically
+  // Simple effect for CSS class - runs when this.completed changes
   this.effect(() => {
     this.classList.toggle('completed', this.completed);
   });
 
-  // Effect for editing state and focus
+  // Effect for editing state with side effects
   this.effect(() => {
     this.classList.toggle('editing', this.state.editing);
 
@@ -267,16 +224,66 @@ async connectedCallback() {
       }
     }
   });
+
+  // Effect for toggle-all checkbox syncing
+  this.effect(() => {
+    const input = this.querySelector('#toggle-all');
+    if (input) {
+      input.checked = this.allCompleted;
+    }
+  });
+}
+```
+
+### Alternative: watch() - When you need old/new values
+
+`watch()` provides callbacks with old and new values:
+
+```javascript
+async connectedCallback() {
+  await super.connectedCallback();
+
+  // Watch with old/new values - useful for comparisons
+  this.watch(
+    () => this.completed,
+    (isCompleted, wasCompleted) => {
+      this.classList.toggle('completed', isCompleted);
+      console.log(`Status changed from ${wasCompleted} to ${isCompleted}`);
+    },
+    { immediate: true } // Apply initial state on mount
+  );
+
+  // Watch for initial setup that should run on mount
+  this.watch(
+    () => this.state.editing,
+    (editing) => {
+      this.classList.toggle('editing', editing);
+
+      if (editing) {
+        const input = this.querySelector('.edit');
+        if (input) {
+          requestAnimationFrame(() => {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+          });
+        }
+      }
+    },
+    { immediate: true } // Ensure initial editing state is applied
+  );
 }
 ```
 
 **When to use which:**
-- Use `watch()` when you need old/new values or want reference equality checks
-- Use `watch()` with `{ immediate: true }` for initial setup that should run on mount
-- Use `effect()` for simpler code when tracking multiple dependencies
+- **Use `effect()`** for most side effects - simpler, automatic tracking
+- **Use `watch()`** when you need old/new value comparison
+- **Use `watch()` with `{ immediate: true }`** for initial setup on mount
 - Both auto-cleanup on component disconnect
 
-**Note:** The TodoMVC examples (`app-todo/`) use `effect()` exclusively for simplicity. Both approaches are valid - choose based on whether you need old/new values or prefer callback-based pattern.
+**Note:** The TodoMVC examples (`app-todo/`) demonstrate **both approaches**:
+- **TodoItem** uses `watch()` with `{ immediate: true }` for CSS classes
+- **TodoApp** uses `effect()` for checkbox syncing
+- Both are equally valid - choose based on your needs
 
 **When to use `{ immediate: true }`:**
 - Applying initial CSS classes based on state
@@ -496,11 +503,11 @@ export default class TodoItem extends Component(HTMLLIElement) {
 
 See the TodoMVC implementation in `app-todo/` for complete examples:
 
-- `TodoItem.js` - Local state, computed properties, effects for classList updates
-- `TodoApp.js` - Complex state, model integration, list rendering with Loop
-- `TodoFooter.js` - Reactive attributes
+- **`TodoItem.js`** - Uses `watch()` with `{ immediate: true }` for CSS class management and focus handling
+- **`TodoApp.js`** - Uses `effect()` for toggle-all checkbox syncing (simpler, no old/new values needed)
+- **`TodoFooter.js`** - Computed properties for reactive attributes (no explicit effects)
 
-**Note:** The real TodoMVC examples use `effect()` for side effects. Both `effect()` and `watch()` are valid - choose based on your needs.
+**Key Takeaway:** The TodoMVC examples demonstrate **both `effect()` and `watch()`** to show different approaches. Use what fits your use case best.
 
 ## API Reference
 

@@ -50,6 +50,16 @@ export default class TodoApp extends Component(HTMLElement) {
 
     this.state.filter = this.getFilterFromHash();
 
+    // Using effect() to sync toggle-all checkbox with computed state
+    // This approach is simpler when you don't need old/new values
+    // and the effect automatically tracks all dependencies (allCompleted)
+    this.effect(() => {
+      const input = this.querySelector('#toggle-all');
+      if (input) {
+        input.checked = this.allCompleted;
+      }
+    });
+
     // Register event listeners with pre-bound handlers
     this.addEventListener('new-todo', this.handleNewTodo);
     this.addEventListener('toggle-todo', this.handleToggleTodo);
