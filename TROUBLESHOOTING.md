@@ -32,18 +32,22 @@ constructor() {
 }
 ```
 
-2. **Array mutations not reactive**
+2. **Array index assignment not reactive**
 
 ```javascript
-// ❌ Won't trigger update
+// ❌ Index assignment won't trigger update
 this.state.items[0] = newValue;
 
-// ✅ Use array methods
-this.state.items.splice(0, 1, newValue);
+// ✅ Use array mutation methods (these ARE reactive)
+this.state.items.splice(0, 1, newValue);  // Triggers update
+this.state.items.push(newValue);          // Triggers update
+this.state.items.pop();                   // Triggers update
 
-// ✅ Or reassign
+// ✅ Or reassign array
 this.state.items = [...this.state.items];
 ```
+
+**Note:** Array mutation methods (`push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse`) are fully reactive. Only direct index assignment (`arr[0] = x`) is not tracked.
 
 3. **Watch not triggering on array/object changes**
 
@@ -71,15 +75,39 @@ this.state.todos.push(newTodo);
 // Loop doesn't show new item
 ```
 
-**Solution:** Loop needs array reference change:
+**Possible causes:**
+
+1. **State not reactive** (most common):
 
 ```javascript
-// ❌ Direct mutation
-this.state.todos.push(newTodo);
+// ❌ Plain object
+constructor() {
+  super();
+  this.state = { todos: [] }; // Not reactive!
+}
 
-// ✅ Create new array reference
-this.state.todos = [...this.state.todos, newTodo];
+// ✅ Reactive state
+constructor() {
+  super();
+  this.state = this.reactive({ todos: [] }); // Reactive!
+}
 ```
+
+2. **Using watch() on array** (watch uses reference equality):
+
+```javascript
+// ❌ Won't trigger - same array reference
+this.watch(() => this.state.todos, callback);
+this.state.todos.push(newTodo); // No trigger!
+
+// ✅ Create new array reference for watch
+this.state.todos = [...this.state.todos, newTodo];
+
+// ✅ Or watch array length
+this.watch(() => this.state.todos.length, callback);
+```
+
+**Note:** Loop component itself works with both mutation methods AND reference changes. The issue is usually with `watch()` or non-reactive state.
 
 ### Loop Re-rendering All Items
 

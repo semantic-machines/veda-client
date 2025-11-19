@@ -212,13 +212,22 @@ class MyComponent extends Component(HTMLElement) {
       }
     );
 
-    // With immediate option
+    // With immediate option - runs callback immediately with current value
     this.watch(
       () => this.state.editing,
       (editing) => {
         this.classList.toggle('editing', editing);
       },
       { immediate: true }
+    );
+
+    // Initial setup example - apply CSS class on mount
+    this.watch(
+      () => this.state.active,
+      (isActive) => {
+        this.classList.toggle('active', isActive);
+      },
+      { immediate: true } // ← Critical! Without this, class won't be set on mount
     );
 
     // Watching array length (not array itself)
@@ -256,6 +265,34 @@ state.items = [...state.items, 4];
 
 // ✅ Alternative - watch array length
 this.watch(() => state.items.length, callback);
+```
+
+**When to use `{ immediate: true }`:**
+
+```javascript
+// ❌ Without immediate - initial state not applied
+this.watch(
+  () => this.state.editing,
+  (editing) => this.classList.toggle('editing', editing)
+);
+// If editing is true on mount, 'editing' class won't be added until it changes!
+
+// ✅ With immediate - initial state applied correctly
+this.watch(
+  () => this.state.editing,
+  (editing) => this.classList.toggle('editing', editing),
+  { immediate: true }
+);
+// Class added immediately based on initial state
+
+// ✅ Another common use case - initial focus
+this.watch(
+  () => this.state.autofocus,
+  (shouldFocus) => {
+    if (shouldFocus) this.querySelector('input')?.focus();
+  },
+  { immediate: true } // Apply focus on mount if autofocus is true
+);
 ```
 
 ### Other Methods
@@ -423,7 +460,7 @@ interface ReactiveOptions {
 
 **Features:**
 - Deep reactivity (nested objects automatically wrapped)
-- Array mutation tracking (push, pop, shift, unshift, splice, sort, reverse)
+- Array mutation tracking (push, pop, shift, unshift, splice, sort, reverse) - all these methods trigger reactivity automatically
 - Circular reference handling
 - Prototype pollution prevention
 
@@ -451,13 +488,13 @@ state.prototype = maliciousProto;      // Silently ignored + warning
 Prevents prototype pollution attacks where malicious code could modify Object.prototype and affect all objects in your application.
 
 **Limitations:**
-- **Array index assignment not reactive:** Direct index assignment (`arr[0] = x`) is not tracked. This is a Veda-specific limitation (unlike Vue 3 which does track index assignment via Proxy). Use array mutation methods instead: `arr.splice(0, 1, x)`
+- **Array index assignment not reactive:** Direct index assignment (`arr[0] = x`) is not tracked due to performance considerations. While technically possible via Proxy, this design decision avoids overhead for array-heavy applications. Use array mutation methods instead: `arr.splice(0, 1, x)` or reassign the array: `arr = [...arr]`
 - New properties need explicit wrapping
 - Date, RegExp, Promise not wrapped
 
 ### `computed<T>(getter: () => T)`
 
-Creates computed value.
+Creates computed value with automatic dependency tracking and caching.
 
 ```javascript
 import { computed } from 'veda-client';
@@ -468,6 +505,29 @@ const doubled = computed(() => state.count * 2);
 console.log(doubled.value); // 0
 state.count = 5;
 console.log(doubled.value); // 10
+```
+
+**Features:**
+- Lazy evaluation: computed on first access
+- Automatic caching: recalculates only when dependencies change
+- Priority execution: computed effects run before regular effects
+
+**Implementation details:**
+Internally, `computed()` uses an effect with `computed: true` flag, which ensures computed values are always up-to-date before dependent effects run:
+
+```javascript
+import { effect } from 'veda-client';
+
+// Computed values use effects with priority
+let derivedValue;
+effect(() => {
+  derivedValue = state.count * 2;
+}, { computed: true }); // Runs FIRST
+
+// Regular effects run after computed
+effect(() => {
+  console.log('Derived:', derivedValue); // Always sees updated value
+});
 ```
 
 **Note:** Access via `.value` property.
@@ -701,7 +761,7 @@ effect(() => {
 
 ### Array Index Assignment
 
-**⚠️ Important limitation:** Direct index assignment is NOT reactive in Veda (unlike Vue 3):
+**⚠️ Important limitation:** Direct index assignment is NOT reactive:
 
 ```javascript
 const state = reactive({ items: [1, 2, 3] });
@@ -718,7 +778,19 @@ state.items[0] = 99;
 state.items = state.items.slice(); // Force new reference
 ```
 
-**Why:** Proxying array indices has performance implications. Use array mutation methods instead.
+**Why this limitation exists:**
+
+While Proxy can technically intercept index assignment (`arr[0] = x`), Veda chooses not to track it for performance reasons:
+- Array index access is extremely frequent in JavaScript
+- Intercepting every index read/write adds overhead
+- Most array operations use methods (`push`, `splice`) which ARE tracked
+
+This is a **deliberate design decision**, not a technical limitation. If you need index assignment, use `splice()` or reassign the array.
+
+**Comparison with other frameworks:**
+- Vue 3: Also uses Proxy but tracks index assignment (different performance trade-off)
+- Solid.js: Uses fine-grained signals (different approach)
+- Veda: Optimizes for array method performance
 
 ### Dynamic item-key in Loop
 
@@ -910,6 +982,31 @@ class MyComponent extends Component(HTMLElement) {
 }
 ```
 
+**Cleanup Order (disconnectedCallback):**
+
+```
+1. disconnectedCallback() called
+2. Component.#cleanupEffects() runs    ← Effects cleaned up FIRST
+3. this.removed() lifecycle hook runs
+4. Component fully disconnected
+```
+
+**Cleanup Order (re-render/update):**
+
+```
+1. update() called
+2. Old #renderEffects cleaned up       ← Old effects removed
+3. render() generates new template
+4. New #renderEffects created          ← New effects for new template
+5. post() lifecycle hook runs
+```
+
+**Key points:**
+- Effect cleanup happens **BEFORE** `removed()` lifecycle
+- Re-render clears old render effects **BEFORE** creating new ones
+- User effects (via `this.effect()`) persist across re-renders
+- User effects are only cleaned up on disconnect
+
 **Manual effects:**
 
 ```javascript
@@ -978,9 +1075,12 @@ import { Loop } from 'veda-client';
 - `item-key` - Property name for reconciliation (default: `'id'`)
 
 **Features:**
-- Works with reactive arrays: both mutating methods (`push`, `splice`, `reverse`, etc.) and replacing the array reference trigger reconciliation
+- **Array reactivity:** Array mutation methods (`push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse`) are automatically reactive and trigger Loop reconciliation
+- **Reference changes:** Replacing the array reference (e.g., `items = [...items, newItem]`) also triggers reconciliation
 - Each child receives `model` prop with item value
 - Key-based reconciliation reuses DOM elements
+
+**Important:** Both mutation methods AND reference changes work. Use whichever is more convenient for your use case.
 
 **Limitations:**
 - **Single root element required:** Template must have exactly one root element. Multiple root elements will trigger a console warning and only the first element will be used.
@@ -993,22 +1093,27 @@ import { Loop } from 'veda-client';
 
 **Common Issues and Solutions:**
 
-1. **Loop not updating after array mutation:**
+1. **Loop not updating:**
 
 ```javascript
-// ❌ WRONG - Direct mutation doesn't trigger Loop
-this.state.items.push(newItem);
+// ✅ CORRECT - Array mutation methods work automatically
+this.state.items.push(newItem);        // Works!
+this.state.items.splice(0, 1, newItem); // Works!
+this.state.items.sort();                // Works!
 
-// ✅ CORRECT - Create new array reference
+// ✅ CORRECT - Reference change also works
 this.state.items = [...this.state.items, newItem];
 
-// ❌ WRONG - Direct index assignment
-this.state.items[0] = updatedItem;
+// ❌ WRONG - Direct index assignment (not reactive)
+this.state.items[0] = updatedItem; // Won't trigger Loop!
 
-// ✅ CORRECT - Use splice
+// ✅ CORRECT - Use splice for index assignment
 this.state.items.splice(0, 1, updatedItem);
-this.state.items = this.state.items.slice(); // Force reference change
 ```
+
+**Note:** If Loop still doesn't update, check that:
+- The array is part of reactive state: `this.state = this.reactive({ items: [] })`
+- You're not watching the array with `watch()` (which uses reference equality)
 
 2. **Multiple root elements warning:**
 
@@ -1713,6 +1818,41 @@ model.id = 'd:NewModel';
 model['rdf:type'] = [new Model('v-s:Person')];
 ```
 
+**⚠️ Important: Factory Pattern & Caching**
+
+Model uses a factory pattern with automatic caching. Calling `new Model(uri)` multiple times with the same URI returns the **same instance**:
+
+```javascript
+const model1 = new Model('d:Person1');
+const model2 = new Model('d:Person1');
+
+console.log(model1 === model2); // true - same instance!
+```
+
+**Why this matters:**
+- **State sharing:** All references to the same URI share state
+- **Event listeners:** Listeners attached to one reference affect all references
+- **Memory efficiency:** Only one instance per URI in memory
+- **Reactivity:** Changes to the model are automatically reflected everywhere
+
+**Example - Shared State:**
+
+```javascript
+const todo1 = new Model('d:Todo_123');
+await todo1.load();
+
+// Later, in another component
+const todo2 = new Model('d:Todo_123'); // Returns same instance as todo1
+console.log(todo1 === todo2); // true
+
+todo1['v-s:title'] = ['Updated']; // Both todo1 and todo2 see this change
+console.log(todo2['v-s:title']); // ['Updated']
+```
+
+**Cache location:** Models are cached in `Model.cache` (a `WeakCache` instance). When all references to a model are garbage collected, it's automatically removed from cache.
+
+**Cache bypass:** To force reload from backend, use `model.reset()` or `model.load(false)`.
+
 ### Instance Methods
 
 #### `load(cache?: boolean): Promise<Model>`
@@ -1990,6 +2130,78 @@ Components created with `Component(HTMLElement)` call `this.model.subscribe?.()`
 ## Backend
 
 Static class for backend communication.
+
+### Error Handling
+
+#### `Backend.onError(listener): () => void`
+
+Register a global error listener for all backend errors.
+
+```javascript
+import { Backend, BackendError } from 'veda-client';
+
+// Register global error handler
+const unsubscribe = Backend.onError((error) => {
+  console.error('Backend error:', error.status, error.message);
+
+  if (error.status === 401) {
+    // Redirect to login
+    location.href = '/login';
+  } else if (error.status === 500) {
+    // Show error notification
+    showNotification('Server error. Please try again.');
+  }
+});
+
+// Later, remove listener
+unsubscribe();
+```
+
+**Parameters:**
+- `listener: (error: BackendError) => void` - Callback function receiving error
+
+**Returns:** Unsubscribe function to remove the listener
+
+**Use cases:**
+- Global error handling and logging
+- Automatic retry logic
+- User notifications for errors
+- Authentication error handling
+
+**Example - Retry Logic:**
+
+```javascript
+Backend.onError((error) => {
+  if (error.status === 503) { // Service unavailable
+    console.log('Server busy, retrying in 5s...');
+    setTimeout(() => {
+      // Retry the failed request
+      location.reload();
+    }, 5000);
+  }
+});
+```
+
+**Example - Multiple Listeners:**
+
+```javascript
+// Logger
+Backend.onError((error) => {
+  logToAnalytics('backend_error', {
+    status: error.status,
+    endpoint: error.url
+  });
+});
+
+// User notification
+Backend.onError((error) => {
+  if (error.status >= 500) {
+    toast.error('Server error. Please try again.');
+  }
+});
+```
+
+**Note:** Error listeners are called AFTER the error is thrown, so they don't prevent error propagation. Use try/catch for per-request error handling.
 
 ### Authentication
 
