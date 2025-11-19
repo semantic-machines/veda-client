@@ -574,11 +574,11 @@ state.count++; // Effect runs
 state.other++; // Effect does NOT run
 ```
 
-**⚠️ Warning:** While these functions use a depth counter and technically support nesting, manual nesting is error-prone. **Use `untrack(fn)` instead** for safe nesting.
+**⚠️ Warning:** While these functions use a depth counter to handle nesting mechanically, **manual nesting produces warnings and is error-prone**. **Use `untrack(fn)` instead** for safe nesting.
 
 **How it works:**
 - Uses `trackingDepth` counter (not a simple boolean flag)
-- `pauseTracking()` increments depth and logs warning if already paused
+- `pauseTracking()` increments depth and **logs warning if already paused** (depth > 0)
 - `resumeTracking()` decrements depth
 - Tracking resumes only when depth reaches 0
 
@@ -1887,12 +1887,22 @@ const phone = await task.getPropertyChain(
 );
 ```
 
-**Example - Accessing specific property:**
+**Example - Accessing URI of end model:**
 
 ```javascript
-// Get the 'id' property of the end model
-const typeId = await model.getPropertyChain('rdf:type', 'rdf:type', 'id');
-// Returns: 'rdfs:Class'
+// Get the URI of the deeply nested model
+const task = new Model('d:Task123');
+await task.load();
+
+// Traverse: task -> type -> type's type -> get URI
+const typeUri = await task.getPropertyChain('rdf:type', 'rdf:type');
+if (typeUri instanceof Model) {
+  console.log('Type URI:', typeUri.id); // e.g., 'rdfs:Class'
+}
+
+// Alternative: access property directly
+const typeName = await task.getPropertyChain('rdf:type', 'rdfs:label', '0');
+console.log('Type name:', typeName); // Gets first label value
 ```
 
 **Limitations:**

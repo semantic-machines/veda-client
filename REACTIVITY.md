@@ -276,6 +276,8 @@ async connectedCallback() {
 - Use `effect()` for simpler code when tracking multiple dependencies
 - Both auto-cleanup on component disconnect
 
+**Note:** The TodoMVC examples (`app-todo/`) use `effect()` exclusively for simplicity. Both approaches are valid - choose based on whether you need old/new values or prefer callback-based pattern.
+
 **When to use `{ immediate: true }`:**
 - Applying initial CSS classes based on state
 - Setting up initial focus or scroll position

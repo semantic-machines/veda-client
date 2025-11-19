@@ -82,6 +82,44 @@ effect(() => {
 // After 100 iterations: Error thrown
 ```
 
+### Circular References
+
+The reactivity system handles circular references automatically using WeakMap caching:
+
+```javascript
+const obj = reactive({ name: 'A' });
+obj.self = obj; // Circular reference
+
+// ✅ Works correctly - no infinite loop
+effect(() => {
+  console.log(obj.name, obj.self.name); // Both access the same proxy
+});
+```
+
+**How it works:**
+- Each object is wrapped only once (cached in WeakMap)
+- Subsequent access returns the same proxy
+- No memory leaks (WeakMap allows garbage collection)
+
+**Why this matters:**
+- Critical for RDF data where circular references are common
+- Model relationships often form cycles (A → B → A)
+- No need for manual cycle detection
+
+**Implementation:**
+```javascript
+// src/Reactive.js lines 23-28
+const existingProxy = reactiveMap.get(target);
+if (existingProxy) {
+  return existingProxy; // Return cached proxy
+}
+```
+
+**Test coverage:**
+- `test/Reactive.test.js` lines 580-631 cover various circular reference scenarios
+- Self-references, nested cycles, multiple refs to same object
+- Array circular references
+
 ### Computed Values
 
 Computed values cache results and re-compute when dependencies change:

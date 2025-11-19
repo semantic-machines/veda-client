@@ -9,6 +9,7 @@ A lightweight reactive framework for building semantic web applications with fin
 - 🔗 **Semantic data** - First-class RDF/linked data model support
 - 📝 **Declarative templates** - JSX-like syntax with reactive expressions
 - 🔄 **Built-in components** - Loop, If, Property, Relation components
+- ♻️ **Circular references** - Automatic handling for RDF graph structures
 - 📦 **Minimal footprint** - 48 KB browser bundle, 82 KB with Node.js (ws)
 - 🎨 **TypeScript** - Full type definitions included
 
@@ -86,14 +87,10 @@ class TodoList extends Component(HTMLElement) {
     });
   }
 
-  get todos() {
-    return this.state.todos;
-  }
-
   render() {
     return html`
       <ul>
-        <${Loop} items="{this.todos}" item-key="id">
+        <${Loop} items="{this.state.todos}" item-key="id">
           <li>{this.model.text}</li>
         </${Loop}>
       </ul>
@@ -107,6 +104,7 @@ class TodoList extends Component(HTMLElement) {
 - **[API Reference](./API.md)** - Complete API documentation
 - **[Architecture Guide](./ARCHITECTURE.md)** - Framework internals and design decisions
 - **[Reactivity Guide](./REACTIVITY.md)** - Comprehensive reactivity tutorial
+- **[Style Guide](./STYLE_GUIDE.md)** - Best practices and coding patterns
 - **[Changelog](./CHANGELOG.md)** - Version history and breaking changes
 - **[Migration Guide](./MIGRATION.md)** - Upgrading from previous versions
 - **[Troubleshooting](./TROUBLESHOOTING.md)** - Common issues and solutions
