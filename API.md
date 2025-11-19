@@ -190,6 +190,8 @@ Watches reactive value changes and runs callback when value changes.
 
 **Important:** Uses strict equality (===) for comparison. Array/object mutations won't trigger unless reference changes.
 
+**Note on immediate option:** When `immediate: true`, the callback runs synchronously during effect setup. On the first call, `oldValue` will equal `newValue` since there's no previous value yet.
+
 **Examples:**
 
 ```javascript
@@ -284,6 +286,15 @@ this.watch(
   { immediate: true }
 );
 // Class added immediately based on initial state
+
+// ⚠️ Note: On first call with immediate, oldValue equals newValue
+this.watch(
+  () => this.state.count,
+  (newValue, oldValue) => {
+    console.log(newValue, oldValue); // 0, 0 on first call
+  },
+  { immediate: true }
+);
 
 // ✅ Another common use case - initial focus
 this.watch(
@@ -460,7 +471,9 @@ interface ReactiveOptions {
 
 **Features:**
 - Deep reactivity (nested objects automatically wrapped)
-- Array mutation tracking (push, pop, shift, unshift, splice, sort, reverse) - all these methods trigger reactivity automatically
+- Array mutation tracking:
+  - **Mutation methods** (`push`, `pop`, `shift`, `unshift`, `splice`) - always trigger reactivity
+  - **Sorting methods** (`sort`, `reverse`) - trigger only if array actually changes (optimized)
 - Circular reference handling
 - Prototype pollution prevention
 
@@ -513,21 +526,68 @@ console.log(doubled.value); // 10
 - Priority execution: computed effects run before regular effects
 
 **Implementation details:**
-Internally, `computed()` uses an effect with `computed: true` flag, which ensures computed values are always up-to-date before dependent effects run:
+
+`computed()` uses a custom effect with a `scheduler` to implement lazy caching. The actual implementation from `src/Reactive.js`:
 
 ```javascript
-import { effect } from 'veda-client';
+export function computed(getter) {
+  let value;
+  let dirty = true;
 
-// Computed values use effects with priority
-let derivedValue;
-effect(() => {
-  derivedValue = state.count * 2;
-}, { computed: true }); // Runs FIRST
+  const computed = {
+    get value() {
+      if (dirty) {
+        value = getter();
+        dirty = false;
+      }
+      track(this, 'value');
+      return value;
+    }
+  };
 
-// Regular effects run after computed
-effect(() => {
-  console.log('Derived:', derivedValue); // Always sees updated value
+  effect(() => {
+    void computed.value;
+  }, {
+    lazy: false,
+    computed: true,  // Runs FIRST before regular effects
+    scheduler: () => {
+      if (!dirty) {
+        dirty = true;
+        trigger(computed, 'value');
+      }
+    }
+  });
+
+  return computed;
+}
+```
+
+**Key implementation points:**
+- **Dirty flag caching:** Getter only re-runs when `dirty === true`
+- **Custom scheduler:** When dependencies change, scheduler sets `dirty = true` and triggers computed dependents (doesn't re-run getter immediately)
+- **Lazy recalculation:** Actual computation happens on `.value` access when dirty
+- **Priority execution:** `computed: true` ensures it runs before regular effects
+
+**Example - caching behavior:**
+
+```javascript
+const state = reactive({ count: 0 });
+let runCount = 0;
+
+const doubled = computed(() => {
+  runCount++;
+  return state.count * 2;
 });
+
+console.log(doubled.value); // runCount = 1 (computed)
+console.log(doubled.value); // runCount = 1 (cached!)
+console.log(doubled.value); // runCount = 1 (cached!)
+
+state.count = 5;
+// Scheduler marks dirty, but doesn't run getter yet
+
+console.log(doubled.value); // runCount = 2 (recomputed)
+console.log(doubled.value); // runCount = 2 (cached!)
 ```
 
 **Note:** Access via `.value` property.
@@ -1084,7 +1144,7 @@ import { Loop } from 'veda-client';
 
 **Limitations:**
 - **Single root element required:** Template must have exactly one root element. Multiple root elements will trigger a console warning and only the first element will be used.
-- **Duplicate keys warning:** If multiple items have the same key value, a warning is logged. Each item must have a unique key for proper reconciliation.
+- **Duplicate keys warning:** If multiple items have the same key value, a warning is logged. **Behavior:** The last item with a duplicate key "wins" and overwrites previous items with the same key in the internal Map. This can lead to missing or incorrect elements in the rendered list.
 - **Static item-key:** The `item-key` attribute must be static. Dynamic keys (e.g., `item-key="{this.keyName}"`) are not supported and will cause reconciliation issues.
 - Source array must be reactive; plain arrays that never change reference will not emit updates
 - Watchers still compare by reference, so `this.watch(() => this.state.items, ...)` requires assigning a new array when you need the watcher to fire
@@ -1145,7 +1205,11 @@ const items = [
   { id: 1, text: 'Second' },  // Duplicate id!
   { id: 2, text: 'Third' }
 ];
-// Console: "Loop component: Duplicate key "1" found. ..."
+// Console: "Loop component: Duplicate key "1" found.
+//           Current item: {id: 1, text: 'Second'}
+//           Previous item: {id: 1, text: 'First'}"
+// Result: Only 'Second' will be rendered (last item wins)
+//         'First' is overwritten in internal Map
 
 // ✅ CORRECT - Unique keys
 const items = [
@@ -1153,7 +1217,10 @@ const items = [
   { id: 2, text: 'Second' },
   { id: 3, text: 'Third' }
 ];
+// Result: All 3 items rendered correctly
 ```
+
+**Why this happens:** Loop uses `Map.set(key, itemData)`. Duplicate keys overwrite previous entries, so only the last item with that key is tracked.
 
 4. **Performance degradation with large lists:**
 

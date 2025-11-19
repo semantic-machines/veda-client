@@ -97,7 +97,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       // Cleanup reactive effects
       this.#cleanupEffects();
 
-      // Model subscription cleanup removed - using fine-grained reactivity via effect()
+      // Note: model.subscribe() called for backend push notifications,
+      // but local reactivity is handled via effect() - no model.on('modified') needed
 
       const removed = this.removed();
       if (removed instanceof Promise) await removed;

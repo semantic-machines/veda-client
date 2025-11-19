@@ -144,6 +144,7 @@ The framework exports the following modules from `./src/index.js`:
 |  | `untrack` | Disable tracking in callback |
 |  | `pauseTracking` | Pause dependency tracking |
 |  | `resumeTracking` | Resume dependency tracking |
+|  | `Reactive` | Re-exported Reactive type (from Reactive.js) |
 | **Utilities** | `Router` | Hash-based router |
 |  | `Emitter` | Event emitter mixin |
 |  | `BackendError` | Backend error class |
