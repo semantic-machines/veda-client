@@ -1444,15 +1444,13 @@ class PersonCard extends Component(HTMLElement) {
 }
 ```
 
-**Example - With Template:**
+**Example - With Custom Content:**
 
 ```javascript
 render() {
   return html`
     <div property="v-s:email">
-      <template>
-        <a href="mailto:"><slot></slot></a>
-      </template>
+      <a href="mailto:"><slot></slot></a>
     </div>
   `;
 }
@@ -1478,13 +1476,11 @@ render() {
 ```javascript
 // Use shadow attribute for style isolation
 <div property="v-s:userContent" shadow>
-  <template>
-    <style>
-      /* Scoped styles - won't leak out */
-      p { color: blue; font-size: 14px; }
-    </style>
-    <p><slot></slot></p>
-  </template>
+  <style>
+    /* Scoped styles - won't leak out */
+    p { color: blue; font-size: 14px; }
+  </style>
+  <p><slot></slot></p>
 </div>
 ```
 
@@ -1498,34 +1494,26 @@ render() {
 ```javascript
 // Email with mailto link
 <div property="v-s:email">
-  <template>
-    <a href="mailto:"><slot></slot></a>
-  </template>
+  <a href="mailto:"><slot></slot></a>
 </div>
 // Renders: <a href="mailto:">user@example.com</a>
 
 // Phone with tel link
 <span property="v-s:phone">
-  <template>
-    <a href="tel:"><slot></slot></a>
-  </template>
+  <a href="tel:"><slot></slot></a>
 </span>
 // Renders: <a href="tel:">+1234567890</a>
 
 // URL with link
 <div property="v-s:website">
-  <template>
-    <a href="{this.model.v-s:website.0}" target="_blank">
-      <slot></slot>
-    </a>
-  </template>
+  <a href="{this.model.v-s:website.0}" target="_blank">
+    <slot></slot>
+  </a>
 </div>
 
 // Formatted date
 <time property="v-s:created">
-  <template>
-    <span class="date"><slot></slot></span>
-  </template>
+  <span class="date"><slot></slot></span>
 </time>
 ```
 
@@ -1597,38 +1585,35 @@ render() {
 ```javascript
 // Isolate styles for related items
 <ul rel="v-s:hasAttachment" shadow>
-  <template>
-    <style>
-      li {
-        border: 1px solid #ccc;
-        padding: 8px;
-        margin: 4px 0;
-      }
-      a { color: blue; text-decoration: none; }
-    </style>
-    <li>
-      <a href="{this.model.v-s:url.0}">
-        {this.model.v-s:fileName.0}
-      </a>
-    </li>
-  </template>
+  <style>
+    li {
+      border: 1px solid #ccc;
+      padding: 8px;
+      margin: 4px 0;
+    }
+    a { color: blue; text-decoration: none; }
+  </style>
+  <li>
+    <a href="{this.model.v-s:url.0}">
+      {this.model.v-s:fileName.0}
+    </a>
+  </li>
 </ul>
 
 // Complex example with styled cards
 <div rel="v-s:hasTeamMember" shadow>
-  <template>
-    <style>
-      .member-card {
-        display: flex;
-        align-items: center;
-        padding: 16px;
-        background: #f5f5f5;
-        border-radius: 8px;
-        margin: 8px 0;
-      }
-      .avatar {
-        width: 48px;
-        height: 48px;
+  <style>
+    .member-card {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      margin: 8px 0;
+    }
+    .avatar {
+      width: 48px;
+      height: 48px;
         border-radius: 50%;
         margin-right: 12px;
       }
@@ -1640,7 +1625,6 @@ render() {
         <p>{this.model.v-s:role.0}</p>
       </div>
     </div>
-  </template>
 </div>
 ```
 
@@ -1733,7 +1717,7 @@ Component (base)
 
 1. **Automatic model integration** - Inherits `model` from parent component
 2. **Reactive rendering** - Creates effect that auto-updates when model properties change
-3. **Template support** - Processes `<template>` elements for custom rendering
+3. **Custom rendering** - Supports custom HTML structure for rendering values
 4. **Shadow DOM support** - Optional style isolation via `shadow` attribute
 
 **Implementation details:**

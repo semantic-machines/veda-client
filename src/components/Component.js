@@ -81,6 +81,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     async connectedCallback () {
       try {
+        // DevTools integration
+        if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
+          window.__VEDA_DEVTOOLS_HOOK__.trackComponent(this);
+        }
+
         await this.populate();
         const added = this.added();
         if (added instanceof Promise) await added;
@@ -94,6 +99,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
   async disconnectedCallback () {
     try {
+      // DevTools integration: untrack component
+      if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
+        window.__VEDA_DEVTOOLS_HOOK__.untrackComponent(this);
+      }
+
       // Cleanup reactive effects
       this.#cleanupEffects();
 
@@ -121,6 +131,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     model;
 
+    // Internal field for storing innerHTML of child components
     template;
 
     added () {}
@@ -128,7 +139,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     pre () {}
 
     render () {
-      return this.template ?? this.innerHTML;
+      return this.innerHTML;
     }
 
     post () {}
@@ -197,7 +208,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         // Fine-grained reactivity is handled by effect() in:
         // - ValueComponent/PropertyComponent/RelationComponent (property/rel attributes)
         // - Reactive attributes (checked="{...}", etc)
-        // - Computed properties accessed in templates
+        // - Computed properties accessed in render
         // No need for coarse-grained model.on('modified') subscription
       }
     }
@@ -316,16 +327,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           this.#processTextNode(node);
           node = walker.nextNode();
         } else {
-          // Skip template content inside veda-if/veda-loop - they handle their own templates
-          if (node.tagName === 'TEMPLATE') {
-            const parent = node.parentNode;
-            if (parent && parent.tagName && (parent.tagName === 'VEDA-IF' || parent.tagName === 'VEDA-LOOP')) {
-              walker.nextSibling(); // Skip to next sibling, don't descend into template
-              node = walker.currentNode;
-              continue;
-            }
-          }
-
           if (!node.tagName.includes('-') && !node.hasAttribute('is') && !node.hasAttribute('about') && !node.hasAttribute('property') && !node.hasAttribute('rel')) {
             this.#processAttributes(node);
             node = walker.nextNode();
@@ -399,6 +400,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             });
           }
 
+          // Store original innerHTML for components that need it (Loop, If)
           component.template = node.innerHTML.trim();
 
           this.#processAttributes(component);
@@ -653,7 +655,17 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
      */
     reactive(obj) {
       this.#isReactive = true;
-      return reactive(obj);
+
+      // DevTools integration: track state changes
+      const reactiveObj = reactive(obj, {
+        onSet: (key, value, oldValue) => {
+          if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
+            window.__VEDA_DEVTOOLS_HOOK__.trackComponentStateChange(this);
+          }
+        }
+      });
+
+      return reactiveObj;
     }
 
     /**

@@ -15,8 +15,6 @@ import {effect} from '../Effect.js';
  *   <h1>Welcome</h1>
  *   <user-profile></user-profile>
  * </veda-if>
- *
- * Note: <template> wrapper is optional (backward compatibility)
  */
 export default function IfComponent(Class = HTMLElement) {
   return class IfComponentClass extends Component(Class) {
@@ -37,22 +35,12 @@ export default function IfComponent(Class = HTMLElement) {
       this.#template = document.createDocumentFragment();
 
       if (this.template) {
-        // Template was saved by parent's _process()
         const temp = document.createElement('div');
         temp.innerHTML = this.template;
 
-        // Check if there's a <template> element (old syntax support)
-        const templateEl = temp.querySelector('template');
-
-        if (templateEl) {
-          // Old syntax: <If><template>...</template></If>
-          const content = templateEl.content.cloneNode(true);
-          this.#template.appendChild(content);
-        } else {
-          // New syntax: <If>...</If> - use all children
-          while (temp.firstChild) {
-            this.#template.appendChild(temp.firstChild);
-          }
+        // Use all children
+        while (temp.firstChild) {
+          this.#template.appendChild(temp.firstChild);
         }
       }
 

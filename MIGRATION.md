@@ -77,17 +77,15 @@ await flushEffects(); // For testing
 
 **Before (1.x):**
 ```javascript
-// Required <template> wrapper
+// Old syntax
 <veda-loop items="{this.items}">
-  <template>
-    <div>{this.model.title}</div>
-  </template>
+  <div>{this.model.title}</div>
 </veda-loop>
 ```
 
 **After (2.0):**
 ```javascript
-// <template> optional (backward compatible)
+// New component syntax
 <${Loop} items="{this.items}" item-key="id">
   <div>{this.model.title}</div>
 </${Loop}>
@@ -97,16 +95,13 @@ await flushEffects(); // For testing
 1. Import Loop: `import { Loop } from './src/components/LoopComponent.js';`
 2. Use component syntax: `<${Loop}>` instead of `<veda-loop>`
 3. Add `item-key` attribute for better performance
-4. (Optional) Remove `<template>` wrapper
 
 #### 4. If Component Syntax
 
 **Before (1.x):**
 ```javascript
 <veda-if condition="{this.show}">
-  <template>
-    <div>Content</div>
-  </template>
+  <div>Content</div>
 </veda-if>
 ```
 
@@ -122,7 +117,6 @@ import { If } from './src/components/IfComponent.js';
 **Migration steps:**
 1. Import If: `import { If } from './src/components/IfComponent.js';`
 2. Use component syntax: `<${If}>`
-3. (Optional) Remove `<template>` wrapper
 
 #### 5. Expression Parser - Stricter
 
@@ -173,32 +167,28 @@ get incrementedCount() {
 
 **New features:**
 ```javascript
-// Template support
+// Custom content support
 <div property="v-s:email">
-  <template>
-    <a href="mailto:"><slot></slot></a>
-  </template>
+  <a href="mailto:"><slot></slot></a>
 </div>
 
 // Shadow DOM support
 <span property="v-s:title" shadow></span>
 ```
 
-#### 7. Relation Component - Template Simplification
+#### 7. Relation Component - Simplification
 
 **Before (1.x):**
 ```javascript
-// Required <template> wrapper
+// Old syntax
 <div rel="v-s:hasTodo">
-  <template>
-    <li>{this.model['v-s:title']}</li>
-  </template>
+  <li>{this.model['v-s:title']}</li>
 </div>
 ```
 
 **After (2.0):**
 ```javascript
-// Template wrapper optional (backward compatible)
+// Direct HTML
 <div rel="v-s:hasTodo">
   <li>{this.model.v-s:title.0}</li>
 </div>
@@ -210,9 +200,8 @@ get incrementedCount() {
 ```
 
 **Migration steps:**
-1. (Optional) Remove `<template>` wrappers
-2. Relation components now reactive by default
-3. Each child auto-receives related model via `model` prop
+1. Relation components now reactive by default
+2. Each child auto-receives related model via `model` prop
 
 **When to use Relation vs Loop:**
 
@@ -328,7 +317,6 @@ Full backward compatibility maintained.
 - [ ] Update Loop/If imports and syntax
 - [ ] Replace complex template expressions with computed properties
 - [ ] Add `item-key` to Loop components
-- [ ] (Optional) Remove `<template>` wrappers from Relation components
 - [ ] Verify Property/Relation components inherit models correctly
 
 ### Testing

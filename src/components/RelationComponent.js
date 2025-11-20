@@ -3,7 +3,10 @@ import ValueComponent from './ValueComponent.js';
 export default function RelationComponent (Class = HTMLElement) {
   return class RelationComponentClass extends ValueComponent(Class) {
     async renderValue (value, container, index) {
-      if (!this.template) {
+      // Check if we have custom rendering content
+      const hasCustomContent = this.template && this.template.trim().length > 0;
+
+      if (!hasCustomContent) {
         return super.renderValue(value, container, index);
       }
 
@@ -17,17 +20,8 @@ export default function RelationComponent (Class = HTMLElement) {
         const template = document.createElement('template');
         template.innerHTML = this.template;
 
-        // Check if there's a nested <template> element (old syntax support)
-        const nestedTemplate = template.content.querySelector('template');
-
-        let fragment;
-        if (nestedTemplate) {
-          // Old syntax: <rel><template>...</template></rel>
-          fragment = nestedTemplate.content.cloneNode(true);
-        } else {
-          // New syntax: <rel>...</rel> - use template content as-is
-          fragment = template.content.cloneNode(true);
-        }
+        // Use template content as-is
+        const fragment = template.content.cloneNode(true);
 
         // Create a temporary element with the model to use as evalContext
         const contextElement = document.createElement('div');

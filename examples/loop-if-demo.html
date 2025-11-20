@@ -133,9 +133,7 @@
           </div>
 
           <veda-loop items="{this.state.items}" item-key="id">
-            <template>
-              <item-component></item-component>
-            </template>
+            <item-component></item-component>
           </veda-loop>
 
           <p><small>Open DevTools to see: only changed items re-render</small></p>
@@ -317,9 +315,7 @@
 
           <veda-if condition="{this.hasItems}">
             <veda-loop items="{this.filteredItems}" item-key="id">
-              <template>
-                <simple-item></simple-item>
-              </template>
+              <simple-item></simple-item>
             </veda-loop>
           </veda-if>
 

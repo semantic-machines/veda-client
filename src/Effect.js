@@ -62,6 +62,11 @@ async function flushEffects() {
         } else {
           effect();
         }
+
+        // DevTools: track effect trigger
+        if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
+          window.__VEDA_DEVTOOLS_HOOK__.trackEffectTrigger(effect);
+        }
       } catch (error) {
         console.error('Error in effect:', error);
         // Continue with other effects even if one fails
@@ -107,6 +112,11 @@ export function effect(fn, options = {}) {
 
   if (!options.lazy) {
     effectFn();
+  }
+
+  // DevTools integration
+  if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
+    window.__VEDA_DEVTOOLS_HOOK__.trackEffect(effectFn);
   }
 
   return () => {

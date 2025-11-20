@@ -143,7 +143,7 @@
           <p>
             <strong>Tags (multiple values):</strong><br>
             <span property="v-s:tags" class="tag-list">
-              <template><span class="tag"><slot></slot></span></template>
+              <span class="tag"><slot></slot></span>
             </span>
             <button onclick="{addTag}">Add Tag</button>
           </p>
@@ -202,13 +202,11 @@
           </p>
 
           <div rel="v-s:hasProject">
-            <template>
-              <div class="relation-item">
-                <strong property="v-s:title"></strong>
-                (<span property="v-s:status"></span>)
-                <button onclick="{removeProject}" data-id="{this.model.id}">Remove</button>
-              </div>
-            </template>
+            <div class="relation-item">
+              <strong property="v-s:title"></strong>
+              (<span property="v-s:status"></span>)
+              <button onclick="{removeProject}" data-id="{this.model.id}">Remove</button>
+            </div>
           </div>
 
           <p><small>Relation components automatically update when related objects change</small></p>

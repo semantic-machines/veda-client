@@ -15,8 +15,6 @@ import {effect} from '../Effect.js';
  *   <h3>{this.model.name}</h3>
  *   <p>{this.model.email}</p>
  * </veda-loop>
- *
- * Note: <template> wrapper is optional (backward compatibility)
  */
 export default function LoopComponent(Class = HTMLElement) {
   return class LoopComponentClass extends Component(Class) {
@@ -38,22 +36,12 @@ export default function LoopComponent(Class = HTMLElement) {
       this.#template = document.createDocumentFragment();
 
       if (this.template) {
-        // Template was saved by parent's _process()
         const temp = document.createElement('div');
         temp.innerHTML = this.template;
 
-        // Check if there's a <template> element (old syntax support)
-        const templateEl = temp.querySelector('template');
-
-        if (templateEl) {
-          // Old syntax: <Loop><template>...</template></Loop>
-          const content = templateEl.content.cloneNode(true);
-          this.#template.appendChild(content);
-        } else {
-          // New syntax: <Loop>...</Loop> - use all children
-          while (temp.firstChild) {
-            this.#template.appendChild(temp.firstChild);
-          }
+        // Use all children
+        while (temp.firstChild) {
+          this.#template.appendChild(temp.firstChild);
         }
       }
 
@@ -206,19 +194,52 @@ export default function LoopComponent(Class = HTMLElement) {
         }
       }
 
-      // Set model on element
-      if (item && typeof item === 'object') {
+      // Create evaluation context with model = item
+      // This makes {this.model.xxx} work
+      const evalContext = { model: item };
+
+      // Set up prototype chain: evalContext -> parent component
+      // This allows access to parent's methods and properties
+      if (this._vedaParentContext) {
+        Object.setPrototypeOf(evalContext, this._vedaParentContext);
+      }
+
+      // Process the element (for reactive expressions, custom components, etc)
+      // This will create custom components and they will need model set afterward
+      this._process(element, evalContext);
+
+      // After processing, find all custom components and set their model
+      this.#setModelOnComponents(element, item);
+
+      return element;
+    }
+
+    #setModelOnComponents(element, item) {
+      // Set model on root element if it's a component
+      const rootIsComponent = element.tagName.includes('-') || element.hasAttribute('is');
+      if (rootIsComponent && item && typeof item === 'object') {
         element.model = item;
         if ('id' in item && item.id) {
           element.setAttribute('about', item.id);
         }
       }
 
-      // Process the element (for reactive expressions, etc)
-      // Pass element as evalContext so {this.model.name} works
-      this._process(element, element);
-
-      return element;
+      // Also set model on child components (recursively)
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_ELEMENT);
+      let node = walker.nextNode();
+      while (node) {
+        const isComponent = node.tagName.includes('-') || node.hasAttribute('is');
+        if (isComponent && item && typeof item === 'object') {
+          // Only set if component doesn't have own model or about attribute
+          if (!node.hasAttribute('about') && !node.model) {
+            node.model = item;
+            if ('id' in item && item.id) {
+              node.setAttribute('about', item.id);
+            }
+          }
+        }
+        node = walker.nextNode();
+      }
     }
 
     #updateItemElement(element, item) {

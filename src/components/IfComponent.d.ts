@@ -2,20 +2,11 @@ import { ComponentInstance, ComponentConstructor } from './Component.js';
 
 /**
  * If component for conditional rendering
- * 
+ *
  * @example
  * ```html
  * <veda-if condition="{this.isVisible}">
  *   <div>Content shown when condition is true</div>
- * </veda-if>
- * ```
- * 
- * @example With template
- * ```html
- * <veda-if condition="{this.hasItems}">
- *   <template>
- *     <user-profile></user-profile>
- *   </template>
  * </veda-if>
  * ```
  */

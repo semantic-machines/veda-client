@@ -102,6 +102,11 @@ export default class Model extends Emitter(Object) {
     // Cache the reactive proxy
     Model.cache.set(this.id, reactiveModel);
 
+    // DevTools integration
+    if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
+      window.__VEDA_DEVTOOLS_HOOK__.trackModel(reactiveModel);
+    }
+
     // Factory pattern: return reactive proxy instead of this
     // eslint-disable-next-line no-constructor-return
     return reactiveModel;

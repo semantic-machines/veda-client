@@ -20,23 +20,19 @@ export default function PropertyComponent (Class = HTMLElement) {
         }
       }
 
-      if (!this.template) {
+      // Check if we have custom rendering content
+      const hasCustomContent = this.template && this.template.trim().length > 0;
+
+      if (!hasCustomContent) {
         return super.renderValue(value, container, index);
       }
 
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = this.template;
 
-      const templateEl = tempDiv.querySelector('template');
-
-      let fragment;
-      if (templateEl) {
-        fragment = templateEl.content.cloneNode(true);
-      } else {
-        fragment = document.createDocumentFragment();
-        while (tempDiv.firstChild) {
-          fragment.appendChild(tempDiv.firstChild);
-        }
+      const fragment = document.createDocumentFragment();
+      while (tempDiv.firstChild) {
+        fragment.appendChild(tempDiv.firstChild);
       }
 
       const slot = fragment.querySelector('slot');

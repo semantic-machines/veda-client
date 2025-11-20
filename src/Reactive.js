@@ -90,7 +90,7 @@ export function reactive(target, options = {}) {
 
     const oldValue = target[key];
     const oldLength = Array.isArray(target) ? target.length : undefined;
-    
+
     const result = Reflect.set(target, key, value, receiver);
 
     if (oldValue !== value) {
@@ -129,6 +129,9 @@ export function reactive(target, options = {}) {
   });
 
   reactiveMap.set(target, proxy);
+
+  // DevTools integration - track only for debugging, not for all reactive objects
+  // (too noisy to track every single reactive object)
 
   return proxy;
 }

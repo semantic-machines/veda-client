@@ -2,13 +2,11 @@ import { ComponentInstance, ComponentConstructor } from './Component.js';
 
 /**
  * Loop component for rendering reactive lists with reconciliation
- * 
+ *
  * @example
  * ```html
  * <veda-loop items="{this.todos}" item-key="id">
- *   <template>
- *     <todo-item></todo-item>
- *   </template>
+ *   <todo-item></todo-item>
  * </veda-loop>
  * ```
  */
@@ -18,7 +16,7 @@ export interface LoopComponentInstance extends ComponentInstance {
    * @example "{this.todos}" or "{this.model.v-s:hasTodo}"
    */
   items?: string;
-  
+
   /**
    * Property name to use as unique key for reconciliation
    * @default "id"
