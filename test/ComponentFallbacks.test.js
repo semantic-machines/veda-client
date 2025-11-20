@@ -17,29 +17,26 @@ export default ({ test, assert }) => {
         this.state = this.reactive({ show: true });
       }
       render() {
-        // This tests lines 314-320: template tag inside veda-if/veda-loop
         return html`
           <veda-if test="this.state.show">
-            <template>
-              <div class="template-content">Template inside if</div>
-            </template>
+            <div class="template-content">Template inside if</div>
           </veda-if>
         `;
       }
     }
 
     const { component, cleanup } = await createTestComponent(TestComponent);
-    
+
     // Component should render without crashing
     assert(component.isConnected, 'Component rendered');
-    
+
     // Toggle state
     component.state.show = false;
     await flushEffects();
-    
+
     component.state.show = true;
     await flushEffects();
-    
+
     cleanup();
   });
 
@@ -50,22 +47,19 @@ export default ({ test, assert }) => {
         this.state = this.reactive({ items: ['a', 'b'] });
       }
       render() {
-        // This tests lines 314-320: template tag inside veda-loop
         return html`
           <veda-loop>
-            <template>
-              <div class="item">Item</div>
-            </template>
+            <div class="item">Item</div>
           </veda-loop>
         `;
       }
     }
 
     const { component, cleanup } = await createTestComponent(TestComponent);
-    
+
     // Component should render without crashing
     assert(component.isConnected, 'Component rendered with loop');
-    
+
     cleanup();
   });
 
@@ -77,25 +71,25 @@ export default ({ test, assert }) => {
         this.state = this.reactive({ value: 'fallback-test' });
         // Don't set _currentEvalContext, let it be undefined
       }
-      
+
       render() {
         return html`<div>{this.state.value}</div>`;
       }
     }
 
     const { component, cleanup } = await createTestComponent(ContextFallbackComponent);
-    
+
     // Should use 'this' as fallback when _currentEvalContext is undefined
-    assert(component.textContent.includes('fallback-test'), 
+    assert(component.textContent.includes('fallback-test'),
       'Fallback context works when _currentEvalContext is undefined');
-    
+
     // Update state to verify reactivity works
     component.state.value = 'updated';
     await flushEffects();
-    
-    assert(component.textContent.includes('updated'), 
+
+    assert(component.textContent.includes('updated'),
       'Fallback context supports reactivity');
-    
+
     cleanup();
   });
 
@@ -106,23 +100,23 @@ export default ({ test, assert }) => {
         super();
         this.useShadow = true; // Use shadow DOM
       }
-      
+
       render() {
         return html`<div class="shadow-content">Shadow content</div>`;
       }
     }
 
     const { component, cleanup } = await createTestComponent(RootNodeComponent);
-    
+
     // Component should handle shadow DOM correctly
     const hasShadow = component.shadowRoot !== null;
-    const hasContent = hasShadow 
+    const hasContent = hasShadow
       ? component.shadowRoot.querySelector('.shadow-content') !== null
       : component.querySelector('.shadow-content') !== null;
-    
-    assert(hasContent || component.isConnected, 
+
+    assert(hasContent || component.isConnected,
       'Component handles shadow DOM / getRootNode fallback');
-    
+
     cleanup();
   });
 
@@ -132,7 +126,7 @@ export default ({ test, assert }) => {
         super();
         this.state = this.reactive({ disabled: false });
       }
-      
+
       render() {
         // This exercises the context fallback in attribute processing
         return html`<button disabled="{this.state.disabled}">Click</button>`;
@@ -140,16 +134,16 @@ export default ({ test, assert }) => {
     }
 
     const { component, cleanup } = await createTestComponent(NullContextComponent);
-    
+
     const button = component.querySelector('button');
     assert(button !== null, 'Button rendered');
     assert(!button.disabled, 'Initial state: not disabled');
-    
+
     component.state.disabled = true;
     await flushEffects();
-    
+
     assert(button.disabled, 'State updated: disabled');
-    
+
     cleanup();
   });
 
@@ -160,7 +154,7 @@ export default ({ test, assert }) => {
         return html`<span>Leaf</span>`;
       }
     }
-    
+
     class MiddleComponent extends Component(HTMLElement) {
       render() {
         return html`
@@ -174,20 +168,20 @@ export default ({ test, assert }) => {
         `;
       }
     }
-    
+
     LeafComponent.tag = 'veda-leaf';
     MiddleComponent.tag = 'veda-middle';
-    
+
     if (!customElements.get('veda-leaf')) {
       customElements.define('veda-leaf', LeafComponent);
     }
 
     const { component, cleanup } = await createTestComponent(MiddleComponent);
-    
+
     const leaf = component.querySelector('veda-leaf');
     assert(leaf !== null, 'Deeply nested component rendered');
     assert(leaf.textContent.includes('Leaf'), 'Nested component content correct');
-    
+
     cleanup();
   });
 };

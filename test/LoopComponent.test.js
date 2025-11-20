@@ -560,9 +560,7 @@ export default function ({ test, assert }) {
       render() {
         return html`
           <veda-loop items="{this.state.items}" item-key="id">
-            <template>
-              <div class="item">{this.model.name}</div>
-            </template>
+            <div class="item">{this.model.name}</div>
           </veda-loop>
         `;
       }

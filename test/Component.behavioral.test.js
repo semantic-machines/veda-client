@@ -72,16 +72,14 @@ export default ({ test, assert }) => {
 
   // ==================== FRAMEWORK COMPONENT TEMPLATE HANDLING ====================
 
-  test('Component - skips templates inside framework components', async () => {
-    class ComponentWithFrameworkTemplate extends Component(HTMLElement) {
+  test('Component - handles framework components', async () => {
+    class ComponentWithFramework extends Component(HTMLElement) {
       render() {
         return html`
           <div>
             <p>Before</p>
             <veda-if condition="true">
-              <template>
-                <span>Inside framework template</span>
-              </template>
+              <span>Inside framework component</span>
             </veda-if>
             <p>After</p>
           </div>
@@ -89,10 +87,10 @@ export default ({ test, assert }) => {
       }
     }
 
-    const { component, cleanup } = await createTestComponent(ComponentWithFrameworkTemplate);
+    const { component, cleanup } = await createTestComponent(ComponentWithFramework);
     await flushEffects();
 
-    // Template should be preserved for veda-if to handle
+    // Framework component should exist
     const vedaIf = component.querySelector('veda-if');
     assert(vedaIf !== null, 'Framework component should exist');
 
@@ -109,9 +107,7 @@ export default ({ test, assert }) => {
         return html`
           <div>
             <veda-loop items="[]">
-              <template>
-                <span>Loop item</span>
-              </template>
+              <span>Loop item</span>
             </veda-loop>
           </div>
         `;

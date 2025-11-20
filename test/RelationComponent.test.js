@@ -35,40 +35,35 @@ export default function ({ test, assert }) {
     assert(shouldCallSuper3 === false, 'Should not call super when template exists');
   });
 
-  test('RelationComponent - renderValue with template element (old syntax)', async () => {
+  test('RelationComponent - renderValue with custom content', async () => {
     const RelClass = RelationComponent(HTMLElement);
     const container = document.createElement('div');
 
     const mockModel = { id: 1, name: 'Test' };
 
-    const instance = {
-      template: '<template><span class="rel-item">Item</span></template>',
-      model: mockModel,
-      _process() {},
-      renderValue: RelClass.prototype.renderValue
-    };
+    // Create a mock instance that extends the proper class structure
+    const instance = Object.create(RelClass.prototype);
+    instance.template = '<span class="rel-item">Item</span>';
+    instance.model = mockModel;
+    instance._process = () => {}; // Mock _process method
 
-    // Test lines 23-24: template element branch
     await instance.renderValue(mockModel, container, 0);
 
     const span = container.querySelector('.rel-item');
-    assert(span !== null, 'Should process template element (old syntax)');
+    assert(span !== null, 'Should process custom content');
   });
 
-  test('RelationComponent - renderValue without template element (new syntax)', async () => {
+  test('RelationComponent - renderValue without custom content', async () => {
     const RelClass = RelationComponent(HTMLElement);
     const container = document.createElement('div');
 
     const mockModel = { id: 2, name: 'Test2' };
 
-    const instance = {
-      template: '<div class="rel-direct">Direct HTML</div>',
-      model: mockModel,
-      _process() {},
-      renderValue: RelClass.prototype.renderValue
-    };
+    const instance = Object.create(RelClass.prototype);
+    instance.template = '<div class="rel-direct">Direct HTML</div>';
+    instance.model = mockModel;
+    instance._process = () => {}; // Mock _process method
 
-    // Test lines 26-30: direct HTML branch (new syntax)
     await instance.renderValue(mockModel, container, 0);
 
     const div = container.querySelector('.rel-direct');

@@ -136,9 +136,7 @@ export default function ({ test, assert }) {
         return html`
           <div>
             <span property="v-s:title">
-              <template>
-                <strong class="value"><slot></slot></strong>
-              </template>
+              <strong class="value"><slot></slot></strong>
             </span>
           </div>
         `;
@@ -169,7 +167,7 @@ export default function ({ test, assert }) {
     }
   });
 
-  test('PropertyComponent - renders template without <template> wrapper (lines 36-40)', async () => {
+  test('PropertyComponent - renders custom template', async () => {
     const originalLang = document.documentElement.lang;
     document.documentElement.lang = 'en';
 

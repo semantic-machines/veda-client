@@ -15,6 +15,7 @@
     "c8": "tsc --noEmit && time -p c8 node --expose-gc test",
     "c8:unit": "tsc --noEmit && time -p c8 node --expose-gc test --unit",
     "build": "node build.mjs",
+    "build:devtools": "node devtools/build.js",
     "watch": "node watch.mjs",
     "typecheck": "tsc --noEmit"
   },

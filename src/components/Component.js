@@ -139,7 +139,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     pre () {}
 
     render () {
-      return this.innerHTML;
+      return this.template ?? this.innerHTML;
     }
 
     post () {}
