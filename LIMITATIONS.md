@@ -229,7 +229,7 @@ get max() {
 <${Loop} items="{this.items}">
 
 // ✅ Optimized reconciliation
-<${Loop} items="{this.items}" item-key="id">
+<${Loop} items="{this.items}" key="id" as="item">
 ```
 
 ### 3. Paginate Large Lists
@@ -243,7 +243,7 @@ get currentPage() {
   );
 }
 
-<${Loop} items="{this.currentPage}" item-key="id">
+<${Loop} items="{this.currentPage}" key="id" as="item">
 ```
 
 ### 4. Batch Model Updates
@@ -310,7 +310,7 @@ render() {
 
 ## Performance Tips
 
-1. **Add item-key to all Loops** - Enables efficient reconciliation
+1. **Add key attribute to all Loops** - Enables efficient reconciliation
 2. **Use computed properties** - Cache expensive calculations
 3. **Paginate large lists** - Don't render 1000+ items
 4. **Batch state changes** - Automatic batching via microtask

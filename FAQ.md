@@ -109,13 +109,13 @@ this.watch(
 
 **Checklist:**
 
-**1. Is state created with `this.reactive()`?**
+**1. State is automatically reactive:**
 ```javascript
-// ❌ Wrong
-this.state = { count: 0 };
-
-// ✅ Correct
-this.state = this.reactive({ count: 0 });
+// ✅ Correct - state is automatically reactive
+constructor() {
+  super();
+  this.state.count = 0;
+}
 ```
 
 **2. Are you modifying the state directly?**
@@ -134,7 +134,7 @@ this.state = { count: 5 };  // Breaks reactivity!
 <!-- Will update when items[0] changes -->
 
 // ✅ Correct - loop reads all items
-<${Loop} items="{this.state.items}" item-key="id">
+<${Loop} items="{this.state.items}" key="id" as="item">
 
 // ⚠️ If template doesn't read items, changes won't show
 <div>{this.state.items.length} items</div>
@@ -158,11 +158,11 @@ get incrementedCount() {
 
 **5. Is Loop component updating?**
 ```javascript
-// ❌ Wrong - no item-key
-<${Loop} items="{this.items}">
+// ❌ Wrong - no key
+<${Loop} items="{this.items}" as="item">
 
-// ✅ Correct - with item-key
-<${Loop} items="{this.items}" item-key="id">
+// ✅ Correct - with key
+<${Loop} items="{this.items}" key="id" as="item">
 ```
 
 **Still not working?** Check browser console for errors and warnings.
@@ -186,11 +186,9 @@ get incrementedCount() {
 class DataTable extends Component(HTMLElement) {
   constructor() {
     super();
-    this.state = this.reactive({
-      page: 0,
-      pageSize: 50,
-      allItems: [] // Load all data once
-    });
+    this.state.page = 0;
+    this.state.pageSize = 50;
+    this.state.allItems = []; // Load all data once
   }
 
   get currentPage() {
@@ -210,7 +208,7 @@ class DataTable extends Component(HTMLElement) {
 
   render() {
     return html`
-      <${Loop} items="{this.currentPage}" item-key="id">
+      <${Loop} items="{this.currentPage}" key="id" as="item">
         <item-card></item-card>
       </${Loop}>
 
@@ -330,10 +328,9 @@ class App extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = this.reactive<AppState>({
-      count: 0,
-      name: 'Alice'
-    });
+    // State is automatically reactive in v3.0
+    this.state.count = 0;
+    this.state.name = 'Alice';
   }
 
   increment() {

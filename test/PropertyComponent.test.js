@@ -33,7 +33,7 @@ export default function ({ test, assert }) {
         super();
         const model = new Model();
         model['v-s:title'] = ['Localized value^^EN'];
-        this.model = model;
+        this.state.model = model;
       }
 
       render() {
@@ -61,7 +61,7 @@ export default function ({ test, assert }) {
       assert(propertyEl !== null, 'Property component should be instantiated');
       assert.strictEqual(propertyEl.textContent.trim(), 'Localized value', 'Should render localized text without suffix');
       assert.strictEqual(propertyEl.getAttribute('lang'), 'en', 'Should set lang attribute to current language');
-      assert.strictEqual(propertyEl.model, host.model, 'Should reuse host model instance');
+      assert.strictEqual(propertyEl.state.model, host.state.model, 'Should reuse host model instance');
     } finally {
       container.remove();
       document.documentElement.lang = originalLang;

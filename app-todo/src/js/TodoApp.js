@@ -8,9 +8,8 @@ export default class TodoApp extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = this.reactive({
-      filter: 'all'
-    });
+    // State is auto-created, just set properties
+    this.state.filter = 'all';
 
     this._onHashChange = null;
 
@@ -25,7 +24,7 @@ export default class TodoApp extends Component(HTMLElement) {
 
   // Get todos directly from model - single source of truth
   get todos() {
-    return this.model?.['v-s:hasTodo'] || [];
+    return this.state.model?.['v-s:hasTodo'] || [];
   }
 
   // Computed property for filtered todos - automatically reactive
@@ -39,8 +38,8 @@ export default class TodoApp extends Component(HTMLElement) {
   async connectedCallback() {
     await super.connectedCallback();
 
-    if (this.model['v-s:hasTodo']) {
-      await Promise.all(this.model['v-s:hasTodo'].map(todo => todo.load()));
+    if (this.state.model['v-s:hasTodo']) {
+      await Promise.all(this.state.model['v-s:hasTodo'].map(todo => todo.load()));
     }
 
     this._onHashChange = () => {
@@ -104,14 +103,14 @@ export default class TodoApp extends Component(HTMLElement) {
     todo['v-s:title'] = [title];
     todo['v-s:completed'] = [false];
 
-    this.model.addValue('v-s:hasTodo', todo);
+    this.state.model.addValue('v-s:hasTodo', todo);
 
     try {
-      await Promise.all([todo.save(), this.model.save()]);
+      await Promise.all([todo.save(), this.state.model.save()]);
       // Model is reactive - UI updates automatically
     } catch (error) {
       console.error('Failed to create todo:', error);
-      this.model.removeValue('v-s:hasTodo', todo);
+      this.state.model.removeValue('v-s:hasTodo', todo);
     }
   }
 
@@ -137,14 +136,14 @@ export default class TodoApp extends Component(HTMLElement) {
     const todo = this.todos.find(t => t.id === id);
     if (!todo) return;
 
-    this.model.removeValue('v-s:hasTodo', todo);
+    this.state.model.removeValue('v-s:hasTodo', todo);
 
     try {
-      await Promise.all([todo.remove(), this.model.save()]);
+      await Promise.all([todo.remove(), this.state.model.save()]);
       // Model is reactive - UI updates automatically
     } catch (error) {
       console.error('Failed to delete todo:', error);
-      this.model.addValue('v-s:hasTodo', todo);
+      this.state.model.addValue('v-s:hasTodo', todo);
     }
   }
 
@@ -194,14 +193,14 @@ export default class TodoApp extends Component(HTMLElement) {
   async handleClearCompleted() {
     const completed = this.completedTodos;
 
-    completed.forEach(t => this.model.removeValue('v-s:hasTodo', t));
+    completed.forEach(t => this.state.model.removeValue('v-s:hasTodo', t));
 
     try {
-      await Promise.all([...completed.map(t => t.remove()), this.model.save()]);
+      await Promise.all([...completed.map(t => t.remove()), this.state.model.save()]);
       // Model is reactive - UI updates automatically
     } catch (error) {
       console.error('Failed to clear completed:', error);
-      completed.forEach(t => this.model.addValue('v-s:hasTodo', t));
+      completed.forEach(t => this.state.model.addValue('v-s:hasTodo', t));
     }
   }
 
@@ -222,16 +221,16 @@ export default class TodoApp extends Component(HTMLElement) {
             <label for="toggle-all">Mark all as complete</label>
 
             <ul class="todo-list">
-              <${Loop} items="{this.filteredTodos}" item-key="id">
-                <li is="${TodoItem}"></li>
+              <${Loop} items="{this.filteredTodos}" as="todo" key="id">
+                <li is="${TodoItem}" :todo="{todo}"></li>
               </${Loop}>
             </ul>
           </section>
 
           <${TodoFooter}
-            active-count="{this.activeTodos.length}"
-            completed-count="{this.completedTodos.length}"
-            filter="{this.state.filter}">
+            :active-count="{this.activeTodos.length}"
+            :completed-count="{this.completedTodos.length}"
+            :filter="{this.state.filter}">
           </${TodoFooter}>
         </${If}>
       </section>

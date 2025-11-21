@@ -17,9 +17,7 @@ export default class TodoApp extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = this.reactive({
-      filter: 'all'
-    });
+    this.state.filter = 'all';
 
     this._onHashChange = null;
 
@@ -33,8 +31,8 @@ export default class TodoApp extends Component(HTMLElement) {
   async connectedCallback() {
     await super.connectedCallback();
 
-    if (this.model['v-s:hasTodo']) {
-      await Promise.all(this.model['v-s:hasTodo'].map(todo => todo.load()));
+    if (this.state.model['v-s:hasTodo']) {
+      await Promise.all(this.state.model['v-s:hasTodo'].map(todo => todo.load()));
     }
 
     this._onHashChange = () => {
@@ -64,7 +62,7 @@ export default class TodoApp extends Component(HTMLElement) {
 
   // Computed: all todos from model
   get todos() {
-    return this.model?.['v-s:hasTodo'] || [];
+    return this.state.model?.['v-s:hasTodo'] || [];
   }
 
   // Computed: filtered by current filter
@@ -101,13 +99,13 @@ export default class TodoApp extends Component(HTMLElement) {
     todo['v-s:title'] = [title];
     todo['v-s:completed'] = [false];
 
-    this.model.addValue('v-s:hasTodo', todo);
+    this.state.model.addValue('v-s:hasTodo', todo);
 
     try {
-      await Promise.all([todo.save(), this.model.save()]);
+      await Promise.all([todo.save(), this.state.model.save()]);
     } catch (error) {
       console.error('Failed to create todo:', error);
-      this.model.removeValue('v-s:hasTodo', todo);
+      this.state.model.removeValue('v-s:hasTodo', todo);
     }
   }
 
@@ -134,27 +132,27 @@ export default class TodoApp extends Component(HTMLElement) {
   async handleDestroyTodo(event) {
     const { todo } = event.detail;
 
-    this.model.removeValue('v-s:hasTodo', todo);
+    this.state.model.removeValue('v-s:hasTodo', todo);
 
     try {
       // TodoItem already calls todo.remove(), we only update the list
-      await this.model.save();
+      await this.state.model.save();
     } catch (error) {
       console.error('Failed to remove todo from list:', error);
-      this.model.addValue('v-s:hasTodo', todo);
+      this.state.model.addValue('v-s:hasTodo', todo);
     }
   }
 
   async handleClearCompleted() {
     const completed = this.completedTodos;
 
-    completed.forEach(t => this.model.removeValue('v-s:hasTodo', t));
+    completed.forEach(t => this.state.model.removeValue('v-s:hasTodo', t));
 
     try {
-      await Promise.all([...completed.map(t => t.remove()), this.model.save()]);
+      await Promise.all([...completed.map(t => t.remove()), this.state.model.save()]);
     } catch (error) {
       console.error('Failed to clear completed:', error);
-      completed.forEach(t => this.model.addValue('v-s:hasTodo', t));
+      completed.forEach(t => this.state.model.addValue('v-s:hasTodo', t));
     }
   }
 
@@ -176,16 +174,16 @@ export default class TodoApp extends Component(HTMLElement) {
 
             <!-- Filtered list with Loop for UI-driven filtering -->
             <ul class="todo-list">
-              <${Loop} items="{this.filteredTodos}">
-                <li is="${TodoItem}"></li>
+              <${Loop} items="{this.filteredTodos}" key="id" as="todo">
+                <li is="${TodoItem.tag}" :model="{todo}"></li>
               </${Loop}>
             </ul>
           </section>
 
           <${TodoFooter}
-            active-count="{this.activeTodos.length}"
-            completed-count="{this.completedTodos.length}"
-            filter="{this.state.filter}">
+            :active-count="{this.activeTodos.length}"
+            :completed-count="{this.completedTodos.length}"
+            :filter="{this.state.filter}">
           </${TodoFooter}>
         </${If}>
       </section>

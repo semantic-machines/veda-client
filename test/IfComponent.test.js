@@ -90,7 +90,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ show: true });
+        this.state.show = true;
       }
 
       render() {
@@ -225,7 +225,7 @@ export default ({ test, assert }) => {
     console.warn = (...args) => { warnMessage = args.join(' '); };
 
     const tagName = customElements.get('veda-if') ? 'veda-if' : 'veda-if-nocond';
-    
+
     if (!customElements.get(tagName)) {
       const IfClass = IfComponentFunc(HTMLElement);
       customElements.define(tagName, IfClass);

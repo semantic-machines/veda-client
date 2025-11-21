@@ -14,7 +14,7 @@ export default ({ test, assert }) => {
     class TestComponent extends Component(HTMLElement) {
       constructor() {
         super();
-        this.state = this.reactive({ show: true });
+        this.state.show = true;
       }
       render() {
         return html`
@@ -44,7 +44,7 @@ export default ({ test, assert }) => {
     class TestComponent extends Component(HTMLElement) {
       constructor() {
         super();
-        this.state = this.reactive({ items: ['a', 'b'] });
+        this.state.items = ['a', 'b'];
       }
       render() {
         return html`
@@ -68,7 +68,7 @@ export default ({ test, assert }) => {
     class ContextFallbackComponent extends Component(HTMLElement) {
       constructor() {
         super();
-        this.state = this.reactive({ value: 'fallback-test' });
+        this.state.value = 'fallback-test';
         // Don't set _currentEvalContext, let it be undefined
       }
 
@@ -124,7 +124,7 @@ export default ({ test, assert }) => {
     class NullContextComponent extends Component(HTMLElement) {
       constructor() {
         super();
-        this.state = this.reactive({ disabled: false });
+        this.state.disabled = false;
       }
 
       render() {

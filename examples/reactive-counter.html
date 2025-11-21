@@ -54,10 +54,8 @@
 
       constructor() {
         super();
-        // Reactive state
-        this.state = this.reactive({
-          count: 0
-        });
+        // State is automatically reactive
+        this.state.count = 0;
       }
 
       // Computed property - automatically recalculates

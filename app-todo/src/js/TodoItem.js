@@ -5,19 +5,21 @@ export default class TodoItem extends Component(HTMLLIElement) {
 
   constructor() {
     super();
-    // Reactive local state
-    this.state = this.reactive({
-      editing: false
-    });
+    // State is auto-created, just set properties
+    this.state.editing = false;
   }
 
   // Computed properties
   get completed() {
-    return this.model?.['v-s:completed']?.[0] || false;
+    return this.state.todo?.['v-s:completed']?.[0] || false;
   }
 
   get title() {
-    return this.model?.['v-s:title']?.[0] || '';
+    return this.state.todo?.['v-s:title']?.[0] || '';
+  }
+
+  get todoId() {
+    return this.state.todo?.id || '';
   }
 
   async connectedCallback() {
@@ -57,14 +59,14 @@ export default class TodoItem extends Component(HTMLLIElement) {
 
   handleToggle() {
     this.dispatchEvent(new CustomEvent('toggle-todo', {
-      detail: { id: this.model.id },
+      detail: { id: this.todoId },
       bubbles: true
     }));
   }
 
   handleDestroy() {
     this.dispatchEvent(new CustomEvent('destroy-todo', {
-      detail: { id: this.model.id },
+      detail: { id: this.todoId },
       bubbles: true
     }));
   }
@@ -95,7 +97,7 @@ export default class TodoItem extends Component(HTMLLIElement) {
   handleEditSubmit(event, node) {
     const title = node.value.trim();
     this.dispatchEvent(new CustomEvent('save-todo', {
-      detail: { id: this.model.id, title },
+      detail: { id: this.todoId, title },
       bubbles: true
     }));
     // Exit editing mode
@@ -108,7 +110,7 @@ export default class TodoItem extends Component(HTMLLIElement) {
         <input class="toggle" type="checkbox"
                name="todo-completed"
                aria-label="Toggle todo completed"
-               id="toggle-${this.model?.id || ''}"
+               id="toggle-${this.todoId}"
                checked="{this.completed}"
                onchange="{handleToggle}" />
         <label ondblclick="{handleEdit}">{this.title}</label>

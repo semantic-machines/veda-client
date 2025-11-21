@@ -16,23 +16,17 @@ this.state.count++;
 
 **Causes & Solutions:**
 
-1. **Not using `this.reactive()`**
+**State is automatically reactive:**
 
 ```javascript
-// ❌ Wrong
+// ✅ Correct - state is automatically reactive
 constructor() {
   super();
-  this.state = { count: 0 }; // Plain object
-}
-
-// ✅ Correct
-constructor() {
-  super();
-  this.state = this.reactive({ count: 0 });
+  this.state.count = 0; // Automatically reactive
 }
 ```
 
-2. **Effect not tracking array changes**
+**Effect not tracking array changes:**
 
 ```javascript
 // ❌ Effect only tracks length - won't react to index changes
@@ -54,7 +48,7 @@ this.state.items.splice(0, 1, v); // Triggers all tracking
 
 **Note:** This is fine-grained reactivity - effects only re-run when properties they **actually read** change.
 
-3. **Watch not triggering on array/object changes**
+**Watch not triggering on array/object changes:**
 
 ```javascript
 // ❌ Same reference, won't trigger
@@ -82,7 +76,7 @@ this.state.todos.push(newTodo);
 
 **Possible causes:**
 
-1. **State not reactive** (most common):
+**State not reactive** (most common):
 
 ```javascript
 // ❌ Plain object
@@ -94,11 +88,11 @@ constructor() {
 // ✅ Reactive state
 constructor() {
   super();
-  this.state = this.reactive({ todos: [] }); // Reactive!
+  this.state.todos = []; // Reactive!
 }
 ```
 
-2. **Using watch() on array** (watch uses reference equality):
+**Using watch() on array** (watch uses reference equality):
 
 ```javascript
 // ❌ Won't trigger - same array reference
@@ -118,14 +112,14 @@ this.watch(() => this.state.todos.length, callback);
 
 **Symptom:** All items flash/re-render when adding one item.
 
-**Cause:** Missing `item-key` attribute.
+**Cause:** Missing `key` attribute.
 
 ```javascript
 // ❌ No key - re-renders everything
 <${Loop} items="{this.todos}">
 
 // ✅ With key - efficient reconciliation
-<${Loop} items="{this.todos}" item-key="id">
+<${Loop} items="{this.todos}" key="id" as="item">
 ```
 
 ### Loop Performance Slow (>500 items)
@@ -142,7 +136,7 @@ get currentPage() {
   );
 }
 
-<${Loop} items="{this.currentPage}" item-key="id">
+<${Loop} items="{this.currentPage}" key="id" as="item">
 ```
 
 ---
@@ -179,18 +173,19 @@ render() {
 
 **Symptom:** State changes don't update UI.
 
-**Solution:** Component must use `this.reactive()`:
+**Solution:** In v3.0, component state is automatically reactive:
 
 ```javascript
 constructor() {
   super();
-  this.state = this.reactive({}); // Enables model reactivity
+  // State is automatically reactive - model updates are tracked
+  this.state.model = new Model('d:123');
 }
 ```
 
 **How it works:**
-- Without `this.reactive()`: component ignores state changes
-- With `this.reactive()`: component subscribes to state updates
+- Component state is automatically reactive in v3.0
+- Model changes automatically trigger component updates
 
 ### Model Load Fails Silently
 
@@ -266,7 +261,7 @@ console.log(derived); // Updated value
    - Solution: Pagination or virtualization
 
 2. **Missing `item-key`**
-   - Solution: Add `item-key="id"`
+   - Solution: Add `key="id" as="item"`
 
 3. **Complex computed properties**
    ```javascript
@@ -278,7 +273,7 @@ console.log(derived); // Updated value
    // ✅ Cache in reactive state
    constructor() {
      super();
-     this.state = this.reactive({ cached: [] });
+     this.state.cached = [];
    }
 
    effect(() => {
@@ -467,8 +462,8 @@ If your issue isn't listed here:
 ---
 
 **Remember:** Most issues come from:
-1. Not using `this.reactive()` for reactive state
-2. Missing `item-key` in Loop components
+1. Reassigning `this.state` (breaks reactivity - assign properties instead)
+2. Missing `key` attribute in Loop components
 3. Forgetting array mutations need new references
 4. Using complex expressions in templates (use getters instead)
 

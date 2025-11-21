@@ -20,14 +20,14 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({ items: [] });
+        this.state.items = [];
       }
 
       render() {
         return html`
           <div>
-            <veda-loop items="{this.state.items}" item-key="id">
-              <div class="item">{this.model.name}</div>
+            <veda-loop items="{this.state.items}" as="item" key="id">
+              <div class="item">{item.name}</div>
             </veda-loop>
           </div>
         `;
@@ -58,19 +58,17 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: [
-            { id: 1, name: 'Item 1' },
-            { id: 2, name: 'Item 2' },
-            { id: 3, name: 'Item 3' }
-          ]
-        });
+        this.state.items = [
+          { id: 1, name: 'Item 1' },
+          { id: 2, name: 'Item 2' },
+          { id: 3, name: 'Item 3' }
+        ];
       }
 
       render() {
         return html`
-          <veda-loop items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <veda-loop items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </veda-loop>
         `;
       }
@@ -104,17 +102,15 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: [
-            { id: 1, name: 'Item 1' }
-          ]
-        });
+        this.state.items = [
+          { id: 1, name: 'Item 1' }
+        ];
       }
 
       render() {
         return html`
-          <veda-loop items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <veda-loop items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </veda-loop>
         `;
       }
@@ -152,19 +148,17 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: [
-            { id: 1, name: 'Item 1' },
-            { id: 2, name: 'Item 2' },
-            { id: 3, name: 'Item 3' }
-          ]
-        });
+        this.state.items = [
+          { id: 1, name: 'Item 1' },
+          { id: 2, name: 'Item 2' },
+          { id: 3, name: 'Item 3' }
+        ];
       }
 
       render() {
         return html`
-          <veda-loop items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <veda-loop items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </veda-loop>
         `;
       }
@@ -203,19 +197,17 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: [
-            { id: 1, name: 'First' },
-            { id: 2, name: 'Second' },
-            { id: 3, name: 'Third' }
-          ]
-        });
+        this.state.items = [
+          { id: 1, name: 'First' },
+          { id: 2, name: 'Second' },
+          { id: 3, name: 'Third' }
+        ];
       }
 
       render() {
         return html`
-          <veda-loop items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <veda-loop items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </veda-loop>
         `;
       }
@@ -252,18 +244,16 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: [
-            { id: 1, name: 'Original 1' },
-            { id: 2, name: 'Original 2' }
-          ]
-        });
+        this.state.items = [
+          { id: 1, name: 'Original 1' },
+          { id: 2, name: 'Original 2' }
+        ];
       }
 
       render() {
         return html`
-          <veda-loop items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <veda-loop items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </veda-loop>
         `;
       }
@@ -305,17 +295,15 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: [
-            { id: 'item-1', name: 'Initial' }
-          ]
-        });
+        this.state.items = [
+          { id: 'item-1', name: 'Initial' }
+        ];
       }
 
       render() {
         return html`
-          <veda-loop items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <veda-loop items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </veda-loop>
         `;
       }
@@ -334,7 +322,7 @@ export default function ({ test, assert }) {
 
     const loop = component.querySelector('veda-loop');
     const initialElement = loop.firstElementChild;
-    const initialModel = initialElement.model;
+    assert.strictEqual(initialElement.textContent, 'Initial', 'Should show initial text');
 
     const updatedItem = { id: 'item-1', name: 'Updated' };
     component.state.items = [updatedItem];
@@ -342,10 +330,7 @@ export default function ({ test, assert }) {
 
     const updatedElement = loop.firstElementChild;
     assert.strictEqual(updatedElement, initialElement, 'Should reuse DOM element for same key');
-    assert.notStrictEqual(updatedElement.model, initialModel, 'Should replace model reference when item changes');
-    assert.strictEqual(updatedElement.model.id, 'item-1', 'Element model should expose updated id');
-    assert.strictEqual(updatedElement.model.name, 'Updated', 'Element model should expose updated name');
-    assert.strictEqual(updatedElement.getAttribute('about'), 'item-1', 'About attribute should stay in sync with item id');
+    assert.strictEqual(updatedElement.textContent, 'Updated', 'Should show updated text');
 
     container.remove();
   });
@@ -360,7 +345,7 @@ export default function ({ test, assert }) {
 
       render() {
         return html`
-          <veda-loop item-key="id">
+          <veda-loop as="item" key="id">
             <div class="item">Test</div>
           </veda-loop>
         `;
@@ -390,13 +375,13 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({ items: 'not an array' });
+        this.state.items = 'not an array';
       }
 
       render() {
         return html`
-          <veda-loop items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <veda-loop items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </veda-loop>
         `;
       }
@@ -425,15 +410,13 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: ['apple', 'banana', 'cherry']
-        });
+        this.state.items = ['apple', 'banana', 'cherry'];
       }
 
       render() {
         return html`
-          <veda-loop items="{this.state.items}">
-            <div class="item">Fruit</div>
+          <veda-loop items="{this.state.items}" as="item">
+            <div class="item">{item}</div>
           </veda-loop>
         `;
       }
@@ -452,6 +435,9 @@ export default function ({ test, assert }) {
 
     const loop = component.querySelector('veda-loop');
     assert(loop.children.length === 3, 'Should render items for primitive array');
+    assert(loop.children[0].textContent === 'apple', 'First item should be apple');
+    assert(loop.children[1].textContent === 'banana', 'Second item should be banana');
+    assert(loop.children[2].textContent === 'cherry', 'Third item should be cherry');
 
     container.remove();
   });
@@ -462,15 +448,13 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: [{ id: 1, name: 'Item' }]
-        });
+        this.state.items = [{ id: 1, name: 'Item' }];
       }
 
       render() {
         return html`
-          <veda-loop items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <veda-loop items="{this.state.items}" key="id" as="item">
+            <div class="item">{item.name}</div>
           </veda-loop>
         `;
       }
@@ -503,18 +487,16 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: [
-            { id: 1, title: 'Title 1', desc: 'Description 1' }
-          ]
-        });
+        this.state.items = [
+          { id: 1, title: 'Title 1', desc: 'Description 1' }
+        ];
       }
 
       render() {
         return html`
-          <veda-loop items="{this.state.items}" item-key="id">
-            <h3>{this.model.title}</h3>
-            <p>{this.model.desc}</p>
+          <veda-loop items="{this.state.items}" key="id" as="item">
+            <h3>{item.title}</h3>
+            <p>{item.desc}</p>
           </veda-loop>
         `;
       }
@@ -552,15 +534,15 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: [{ id: 1, name: 'Item 1' }]
-        });
+        this.state.items = [
+          { id: 1, name: 'Item 1' }
+        ];
       }
 
       render() {
         return html`
-          <veda-loop items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <veda-loop items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </veda-loop>
         `;
       }
@@ -598,7 +580,7 @@ export default function ({ test, assert }) {
       render() {
         // Invalid expression that will throw during evaluation
         return html`
-          <veda-loop items="{this.nonExistent.deeply.nested}" item-key="id">
+          <veda-loop items="{this.nonExistent.deeply.nested}" as="item" key="id">
             <div>Item</div>
           </veda-loop>
         `;
@@ -635,19 +617,17 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({
+        this.state.items = [
           // Two items with same id
-          items: [
-            { id: 1, name: 'First' },
-            { id: 1, name: 'Second (duplicate)' }
-          ]
-        });
+          { id: 1, name: 'First' },
+          { id: 1, name: 'Second (duplicate)' }
+        ];
       }
 
       render() {
         return html`
-          <veda-loop items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <veda-loop items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </veda-loop>
         `;
       }
@@ -682,15 +662,15 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: [{ id: 1 }]
-        });
+        this.state.items = [
+          { id: 1 }
+        ];
       }
 
       render() {
         // Template with only text node, no element
         return html`
-          <veda-loop items="{this.state.items}" item-key="id">
+          <veda-loop items="{this.state.items}" as="item" key="id">
             Just text, no element
           </veda-loop>
         `;
@@ -754,19 +734,17 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: [
-            { id: 'normal', name: 'Normal ID' },
-            { id: 0, name: 'Zero ID' },
-            { id: '', name: 'Empty String ID' }
-          ]
-        });
+        this.state.items = [
+          { id: 'normal', name: 'Normal ID' },
+          { id: 0, name: 'Zero ID' },
+          { id: '', name: 'Empty String ID' }
+        ];
       }
 
       render() {
         return html`
-          <veda-loop items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <veda-loop items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </veda-loop>
         `;
       }
@@ -800,18 +778,16 @@ export default function ({ test, assert }) {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: [
-            { id: 'has-id', text: 'First' },
-            { text: 'Second' } // id is undefined
-          ]
-        });
+        this.state.items = [
+          { id: 'has-id', text: 'First' },
+          { text: 'Second' } // id is undefined
+        ];
       }
 
       render() {
         return html`
-          <veda-loop items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.text}</div>
+          <veda-loop items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.text}</div>
           </veda-loop>
         `;
       }

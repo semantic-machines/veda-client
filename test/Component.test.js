@@ -19,7 +19,7 @@ export default ({ test, assert }) => {
       class TestComponent extends Component(HTMLElement) {
         constructor() {
           super();
-          this.state = this.reactive({ value: initial });
+          this.state.value = initial;
         }
         render() {
           return html`<div class="value">{this.state.value}</div>`;
@@ -156,7 +156,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ count: 0 });
+        this.state.count = 0;
       }
 
       async connectedCallback() {
@@ -206,7 +206,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ count: 0 });
+        this.state.count = 0;
       }
 
       render() {
@@ -234,10 +234,8 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          firstName: 'John',
-          lastName: 'Doe'
-        });
+        this.state.firstName = 'John';
+        this.state.lastName = 'Doe';
       }
 
       render() {
@@ -269,7 +267,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ count: 5 });
+        this.state.count = 5;
       }
 
       get doubled() {
@@ -340,7 +338,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ disabled: false });
+        this.state.disabled = false;
       }
 
       render() {
@@ -367,10 +365,8 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          checked: false,
-          disabled: false
-        });
+        this.state.checked = false;
+        this.state.disabled = false;
       }
 
       render() {
@@ -421,13 +417,11 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          first: 'John',
-          last: 'Doe',
-          a: 'A',
-          b: 'B',
-          c: 'C'
-        });
+        this.state.first = 'John';
+        this.state.last = 'Doe';
+        this.state.a = 'A';
+        this.state.b = 'B';
+        this.state.c = 'C';
       }
 
       render() {
@@ -497,7 +491,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ count: 0 });
+        this.state.count = 0;
       }
 
       async connectedCallback() {
@@ -533,7 +527,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ count: 0 });
+        this.state.count = 0;
       }
 
       async connectedCallback() {
@@ -575,7 +569,7 @@ export default ({ test, assert }) => {
     class TestComponent extends Component(HTMLElement) {
       constructor() {
         super();
-        this.state = this.reactive({ value: null });
+        this.state.value = null;
       }
       render() {
         return html`<div class="value">{this.state.value}</div>`;
@@ -654,13 +648,13 @@ export default ({ test, assert }) => {
 
     await comp1.rendered;
 
-    assert(comp1.model !== undefined, 'Model should be created from about attribute');
-    assert(comp1.model.id === 'test:123', 'Model id should match about attribute');
+    assert(comp1.state.model !== undefined, 'Model should be created from about attribute');
+    assert(comp1.state.model.id === 'test:123', 'Model id should match about attribute');
 
     // Test 2: Set about from model
     const comp2 = document.createElement('test-model-integration');
     const mockModel = new Model('test:456');
-    comp2.model = mockModel;
+    comp2.state.model = mockModel;
 
     container.appendChild(comp2);
 
@@ -808,11 +802,9 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          zero: 0,
-          empty: '',
-          false: false
-        });
+        this.state.zero = 0;
+        this.state.empty = '';
+        this.state.false = false;
       }
 
       render() {
@@ -840,7 +832,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ name: 'World' });
+        this.state.name = 'World';
       }
 
       render() {
@@ -875,9 +867,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          obj: null
-        });
+        this.state.obj = null;
       }
 
       get displayValue() {
@@ -910,7 +900,8 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ count: 0, other: 0 });
+        this.state.count = 0;
+        this.state.other = 0;
       }
 
       watchCleanup = null;
@@ -976,7 +967,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ message: 'child' });
+        this.state.message = 'child';
       }
 
       render() {
@@ -1034,7 +1025,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ value: 'parent-value' });
+        this.state.value = 'parent-value';
       }
 
       render() {
@@ -1150,7 +1141,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ notAFunction: 'string value' });
+        this.state.notAFunction = 'string value';
       }
     }
 
@@ -1324,8 +1315,8 @@ export default ({ test, assert }) => {
     class ErrorExprComponent extends Component(HTMLElement) {
 
       render() {
-        // This will cause evaluation error
-        return html`<div>{this.nonExistent.deeply.nested.property}</div>`;
+        // This will cause evaluation to return undefined, rendering empty string
+        return html`<div>{this.state.nonExistentProperty}</div>`;
       }
     }
 
@@ -1410,7 +1401,9 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ className: 'initial', tooltip: 'Initial', value: '123' });
+        this.state.className = 'initial';
+        this.state.tooltip = 'Initial';
+        this.state.value = '123';
       }
 
       render() {
@@ -1478,11 +1471,9 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          id: 'elem1',
-          className: 'active',
-          title: 'Tooltip'
-        });
+        this.state.id = 'elem1';
+        this.state.className = 'active';
+        this.state.title = 'Tooltip';
       }
 
       render() {
@@ -1573,7 +1564,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ text: 'hello' });
+        this.state.text = 'hello';
       }
 
       render() {
@@ -1761,10 +1752,8 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          show: true,
-          dataValue: 'test123'
-        });
+        this.state.show = true;
+        this.state.dataValue = 'test123';
       }
 
       render() {
@@ -1803,10 +1792,8 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: [{id: 1, name: 'A'}, {id: 2, name: 'B'}],
-          customData: 'mydata'
-        });
+        this.state.items = [{id: 1, name: 'A'}, {id: 2, name: 'B'}];
+        this.state.customData = 'mydata';
       }
 
       render() {
@@ -1936,10 +1923,8 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          show: true,
-          otherData: 'test456'
-        });
+        this.state.show = true;
+        this.state.otherData = 'test456';
       }
 
       render() {
@@ -2052,7 +2037,7 @@ export default ({ test, assert }) => {
         const item1 = new Model({ id: 'd:item1', 'v-s:title': 'Item 1' });
         const item2 = new Model({ id: 'd:item2', 'v-s:title': 'Item 2' });
 
-        this.model = new Model({
+        this.state.model = new Model({
           id: 'd:test-rel',
           'v-s:hasItem': [item1, item2]
         });
@@ -2179,7 +2164,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ name: 'John' });
+        this.state.name = 'John';
       }
 
       render() {
@@ -2384,7 +2369,10 @@ export default ({ test, assert }) => {
     // Test that ?? '' in line 503 handles undefined/null from ExpressionParser.evaluate
     class TestComponent extends Component(HTMLElement) {
       static tag = 'test-nullish-reactive-attr';
-      state = reactive({ value: undefined });
+      constructor() {
+        super();
+        this.state.value = undefined;
+      }
       render() {
         return html`<div data-test="{this.state.nonExistent}">Content</div>`;
       }
@@ -2435,7 +2423,10 @@ export default ({ test, assert }) => {
     // Test that undefined/null values make boolean attributes false
     class TestComponent extends Component(HTMLElement) {
       static tag = 'test-nullish-reactive-bool';
-      state = reactive({ checked: undefined });
+      constructor() {
+        super();
+        this.state.checked = undefined;
+      }
       render() {
         return html`<input type="checkbox" checked="{this.state.nonExistent}">`;
       }
@@ -2487,7 +2478,10 @@ export default ({ test, assert }) => {
     // When inside veda-if, _currentEvalContext is set and we should use it
     class TestComponent extends Component(HTMLElement) {
       static tag = 'test-eval-context-499';
-      state = reactive({ show: true });
+      constructor() {
+        super();
+        this.state.show = true;
+      }
       render() {
         return html`
           <veda-if condition="{this.state.show}">
@@ -2518,7 +2512,10 @@ export default ({ test, assert }) => {
     // Test evalContext: when inside veda-if with boolean attribute
     class TestComponent extends Component(HTMLElement) {
       static tag = 'test-eval-context-586';
-      state = reactive({ show: true });
+      constructor() {
+        super();
+        this.state.show = true;
+      }
       render() {
         return html`
           <veda-if condition="{this.state.show}">
@@ -2550,7 +2547,10 @@ export default ({ test, assert }) => {
     // This is used to check reactivity in veda-if/veda-loop contexts
     class TestComponent extends Component(HTMLElement) {
       static tag = 'test-context-reactivity-577';
-      state = reactive({ show: true });
+      constructor() {
+        super();
+        this.state.show = true;
+      }
       render() {
         return html`
           <veda-if condition="{this.state.show}">

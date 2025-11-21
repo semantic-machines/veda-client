@@ -130,9 +130,6 @@ export function reactive(target, options = {}) {
 
   reactiveMap.set(target, proxy);
 
-  // DevTools integration - track only for debugging, not for all reactive objects
-  // (too noisy to track every single reactive object)
-
   return proxy;
 }
 

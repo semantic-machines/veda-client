@@ -90,7 +90,7 @@
       constructor() {
         super();
         // Create model with test data
-        this.model = new Model({
+        this.state.model = new Model({
           id: 'd:PropertyTest',
           'v-s:title': ['Test Document'],
           'v-s:description': ['This is a description'],
@@ -99,29 +99,29 @@
       }
 
       updateTitle() {
-        const newTitle = prompt('Enter new title:', this.model['v-s:title'][0]);
+        const newTitle = prompt('Enter new title:', this.state.model['v-s:title'][0]);
         if (newTitle) {
-          this.model['v-s:title'] = [newTitle];
+          this.state.model['v-s:title'] = [newTitle];
         }
       }
 
       updateDescription() {
-        const newDesc = prompt('Enter new description:', this.model['v-s:description'][0]);
+        const newDesc = prompt('Enter new description:', this.state.model['v-s:description'][0]);
         if (newDesc) {
-          this.model['v-s:description'] = [newDesc];
+          this.state.model['v-s:description'] = [newDesc];
         }
       }
 
       addTag() {
         const newTag = prompt('Enter new tag:');
         if (newTag) {
-          this.model['v-s:tags'] = [...this.model['v-s:tags'], newTag];
+          this.state.model['v-s:tags'] = [...this.state.model['v-s:tags'], newTag];
         }
       }
 
       removeTag(event) {
         const tag = event.target.dataset.tag;
-        this.model['v-s:tags'] = this.model['v-s:tags'].filter(t => t !== tag);
+        this.state.model['v-s:tags'] = this.state.model['v-s:tags'].filter(t => t !== tag);
       }
 
       render() {
@@ -160,7 +160,7 @@
       constructor() {
         super();
         // Create main model
-        this.model = new Model({
+        this.state.model = new Model({
           id: 'd:RelationTest',
           'v-s:title': ['Project List'],
           'v-s:hasProject': []
@@ -179,13 +179,13 @@
           'v-s:status': ['active']
         });
 
-        this.model['v-s:hasProject'] = [...this.model['v-s:hasProject'], project];
+        this.state.model['v-s:hasProject'] = [...this.state.model['v-s:hasProject'], project];
         this.projectCounter++;
       }
 
       removeProject(event) {
         const projectId = event.target.dataset.id;
-        this.model['v-s:hasProject'] = this.model['v-s:hasProject'].filter(p => p.id !== projectId);
+        this.state.model['v-s:hasProject'] = this.state.model['v-s:hasProject'].filter(p => p.id !== projectId);
       }
 
       render() {
@@ -197,7 +197,7 @@
           </p>
 
           <p>
-            <strong>Related projects (${this.model['v-s:hasProject']?.length || 0}):</strong>
+            <strong>Related projects (${this.state.model['v-s:hasProject']?.length || 0}):</strong>
             <button onclick="{addProject}">Add Project</button>
           </p>
 
@@ -205,7 +205,7 @@
             <div class="relation-item">
               <strong property="v-s:title"></strong>
               (<span property="v-s:status"></span>)
-              <button onclick="{removeProject}" data-id="{this.model.id}">Remove</button>
+              <button onclick="{removeProject}" data-id="{this.state.model.id}">Remove</button>
             </div>
           </div>
 

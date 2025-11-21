@@ -1,32 +1,28 @@
 import Component from './Component.js';
 import ExpressionParser from './ExpressionParser.js';
 import {effect} from '../Effect.js';
+import {reactive} from '../Reactive.js';
 
 /**
  * Loop component for rendering reactive lists with reconciliation
  *
- * Usage:
- * <veda-loop items="{this.todos}" item-key="id">
- *   <todo-item></todo-item>
+ * Usage (v3.0):
+ * <veda-loop items="{this.state.todos}" as="todo" key="id">
+ *   <todo-item :todo="{todo}" :index="{index}"></todo-item>
  * </veda-loop>
  *
- * Multiple children will be repeated for each item:
- * <veda-loop items="{this.users}" item-key="id">
- *   <h3>{this.model.name}</h3>
- *   <p>{this.model.email}</p>
- * </veda-loop>
+ * Semantic HTML syntax:
+ * <ul items="{this.state.todos}" as="todo" key="id">
+ *   <li>{index}. {todo.text}</li>
+ * </ul>
  */
 export default function LoopComponent(Class = HTMLElement) {
   return class LoopComponentClass extends Component(Class) {
     static tag = 'veda-loop';
 
     #loopEffect = null;
-    #itemsMap = new Map(); // key → {element, model}
+    #itemsMap = new Map(); // key → {element, item, index, evalContext}
     #template = null;
-
-    constructor() {
-      super();
-    }
 
     async connectedCallback() {
       // Find and cache parent component context
@@ -93,7 +89,8 @@ export default function LoopComponent(Class = HTMLElement) {
     }
 
     #reconcile(newItems) {
-      const keyAttr = this.getAttribute('item-key') || 'id';
+      // Support both 'key' (new) and 'item-key' (backward compatibility)
+      const keyAttr = this.getAttribute('key') || this.getAttribute('item-key') || 'id';
       const newKeys = new Set();
       const newItemsMap = new Map();
 
@@ -130,17 +127,22 @@ export default function LoopComponent(Class = HTMLElement) {
         const key = this.#getKey(item, keyAttr, index);
 
         let itemData = this.#itemsMap.get(key);
+        const itemName = this.getAttribute('as') || 'item';
 
         if (!itemData) {
-          // Create new element
-          const element = this.#createItemElement(item);
-          itemData = {element, item};
+          // Create new element with index
+          const { element, evalContext } = this.#createItemElement(item, index);
+          itemData = { element, item, index, evalContext };
           this.#itemsMap.set(key, itemData);
         } else {
-          // Update existing element if item changed
-          if (itemData.item !== item) {
-            this.#updateItemElement(itemData.element, item);
+          // Update existing element if item or index changed
+          if (itemData.item !== item || itemData.index !== index) {
+            // Update the evalContext in-place
+            // This will trigger reactive updates automatically
+            itemData.evalContext[itemName] = item;
+            itemData.evalContext.index = index;
             itemData.item = item;
+            itemData.index = index;
           }
         }
 
@@ -171,7 +173,7 @@ export default function LoopComponent(Class = HTMLElement) {
       return `__value_${fallbackIndex}_${item}`;
     }
 
-    #createItemElement(item) {
+    #createItemElement(item, index) {
       // Clone template
       const fragment = this.#template.cloneNode(true);
 
@@ -182,6 +184,8 @@ export default function LoopComponent(Class = HTMLElement) {
         console.warn('Loop template must contain an element');
         element = document.createElement('div');
         element.appendChild(fragment);
+        // Put the wrapper back into fragment so _process can handle it
+        fragment.appendChild(element);
       } else {
         // If there are multiple children, warn user to wrap them
         if (fragment.children.length > 1) {
@@ -194,62 +198,39 @@ export default function LoopComponent(Class = HTMLElement) {
         }
       }
 
-      // Create evaluation context with model = item
-      // This makes {this.model.xxx} work
-      const evalContext = { model: item };
+      // Get item name from 'as' attribute (default: 'item')
+      const itemName = this.getAttribute('as') || 'item';
 
-      // Set up prototype chain: evalContext -> parent component
-      // This allows access to parent's methods and properties
+      // Create REACTIVE evaluation context
+      // This allows updates to trigger re-renders automatically
+      const evalContext = reactive({
+        [itemName]: item,
+        index: index
+      });
+
+      // Set up prototype chain: evalContext -> parent.state -> parent
+      // This allows access to:
+      // 1. Item data: {todo.text}
+      // 2. Index: {index}
+      // 3. Parent state: {this.state.filter}
+      // 4. Parent methods: {handleClick}
       if (this._vedaParentContext) {
-        Object.setPrototypeOf(evalContext, this._vedaParentContext);
-      }
-
-      // Process the element (for reactive expressions, custom components, etc)
-      // This will create custom components and they will need model set afterward
-      this._process(element, evalContext);
-
-      // After processing, find all custom components and set their model
-      this.#setModelOnComponents(element, item);
-
-      return element;
-    }
-
-    #setModelOnComponents(element, item) {
-      // Set model on root element if it's a component
-      const rootIsComponent = element.tagName.includes('-') || element.hasAttribute('is');
-      if (rootIsComponent && item && typeof item === 'object') {
-        element.model = item;
-        if ('id' in item && item.id) {
-          element.setAttribute('about', item.id);
+        const parentState = this._vedaParentContext.state;
+        if (parentState) {
+          Object.setPrototypeOf(evalContext, parentState);
+          Object.setPrototypeOf(parentState, this._vedaParentContext);
+        } else {
+          Object.setPrototypeOf(evalContext, this._vedaParentContext);
         }
       }
 
-      // Also set model on child components (recursively)
-      const walker = document.createTreeWalker(element, NodeFilter.SHOW_ELEMENT);
-      let node = walker.nextNode();
-      while (node) {
-        const isComponent = node.tagName.includes('-') || node.hasAttribute('is');
-        if (isComponent && item && typeof item === 'object') {
-          // Only set if component doesn't have own model or about attribute
-          if (!node.hasAttribute('about') && !node.model) {
-            node.model = item;
-            if ('id' in item && item.id) {
-              node.setAttribute('about', item.id);
-            }
-          }
-        }
-        node = walker.nextNode();
-      }
-    }
+      // Process the fragment (not just the element) so walker can see the root element
+      this._process(fragment, evalContext);
 
-    #updateItemElement(element, item) {
-      // Update model if element is a component
-      if (item && typeof item === 'object' && 'id' in item) {
-        element.model = item;
-        if (item.id) {
-          element.setAttribute('about', item.id);
-        }
-      }
+      // After processing, get the element from fragment (it may have been replaced)
+      element = fragment.firstElementChild;
+
+      return { element, evalContext };
     }
 
     #findParentComponent() {

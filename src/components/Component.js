@@ -72,6 +72,16 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     constructor() {
       super();
+      // Auto-create reactive state for all components with DevTools integration
+      this.state = reactive({}, {
+        onSet: (key, value, oldValue) => {
+          if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
+            window.__VEDA_DEVTOOLS_HOOK__.trackComponentStateChange(this);
+          }
+        }
+      });
+      this.#isReactive = true;
+
       this.rendered = new Promise((resolve) => {
         this.#resolveRendered = resolve;
       });
@@ -128,8 +138,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       this.#renderEffects.forEach(cleanup => cleanup());
       this.#renderEffects = [];
     }
-
-    model;
 
     // Internal field for storing innerHTML of child components
     template;
@@ -191,25 +199,26 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     async populate () {
-      // Auto-detect reactive state (check here, not in constructor)
-      if (!this.#isReactive && this.state && this.state.__isReactive) {
-        this.#isReactive = true;
+      // Handle 'about' attribute - auto-populate this.state.model
+      if (this.hasAttribute('about')) {
+        const uri = this.getAttribute('about');
+        if (!this.state.model || this.state.model.id !== uri) {
+          this.state.model = new ModelClass(uri);
+        }
+      } else if (this.state.model && this.state.model.id) {
+        // If model exists in state, sync about attribute
+        this.setAttribute('about', this.state.model.id);
       }
 
-      if (!this.model) {
-        if (this.hasAttribute('about')) this.model = new ModelClass(this.getAttribute('about'));
-      } else if (this.model.id) {
-        this.setAttribute('about', this.model.id);
-      }
-      if (this.model) {
-        await this.model.load?.();
-        this.model.subscribe?.();
-
-        // Fine-grained reactivity is handled by effect() in:
-        // - ValueComponent/PropertyComponent/RelationComponent (property/rel attributes)
-        // - Reactive attributes (checked="{...}", etc)
-        // - Computed properties accessed in render
-        // No need for coarse-grained model.on('modified') subscription
+      // Load and subscribe to model if it exists
+      if (this.state.model) {
+        try {
+          await this.state.model.load?.();
+        } catch (error) {
+          // Backend may not be configured (e.g., in tests)
+          console.warn('Model load failed:', error.message);
+        }
+        this.state.model.subscribe?.();
       }
     }
 
@@ -308,14 +317,19 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     _process (fragment, evalContext = null) {
-      // Auto-detect reactive state before processing
-      if (!this.#isReactive && this.state && this.state.__isReactive) {
-        this.#isReactive = true;
-      }
-
       // Store eval context for this processing session
       const previousContext = this._currentEvalContext;
-      this._currentEvalContext = evalContext || this;
+
+      // If no explicit evalContext provided, use this.state with prototype to this
+      if (!evalContext) {
+        evalContext = this.state;
+        // Set prototype chain: evalContext -> this (for methods)
+        if (evalContext && typeof evalContext === 'object') {
+          Object.setPrototypeOf(evalContext, this);
+        }
+      }
+
+      this._currentEvalContext = evalContext;
 
       const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
 
@@ -364,10 +378,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             component.setAttribute('is', is); // Explicitly set 'is' attribute for findMethod
             [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
             if (!component.hasAttribute('about')) {
-              // Use evalContext.model if available, otherwise fall back to this.model
-              const contextModel = (this._currentEvalContext && this._currentEvalContext.model) || this.model;
+              // Use evalContext.model if available, otherwise fall back to this.state.model
+              const contextModel = (this._currentEvalContext && this._currentEvalContext.model) || this.state.model;
               if (contextModel) {
-                component.model = contextModel;
+                component.state.model = contextModel;
               }
             }
           }
@@ -482,17 +496,72 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         const isFrameworkComponent = tagName === 'veda-if' || tagName === 'veda-loop';
 
         // Framework components handle their own special attributes
-        const frameworkAttrs = isFrameworkComponent ? ['condition', 'items', 'item-key'] : [];
+        const frameworkAttrs = isFrameworkComponent ? ['condition', 'items', 'as', 'key', 'item-key'] : [];
 
         // For custom components, process attributes with {} expressions
         for (const attr of [...node.attributes]) {
+          const attrName = attr.nodeName;
+
+          // Handle property binding with : prefix
+          if (attrName.startsWith(':')) {
+            const propName = attrName.slice(1) // Remove ':'
+              .replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()); // Convert kebab-case to camelCase
+            const expression = attr.nodeValue;
+
+            // Remove the :prop attribute
+            node.removeAttribute(attrName);
+
+            // Evaluate expression to get value
+            const evalContext = this._currentEvalContext || this;
+
+            if (this.#isReactive && expression.includes('{')) {
+              // Create effect for reactive property binding
+              const cleanup = effect(() => {
+                let value;
+
+                // Check if expression is a pure value like "{todo}" without string concatenation
+                const pureExprMatch = expression.match(/^\{(.+)\}$/);
+                if (pureExprMatch) {
+                  // Pure expression - evaluate directly without string conversion
+                  value = ExpressionParser.evaluate(pureExprMatch[1].trim(), evalContext);
+                } else {
+                  // Expression with string parts - use replace for string interpolation
+                  value = expression.replace(/\{([^}]+)\}/g, (_, code) => {
+                    return ExpressionParser.evaluate(code.trim(), evalContext);
+                  });
+                }
+
+                // Check if node has state (custom component) or is native element
+                if (node.state) {
+                  // Custom component - set to state
+                  node.state[propName] = value;
+                } else {
+                  // Native element - set as DOM property
+                  node[propName] = value;
+                }
+              });
+              this.#renderEffects.push(cleanup);
+            } else {
+              // Non-reactive: evaluate once
+              const value = expression.replace(/\{([^}]+)\}/g, (_, code) => {
+                return this.#evaluate(code.trim(), node);
+              });
+
+              if (node.state) {
+                node.state[propName] = value;
+              } else {
+                node[propName] = value;
+              }
+            }
+            continue;
+          }
+
           // Skip framework-specific attributes
           if (frameworkAttrs.includes(attr.name)) {
             continue;
           }
 
           if (attr.value && attr.value.includes('{')) {
-            const attrName = attr.nodeName;
             const template = attr.nodeValue;
 
             // Use evalContext to check reactivity (for veda-if/veda-loop contexts)
@@ -648,24 +717,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           }
         }
       }
-    }
-
-    /**
-     * Helper: create reactive state (call in constructor)
-     */
-    reactive(obj) {
-      this.#isReactive = true;
-
-      // DevTools integration: track state changes
-      const reactiveObj = reactive(obj, {
-        onSet: (key, value, oldValue) => {
-          if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
-            window.__VEDA_DEVTOOLS_HOOK__.trackComponentStateChange(this);
-          }
-        }
-      });
-
-      return reactiveObj;
     }
 
     /**

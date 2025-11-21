@@ -19,7 +19,7 @@ export default function ({ test, assert }) {
 
     const model = new Model();
     model['rdfs:label'] = ['First'];
-    element.model = model;
+    element.state.model = model;
 
     container.appendChild(element);
 
@@ -50,7 +50,7 @@ export default function ({ test, assert }) {
 
     const model = new Model();
     model['rdfs:label'] = ['Alpha', 'Beta'];
-    element.model = model;
+    element.state.model = model;
 
     container.appendChild(element);
 
@@ -88,7 +88,7 @@ export default function ({ test, assert }) {
 
     const model = new Model();
     model['rdfs:label'] = ['Shadow Content'];
-    element.model = model;
+    element.state.model = model;
 
     container.appendChild(element);
 
@@ -117,7 +117,7 @@ export default function ({ test, assert }) {
 
     const model = new Model();
     // Don't set 'rdfs:label' - model.hasValue() will return false
-    element.model = model;
+    element.state.model = model;
 
     container.appendChild(element);
 
@@ -145,7 +145,7 @@ export default function ({ test, assert }) {
 
     const model = new Model();
     model['rdfs:label'] = 'Single Value'; // Not an array
-    element.model = model;
+    element.state.model = model;
 
     container.appendChild(element);
 

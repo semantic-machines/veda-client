@@ -3,18 +3,13 @@ import { Component, html } from '../../../src/index.js';
 export default class TodoFooter extends Component(HTMLElement) {
   static tag = 'todo-footer';
 
-  static get observedAttributes() {
-    return ['active-count', 'completed-count', 'filter'];
-  }
-
   constructor() {
     super();
-    // Reactive state for props
-    this.state = this.reactive({
-      activeCount: 0,
-      completedCount: 0,
-      filter: 'all'
-    });
+    // State is auto-created
+    // Properties will be set via :prop syntax from parent
+    this.state.activeCount = 0;
+    this.state.completedCount = 0;
+    this.state.filter = 'all';
   }
 
   // Computed properties for reactive attributes
@@ -22,23 +17,6 @@ export default class TodoFooter extends Component(HTMLElement) {
   get filterActiveClass() { return this.state.filter === 'active' ? 'selected' : ''; }
   get filterCompletedClass() { return this.state.filter === 'completed' ? 'selected' : ''; }
   get hideClearButton() { return this.state.completedCount === 0; }
-
-  async connectedCallback() {
-    await super.connectedCallback();
-    this.#syncStateFromAttributes();
-  }
-
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue !== newValue && this.isConnected) {
-      this.#syncStateFromAttributes();
-    }
-  }
-
-  #syncStateFromAttributes() {
-    this.state.activeCount = Number(this.getAttribute('active-count') || 0);
-    this.state.completedCount = Number(this.getAttribute('completed-count') || 0);
-    this.state.filter = this.getAttribute('filter') || 'all';
-  }
 
   handleClearCompleted() {
     this.dispatchEvent(new CustomEvent('clear-completed', { bubbles: true }));

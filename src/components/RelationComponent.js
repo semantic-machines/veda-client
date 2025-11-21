@@ -1,4 +1,5 @@
 import ValueComponent from './ValueComponent.js';
+import {reactive} from '../Reactive.js';
 
 export default function RelationComponent (Class = HTMLElement) {
   return class RelationComponentClass extends ValueComponent(Class) {
@@ -10,10 +11,10 @@ export default function RelationComponent (Class = HTMLElement) {
         return super.renderValue(value, container, index);
       }
 
-      const originalModel = this.model;
+      const originalModel = this.state.model;
 
       try {
-        this.model = value;
+        this.state.model = value;
 
         // Use <template> element to parse HTML - it preserves all element types
         // including table elements (tr, td, etc) without browser auto-correction
@@ -37,14 +38,15 @@ export default function RelationComponent (Class = HTMLElement) {
         let node = walker.nextNode();
         while (node) {
           if ((node.tagName.includes('-') || node.hasAttribute('is')) && !node.hasAttribute('about')) {
-            node.model = value;
+            if (!node.state) node.state = reactive({});
+            node.state.model = value;
           }
           node = walker.nextNode();
         }
 
         container.append(fragment);
       } finally {
-        this.model = originalModel;
+        this.state.model = originalModel;
       }
     }
   };

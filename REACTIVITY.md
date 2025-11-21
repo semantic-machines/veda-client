@@ -8,7 +8,7 @@ The reactivity system consists of three main parts:
 
 1. **Reactive state** - Objects wrapped in a Proxy that track property access
 2. **Effect system** - Automatically tracks dependencies and re-runs when they change
-3. **Component with reactivity** - Components automatically become reactive when using `reactive()` state
+3. **Component reactivity** - Components have automatic reactive state via `this.state`
 
 ## Reactive Expressions
 
@@ -22,9 +22,8 @@ export default class Counter extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = this.reactive({
-      count: 0
-    });
+    // State is automatically reactive
+    this.state.count = 0;
   }
 
   increment() {
@@ -51,10 +50,10 @@ export default class Counter extends Component(HTMLElement) {
 **Expression syntax:**
 - ✅ Supports: dot notation with optional chaining
   - `{this.state.count}`
-  - `{this.model.v-s:title.0}`
+  - `{this.state.model.v-s:title.0}`
   - `{this.user?.name}`
 - ❌ Does NOT support: bracket notation, operators, function calls
-  - `{this.model['v-s:title']}` - ❌ Wrong (use `{this.model.v-s:title}` instead)
+  - `{this.state.model['v-s:title']}` - ❌ Wrong (use `{this.state.model.v-s:title}` instead)
   - `{this.items['key']}` - ❌ Wrong
   - `{this.count + 1}` - ❌ Wrong
   - `{this.format(date)}` - ❌ Wrong
@@ -79,7 +78,7 @@ const state = reactive({
 state.count++; // Triggers all effects that depend on count
 ```
 
-**In components, use `this.reactive()` for reactive state:**
+**In components (current version), state is automatically reactive:**
 
 ```javascript
 import Component from 'veda-client';
@@ -87,16 +86,15 @@ import Component from 'veda-client';
 class MyComponent extends Component(HTMLElement) {
   constructor() {
     super();
-    // Use this.reactive() instead of reactive()
-    this.state = this.reactive({ count: 0 });
+    // State is automatically reactive - just assign properties
+    this.state.count = 0;
   }
 }
 ```
 
-**Why `this.reactive()`?**
-- It calls the global `reactive()` function
-- **And** sets an internal flag that enables reactivity features
-- This is required for automatic effect cleanup and model integration
+**How it works:**
+- `this.state` is automatically created as a reactive object
+- Automatic effect cleanup and model integration
 
 ### Array Mutations
 
@@ -155,7 +153,7 @@ state.items.sort();       // Modifies all indices
 
 ### Reactive Components
 
-Use `this.reactive()` to create reactive state - Component automatically detects it and enables reactivity:
+Component state is automatically reactive - no setup needed:
 
 ```javascript
 import Component, { html } from 'veda-client';
@@ -165,9 +163,8 @@ export default class Counter extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = this.reactive({
-      count: 0
-    });
+    // State is automatically reactive - just assign
+    this.state.count = 0;
   }
 
   increment() {
@@ -194,13 +191,11 @@ Use getters to create computed properties that automatically recalculate:
 export default class TodoList extends Component(HTMLElement) {
   constructor() {
     super();
-    this.state = this.reactive({
-      filter: 'all'
-    });
+    this.state.filter = 'all';
   }
 
   get todos() {
-    return this.model['v-s:hasTodo'] || [];
+    return this.state.model['v-s:hasTodo'] || [];
   }
 
   // Automatically recalculates when todos or filter changes
@@ -418,17 +413,17 @@ Models automatically trigger updates when component uses reactive state:
 export default class TodoItem extends Component(HTMLLIElement) {
   constructor() {
     super();
-    this.state = this.reactive({ editing: false }); // Enables reactivity
+    this.state.editing = false; // Automatically reactive in v3.0
   }
 
   get title() {
-    return this.model?.['v-s:title']?.[0] || '';
+    return this.state.model?.['v-s:title']?.[0] || '';
   }
 
   async handleSave() {
     // Save model
-    this.model['v-s:title'] = ['New title'];
-    await this.model.save();
+    this.state.model['v-s:title'] = ['New title'];
+    await this.state.model.save();
 
     // NO NEED to call this.update() - reactivity handles it
   }
@@ -520,7 +515,7 @@ export default class TodoItem extends Component(HTMLLIElement) {
 export default class TodoItem extends Component(HTMLLIElement) {
   constructor() {
     super();
-    this.state = this.reactive({ editing: false }); // ← Enables reactivity!
+    this.state.editing = false; // Automatically reactive in v3.0
   }
 
   async connectedCallback() {
@@ -543,7 +538,7 @@ export default class TodoItem extends Component(HTMLLIElement) {
 
 ### ✅ DO
 
-- Use `this.reactive()` in components for automatic reactivity
+- Component state is automatically reactive - just use `this.state`
 - Use global `reactive()` only outside components
 - Use getters for computed properties
 - Use `effect()` for side effects that track multiple dependencies

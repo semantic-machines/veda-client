@@ -13,7 +13,7 @@ export default class TodoList extends Component(HTMLLIElement) {
   }
 
   get shouldDisplay() {
-    const completed = !!this.model?.['v-s:completed']?.[0];
+    const completed = !!this.state.model?.['v-s:completed']?.[0];
 
     if (this.filter === 'active') return !completed;
     if (this.filter === 'completed') return completed;

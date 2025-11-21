@@ -9,18 +9,16 @@ export default class TodoItem extends Component(HTMLLIElement) {
 
   constructor() {
     super();
-    this.state = this.reactive({
-      editing: false
-    });
+    this.state.editing = false;
   }
 
   // Computed properties
   get completed() {
-    return this.model?.['v-s:completed']?.[0] || false;
+    return this.state.model?.['v-s:completed']?.[0] || false;
   }
 
   get title() {
-    return this.model?.['v-s:title']?.[0] || '';
+    return this.state.model?.['v-s:title']?.[0] || '';
   }
 
   async connectedCallback() {
@@ -48,13 +46,13 @@ export default class TodoItem extends Component(HTMLLIElement) {
 
   async handleToggle() {
     const prev = this.completed;
-    this.model['v-s:completed'] = [!prev];
+    this.state.model['v-s:completed'] = [!prev];
 
     try {
-      await this.model.save();
+      await this.state.model.save();
     } catch (error) {
       console.error('Failed to toggle todo:', error);
-      this.model['v-s:completed'] = [prev];
+      this.state.model['v-s:completed'] = [prev];
     }
   }
 
@@ -88,26 +86,26 @@ export default class TodoItem extends Component(HTMLLIElement) {
     }
 
     const prev = this.title;
-    this.model['v-s:title'] = [title];
+    this.state.model['v-s:title'] = [title];
 
     try {
-      await this.model.save();
+      await this.state.model.save();
       this.state.editing = false;
     } catch (error) {
       console.error('Failed to save todo:', error);
-      this.model['v-s:title'] = [prev];
+      this.state.model['v-s:title'] = [prev];
     }
   }
 
   async handleDestroy() {
     // Dispatch event to let parent handle removal from list
     this.dispatchEvent(new CustomEvent('destroy-todo', {
-      detail: { todo: this.model },
+      detail: { todo: this.state.model },
       bubbles: true
     }));
 
     try {
-      await this.model.remove();
+      await this.state.model.remove();
     } catch (error) {
       console.error('Failed to delete todo:', error);
     }
@@ -124,7 +122,7 @@ export default class TodoItem extends Component(HTMLLIElement) {
                onchange="{handleToggle}" />
 
         <!-- Using property directly on label for reactive title display -->
-        <label property="v-s:title" ondblclick="{handleEdit}"></label>
+        <label ondblclick="{handleEdit}">{this.title}</label>
 
         <button class="destroy"
                 aria-label="Delete todo"

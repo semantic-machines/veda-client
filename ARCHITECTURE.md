@@ -151,7 +151,7 @@ constructor → connectedCallback → populate → added → update → render �
 
 **Reactive Integration:**
 
-When component uses this.reactive():
+Component state is automatically reactive:
 1. Sets internal flag: #isReactive = true
 2. Creates effect for each {expression} in template
 3. Stores effects in #renderEffects for cleanup
@@ -409,7 +409,7 @@ state.c = 3;  // Queued
 class MyReactive extends Component(HTMLElement) {
   constructor() {
     super();
-    this.state = this.reactive({
+    this.state.todos = [];
       // Your state
     });
   }

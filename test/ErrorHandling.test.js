@@ -109,7 +109,7 @@ export default ({ test, assert }) => {
     class ReactiveRecoveryComponent extends Component(HTMLElement) {
       constructor() {
         super();
-        this.state = this.reactive({ count: 0 });
+        this.state.count = 0;
       }
 
       render() {
@@ -142,7 +142,7 @@ export default ({ test, assert }) => {
     class EffectErrorComponent extends Component(HTMLElement) {
       constructor() {
         super();
-        this.state = this.reactive({ value: 0 });
+        this.state = { value: 0 };
         this.effectRan = false;
       }
 
@@ -164,21 +164,21 @@ export default ({ test, assert }) => {
     }
 
     const { component, cleanup } = await createTestComponent(EffectErrorComponent);
-      
+
     assert(component.effectRan, 'Effect should run initially');
-    
+
     // Trigger effect error
     component.state.value = 1;
     await flushEffects();
-      
+
     // Component should still be functional
     assert(component.isConnected, 'Component should remain connected after effect error');
-    
+
     // Other effects should still work
     component.state.value = 2;
     await flushEffects();
     assert(component.isConnected, 'Component should remain functional');
-      
+
     cleanup();
   });
 
@@ -281,7 +281,7 @@ export default ({ test, assert }) => {
     class MultiErrorComponent extends Component(HTMLElement) {
       constructor() {
         super();
-        this.state = this.reactive({ count: 0 });
+        this.state = { count: 0 };
       }
 
       render() {

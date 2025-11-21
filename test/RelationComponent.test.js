@@ -44,7 +44,7 @@ export default function ({ test, assert }) {
     // Create a mock instance that extends the proper class structure
     const instance = Object.create(RelClass.prototype);
     instance.template = '<span class="rel-item">Item</span>';
-    instance.model = mockModel;
+    instance.state = { model: mockModel };
     instance._process = () => {}; // Mock _process method
 
     await instance.renderValue(mockModel, container, 0);
@@ -61,7 +61,7 @@ export default function ({ test, assert }) {
 
     const instance = Object.create(RelClass.prototype);
     instance.template = '<div class="rel-direct">Direct HTML</div>';
-    instance.model = mockModel;
+    instance.state = { model: mockModel };
     instance._process = () => {}; // Mock _process method
 
     await instance.renderValue(mockModel, container, 0);
@@ -78,7 +78,7 @@ export default function ({ test, assert }) {
 
     const instance = {
       template: '<custom-element></custom-element>',
-      model: mockModel,
+      state: { model: mockModel },
       _process() {},
       renderValue: RelClass.prototype.renderValue
     };
@@ -88,7 +88,8 @@ export default function ({ test, assert }) {
 
     const customEl = container.querySelector('custom-element');
     assert(customEl !== null, 'Should have custom element');
-    assert(customEl.model === mockModel, 'Should set model on custom element');
+    assert(customEl.state?.model !== undefined, 'Should have state.model');
+    assert(customEl.state.model.id === mockModel.id, 'Should set model on custom element');
   });
 
   test('RelationComponent - renderValue restores original model', async () => {
@@ -100,7 +101,7 @@ export default function ({ test, assert }) {
 
     const instance = {
       template: '<div>Content</div>',
-      model: originalModel,
+      state: { model: originalModel },
       _process() {},
       renderValue: RelClass.prototype.renderValue
     };
@@ -108,7 +109,7 @@ export default function ({ test, assert }) {
     // Test lines 53-54: restore original model in finally block
     await instance.renderValue(valueModel, container, 0);
 
-    assert(instance.model === originalModel, 'Should restore original model after rendering');
+    assert(instance.state.model === originalModel, 'Should restore original model after rendering');
   });
 
   test('RelationComponent - renderValue creates context element', async () => {
@@ -120,7 +121,7 @@ export default function ({ test, assert }) {
     let processCalledWithContext = null;
     const instance = {
       template: '<span>Test</span>',
-      model: mockModel,
+      state: { model: mockModel },
       _process(fragment, context) {
         processCalledWithContext = context;
       },
@@ -156,7 +157,7 @@ export default function ({ test, assert }) {
     relatedModel2['rdfs:label'] = ['Related Item 2'];
 
     model['v-s:hasPart'] = [relatedModel1, relatedModel2];
-    element.model = model;
+    element.state.model = model;
 
     container.appendChild(element);
     await element.rendered;

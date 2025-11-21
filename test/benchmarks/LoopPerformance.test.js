@@ -36,15 +36,13 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: generateItems(100)
-        });
+        this.state.items = generateItems(100);
       }
 
       render() {
         return html`
-          <${Loop} items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <${Loop} items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </${Loop}>
         `;
       }
@@ -74,15 +72,13 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: generateItems(500)
-        });
+        this.state.items = generateItems(500);
       }
 
       render() {
         return html`
-          <${Loop} items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <${Loop} items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </${Loop}>
         `;
       }
@@ -112,15 +108,13 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: generateItems(1000)
-        });
+        this.state.items = generateItems(1000);
       }
 
       render() {
         return html`
-          <${Loop} items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <${Loop} items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </${Loop}>
         `;
       }
@@ -150,15 +144,13 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: generateItems(100)
-        });
+        this.state.items = generateItems(100);
       }
 
       render() {
         return html`
-          <${Loop} items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <${Loop} items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </${Loop}>
         `;
       }
@@ -195,15 +187,13 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: generateItems(500)
-        });
+        this.state.items = generateItems(500);
       }
 
       render() {
         return html`
-          <${Loop} items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <${Loop} items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </${Loop}>
         `;
       }
@@ -237,15 +227,13 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: generateItems(100)
-        });
+        this.state.items = generateItems(100);
       }
 
       render() {
         return html`
-          <${Loop} items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <${Loop} items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </${Loop}>
         `;
       }
@@ -278,15 +266,13 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: generateItems(500)
-        });
+        this.state.items = generateItems(500);
       }
 
       render() {
         return html`
-          <${Loop} items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <${Loop} items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </${Loop}>
         `;
       }
@@ -319,15 +305,13 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: generateItems(1000)
-        });
+        this.state.items = generateItems(1000);
       }
 
       render() {
         return html`
-          <${Loop} items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <${Loop} items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </${Loop}>
         `;
       }
@@ -360,15 +344,13 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: generateItems(500)
-        });
+        this.state.items = generateItems(500);
       }
 
       render() {
         return html`
-          <${Loop} items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <${Loop} items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </${Loop}>
         `;
       }
@@ -405,15 +387,13 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: generateItems(500)
-        });
+        this.state.items = generateItems(500);
       }
 
       render() {
         return html`
-          <${Loop} items="{this.state.items}" item-key="id">
-            <div class="item">{this.model.name}</div>
+          <${Loop} items="{this.state.items}" as="item" key="id">
+            <div class="item">{item.name}</div>
           </${Loop}>
         `;
       }

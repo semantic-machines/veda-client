@@ -87,9 +87,7 @@
 
       constructor() {
         super();
-        this.state = reactive({
-          count: 0
-        });
+        this.state.count = 0;
       }
 
       increment() {
@@ -124,10 +122,8 @@
 
       constructor() {
         super();
-        this.state = reactive({
-          text: 'Hello',
-          active: true
-        });
+        this.state.text = 'Hello';
+        this.state.active = true;
       }
 
       handleInput(event) {
@@ -167,11 +163,9 @@
 
       constructor() {
         super();
-        this.state = reactive({
-          firstName: 'John',
-          lastName: 'Doe',
-          items: ['Apple', 'Banana', 'Orange']
-        });
+        this.state.firstName = 'John';
+        this.state.lastName = 'Doe';
+        this.state.items = ['Apple', 'Banana', 'Orange'];
       }
 
       get fullName() {

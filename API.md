@@ -2,6 +2,8 @@
 
 Complete API documentation for Veda Client Framework.
 
+---
+
 ## Terminology Glossary
 
 Understanding key terms used throughout this documentation:
@@ -15,13 +17,14 @@ console.log(proxy.__isReactive); // true
 ```
 
 **Reactive State:**
-Component state created with `this.reactive()`. Specifically refers to component-local state that enables automatic re-rendering.
+Component state that is automatically reactive. `this.state` is created automatically by the Component base class.
 
 ```javascript
 class MyComponent extends Component(HTMLElement) {
   constructor() {
     super();
-    this.state = this.reactive({ count: 0 }); // ← reactive state
+    // this.state is automatically reactive!
+    this.state.count = 0;
   }
 }
 ```
@@ -44,6 +47,8 @@ const store = reactive({ users: [] });
 ## Table of Contents
 
 - [Component](#component)
+  - [Automatic State](#automatic-state)
+  - [Property Binding](#property-binding)
 - [Reactivity](#reactivity)
 - [Reactivity Edge Cases](#reactivity-edge-cases)
 - [Built-in Components](#built-in-components)
@@ -79,7 +84,8 @@ class MyComponent extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = this.reactive({ count: 0 });
+    // State is automatically reactive!
+    this.state.count = 0;
   }
 
   render() {
@@ -94,9 +100,123 @@ customElements.define(MyComponent.tag, MyComponent);
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `model` | `Model` | Associated semantic data model |
+| `state` | `Reactive<Object>` | Automatically reactive state object |
 | `template` | `string` | Rendered HTML template |
 | `rendered` | `Promise<void>` | Resolves when component is rendered |
+
+### Automatic State
+
+Every component automatically has a reactive `state` object:
+
+```javascript
+class MyComponent extends Component(HTMLElement) {
+  constructor() {
+    super();
+
+    // Just set properties directly
+    this.state.count = 0;
+    this.state.items = [];
+    this.state.user = null;
+  }
+}
+```
+
+**Model integration:**
+
+```javascript
+class MyComponent extends Component(HTMLElement) {
+  constructor() {
+    super();
+    // Model is part of state
+    this.state.model = new Model('d:MyEntity');
+  }
+
+  render() {
+    return html`<div>{this.state.model.title}</div>`;
+  }
+}
+```
+
+**Automatic `about` attribute:**
+
+```html
+<my-component about="d:MyEntity"></my-component>
+```
+
+```javascript
+class MyComponent extends Component(HTMLElement) {
+  async connectedCallback() {
+    super.connectedCallback();
+    // this.state.model is automatically created and loaded!
+    console.log(this.state.model.id); // 'd:MyEntity'
+  }
+}
+```
+
+### Property Binding
+
+Pass complex data using `:` prefix:
+
+#### Syntax
+
+- **Without `:`** → String attribute: `class="active"`
+- **With `:`** → Property to state: `:user="{this.state.currentUser}"`
+
+#### Examples
+
+**Passing objects:**
+
+```javascript
+// Parent component
+class UserList extends Component(HTMLElement) {
+  constructor() {
+    super();
+    this.state.users = [
+      { id: 1, name: 'Alice' }
+    ];
+  }
+
+  render() {
+    return html`
+      <${Loop} items="{this.state.users}" as="user" key="id">
+        <user-card :user="{user}"></user-card>
+      </${Loop}>
+    `;
+  }
+}
+
+// Child component
+class UserCard extends Component(HTMLElement) {
+  render() {
+    // Access via this.state
+    return html`
+      <div>{this.state.user.name}</div>
+    `;
+  }
+}
+```
+
+**Type handling:**
+
+```html
+<!-- Strings (no prefix) -->
+<my-component class="active" data-id="123"></my-component>
+
+<!-- Objects, arrays, numbers (with :) -->
+<my-component
+  :user="{this.state.currentUser}"
+  :items="{this.state.todos}"
+  :count="{this.state.total}">
+</my-component>
+```
+
+**Native elements:**
+
+```html
+<!-- : prefix sets DOM properties -->
+<input :value="{this.state.text}">
+<button :disabled="{this.state.isLoading}">Submit</button>
+```
 
 ### Lifecycle Methods
 
@@ -146,20 +266,6 @@ class MyComponent extends Component(HTMLElement) {
 
 ### Reactive Methods
 
-#### `reactive<T>(obj: T): T`
-
-Creates reactive state for the component.
-
-```javascript
-constructor() {
-  super();
-  this.state = this.reactive({
-    count: 0,
-    items: []
-  });
-}
-```
-
 #### `watch<T>(getter, callback, options?): () => void`
 
 Watches reactive value changes and runs callback when value changes.
@@ -186,7 +292,10 @@ Watches reactive value changes and runs callback when value changes.
 class MyComponent extends Component(HTMLElement) {
   constructor() {
     super();
-    this.state = this.reactive({ count: 0, editing: false, items: [], active: true });
+    this.state.count = 0;
+    this.state.editing = false;
+    this.state.items = [];
+    this.state.active = true;
   }
 
   async connectedCallback() {
@@ -366,19 +475,19 @@ The Expression Parser evaluates template expressions like `{this.state.count}` i
 - Dot notation: `{this.state.count}`
 - Optional chaining: `{this.user?.name}`
 - Numeric array access: `{this.items.0}`
-- Nested access: `{this.model.v-s:title.0}`
-- Dashes in property names: `{this.model.v-s:hasValue}`
+- Nested access: `{this.state.model.v-s:title.0}`
+- Dashes in property names: `{this.state.model.v-s:hasValue}`
 
 **❌ Not Supported:**
 - Operators: `{this.a + this.b}` ❌
 - Function calls: `{this.format(date)}` ❌
 - Ternary operators: `{this.show ? 'yes' : 'no'}` ❌
-- Bracket notation: `{this.items['key']}`, `{this.model['v-s:title']}` ❌
+- Bracket notation: `{this.items['key']}`, `{this.state.model['v-s:title']}` ❌
 - Method calls: `{this.items.map(x => x)}` ❌
 
 **Instead use:**
 - For numeric indices: `{this.items.0}` ✅
-- For properties with dashes: `{this.model.v-s:title.0}` ✅
+- For properties with dashes: `{this.state.model.v-s:title.0}` ✅
 
 ### Examples
 
@@ -396,7 +505,7 @@ The Expression Parser evaluates template expressions like `{this.state.count}` i
 <li>{this.todos.0.title}</li>
 
 // ✅ RDF property names with dashes/colons
-<span>{this.model.v-s:title.0}</span>
+<span>{this.state.model.v-s:title.0}</span>
 
 // ❌ Complex expression - use computed property instead
 get incrementedCount() {
@@ -432,7 +541,7 @@ Expressions are evaluated in the component's context:
 class MyComponent extends Component(HTMLElement) {
   constructor() {
     super();
-    this.state = this.reactive({ count: 0 });
+    this.state.count = 0;
   }
 
   render() {
@@ -442,12 +551,12 @@ class MyComponent extends Component(HTMLElement) {
 }
 ```
 
-In Loop/If components, `this` refers to the item:
+In Loop/If components, access data through the named variable:
 
 ```javascript
-<${Loop} items="{this.todos}" item-key="id">
-  <li>{this.model.text}</li>
-  <!-- 'this.model' is the current todo item -->
+<${Loop} items="{this.todos}" key="id" as="todo">
+  <li>{todo.text}</li>
+  <!-- 'todo' is the current todo item, 'index' is always available -->
 </${Loop}>
 ```
 
@@ -900,19 +1009,20 @@ state.items.sort();       // Modifies all indices
 - Solid.js: Uses fine-grained signals (similar approach)
 - Veda: Proxy-based fine-grained reactivity
 
-### Dynamic item-key in Loop
+### Dynamic key in Loop
 
-**⚠️ Not supported:** Changing `item-key` attribute dynamically will not trigger re-reconciliation:
+**⚠️ Not supported:** Changing `key` attribute dynamically will not trigger re-reconciliation:
 
 ```javascript
-// ❌ BROKEN - item-key should be static
-<${Loop} items="{this.items}" item-key="{this.currentKey}">
+// ❌ BROKEN - key should be static
+<${Loop} items="{this.items}" key="{this.currentKey}">
 
-// ✅ CORRECT - item-key is static
-<${Loop} items="{this.items}" item-key="id">
+// ✅ CORRECT - key is static
+<${Loop} items="{this.items}" key="id">
+<${Loop} items="{this.items}" key="id" as="item">
 ```
 
-**Reason:** Loop component reads `item-key` once during initialization. Dynamic keys would require complete re-initialization.
+**Reason:** Loop component reads `key` once during initialization. Dynamic keys would require complete re-initialization.
 
 ### Expression Evaluation with undefined/null
 
@@ -1007,32 +1117,29 @@ untrack(() => {
 
 ### Model Property Reactivity
 
-Model properties become reactive automatically when component uses `this.reactive()`:
+Model properties in `this.state.model` are automatically reactive:
 
 ```javascript
 class MyComponent extends Component(HTMLElement) {
   constructor() {
     super();
-    // ✅ Enables reactivity for model properties
-    this.state = this.reactive({});
+    this.state.model = new Model('d:123');
   }
 
   render() {
     // This expression will re-render when model changes
-    return html`<div>{this.model['v-s:title'].0}</div>`;
+    return html`<div>{this.state.model['v-s:title'].0}</div>`;
   }
 }
 ```
 
-**Without reactive state:**
+Components can access model properties through `this.state.model`:
 
 ```javascript
 class MyComponent extends Component(HTMLElement) {
-  // No this.reactive() call
-
   render() {
-    // ❌ Won't update when model changes
-    return html`<div>{this.model['v-s:title'].0}</div>`;
+    // ✅ Updates automatically when model changes
+    return html`<div>{this.state.model['v-s:title'].0}</div>`;
   }
 }
 ```
@@ -1142,30 +1249,83 @@ Renders reactive lists with key-based reconciliation.
 ```javascript
 import { Loop } from 'veda-client';
 
-<${Loop} items="{this.todos}" item-key="id">
-  <li>{this.model.text}</li>
+// Component syntax
+<${Loop} items="{this.state.todos}" as="todo" key="id">
+  <li>{todo.text}</li>
+  <li>{index}. {todo.text}</li>  <!-- index always available -->
 </${Loop}>
+
+// Semantic HTML syntax
+<ul items="{this.state.todos}" as="todo" key="id">
+  <li>{todo.text}</li>
+</ul>
 ```
 
 **Attributes:**
 - `items` - Expression returning array (required)
-- `item-key` - Property name for reconciliation (default: `'id'`)
+- `as` - Variable name for current item (default: `'item'`)
+- `key` - Property name for reconciliation (default: `'id'`)
+
+**Special variables:**
+- `{as_name}` - Current item (e.g., `{todo}`)
+- `{index}` - Current index (0-based, always available)
 
 **Features:**
-- **Array reactivity:** Array mutation methods (`push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse`) are automatically reactive and trigger Loop reconciliation
-- **Reference changes:** Replacing the array reference (e.g., `items = [...items, newItem]`) also triggers reconciliation
-- Each child receives `model` prop with item value
-- Key-based reconciliation reuses DOM elements
+- **Array reactivity:** Array mutation methods (`push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse`) automatically trigger reconciliation
+- **Reference changes:** Replacing array reference also triggers reconciliation
+- **Index access:** `{index}` always available for numbering/styling
+- **Key-based reconciliation:** Reuses DOM elements for performance
+- **Semantic HTML:** Use `items` attribute directly on any element
 
-**Important:** Both mutation methods AND reference changes work. Use whichever is more convenient for your use case.
+**Semantic HTML:**
+
+Use `items` attribute directly on any element for better HTML structure:
+
+```javascript
+// Lists
+<ul items="{this.state.todos}" as="todo" key="id">
+  <li>{index + 1}. {todo.text}</li>
+</ul>
+
+// Tables
+<table>
+  <tbody items="{this.state.users}" as="user" key="id">
+    <tr>
+      <td>{user.name}</td>
+      <td>{user.email}</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+**Why semantic HTML?**
+- Better HTML structure
+- Improved accessibility
+- CSS selectors work naturally (`ul > li`)
+
+**Passing data to child components:**
+
+```javascript
+<${Loop} items="{this.state.todos}" as="todo" key="id">
+  <todo-item :todo="{todo}" :index="{index}"></todo-item>
+</${Loop}>
+
+// Child component
+class TodoItem extends Component(HTMLElement) {
+  render() {
+    return html`
+      <li>{this.state.index}. {this.state.todo.text}</li>
+    `;
+  }
+}
+```
 
 **Limitations:**
-- **Single root element required:** Template must have exactly one root element. Multiple root elements will trigger a console warning and only the first element will be used.
-- **Duplicate keys warning:** If multiple items have the same key value, a warning is logged. **Behavior:** The last item with a duplicate key "wins" and overwrites previous items with the same key in the internal Map. This can lead to missing or incorrect elements in the rendered list.
-- **Static item-key:** The `item-key` attribute must be static. Dynamic keys (e.g., `item-key="{this.keyName}"`) are not supported and will cause reconciliation issues.
-- Source array must be reactive; plain arrays that never change reference will not emit updates
-- Watchers still compare by reference, so `this.watch(() => this.state.items, ...)` requires assigning a new array when you need the watcher to fire
-- Naive reconciliation (no LIS optimization, O(n²) for reordering)
+- **Single root element required:** Template must have exactly one root element per iteration
+- **Duplicate keys warning:** Items must have unique key values
+- **Static attributes:** `as` and `key` must be static strings
+- Source array must be reactive
+- Naive reconciliation (O(n²) for reordering)
 - No virtualization
 
 **Common Issues and Solutions:**
@@ -1189,26 +1349,26 @@ this.state.items[0] = updatedItem; // Works! Loop iterates all items
 ```
 
 **Note:** If Loop still doesn't update, check that:
-- The array is part of reactive state: `this.state = this.reactive({ items: [] })`
+- The array is reactive: `this.state.items = []` (state is automatically reactive)
 - You're not watching the array with `watch()` (which uses reference equality)
 
 2. **Multiple root elements warning:**
 
 ```javascript
 // ❌ WRONG - Multiple roots
-<${Loop} items="{this.todos}" item-key="id">
-  <h3>{this.model.title}</h3>
-  <p>{this.model.description}</p>
+<${Loop} items="{this.todos}" key="id" as="todo">
+  <h3>{todo.title}</h3>
+  <p>{todo.description}</p>
 </${Loop}>
 // Console: "Loop component: Multiple root elements detected.
 //           Please wrap them in a single root element (e.g. <div>, <li>, etc.).
 //           Only the first element will be used, others will be ignored."
 
 // ✅ CORRECT - Single root wraps everything
-<${Loop} items="{this.todos}" item-key="id">
+<${Loop} items="{this.todos}" key="id" as="todo">
   <div class="todo-item">
-    <h3>{this.model.title}</h3>
-    <p>{this.model.description}</p>
+    <h3>{todo.title}</h3>
+    <p>{todo.description}</p>
   </div>
 </${Loop}>
 ```
@@ -1243,7 +1403,7 @@ const items = [
 
 ```javascript
 // ⚠️ SLOW - 1000+ items with frequent reordering
-<${Loop} items="{this.largeList}" item-key="id">
+<${Loop} items="{this.largeList}" key="id" as="item">
   <div>{this.model.name}</div>
 </${Loop}>
 
@@ -1253,22 +1413,22 @@ get currentPage() {
   return this.allItems.slice(page * pageSize, (page + 1) * pageSize);
 }
 
-<${Loop} items="{this.currentPage}" item-key="id">
+<${Loop} items="{this.currentPage}" key="id" as="item">
   <div>{this.model.name}</div>
 </${Loop}>
 ```
 
-5. **Missing item-key causes full re-render:**
+5. **Missing key causes full re-render:**
 
 ```javascript
 // ❌ WRONG - No key, every update re-creates all elements
-<${Loop} items="{this.items}">
-  <div>{this.model.name}</div>
+<${Loop} items="{this.items}" as="item">
+  <div>{item.name}</div>
 </${Loop}>
 
 // ✅ CORRECT - With key, reuses existing elements
-<${Loop} items="{this.items}" item-key="id">
-  <div>{this.model.name}</div>
+<${Loop} items="{this.items}" key="id" as="item">
+  <div>{item.name}</div>
 </${Loop}>
 ```
 
@@ -1290,7 +1450,7 @@ get currentPage() {
 See `test/benchmarks/LoopPerformance.test.js` for complete measurements.
 
 **Recommendations:**
-- Always provide `item-key` for efficient reconciliation
+- Always provide `key` for efficient reconciliation
 - Keep lists under 500 items for optimal performance
 - Use pagination for large datasets (1000+ items)
 - Avoid frequent reordering of large lists
@@ -1300,14 +1460,14 @@ See `test/benchmarks/LoopPerformance.test.js` for complete measurements.
 
 ```javascript
 // ❌ WRONG - Multiple root elements
-<${Loop} items="{this.todos}" item-key="id">
+<${Loop} items="{this.todos}" key="id" as="item">
   <h3>{this.model.title}</h3>
   <p>{this.model.description}</p>
 </${Loop}>
 // Console warning! Only <h3> will be rendered
 
 // ✅ CORRECT - Single root element
-<${Loop} items="{this.todos}" item-key="id">
+<${Loop} items="{this.todos}" key="id" as="item">
   <div class="todo-item">
     <h3>{this.model.title}</h3>
     <p>{this.model.description}</p>
@@ -1321,11 +1481,9 @@ See `test/benchmarks/LoopPerformance.test.js` for complete measurements.
 class TodoList extends Component(HTMLElement) {
   constructor() {
     super();
-    this.state = this.reactive({
-      todos: [
-        { id: 1, text: 'Task 1', done: false }
-      ]
-    });
+    this.state.todos = [
+      { id: 1, text: 'Task 1', done: false }
+    ];
   }
 
   addTodo = () => {
@@ -1338,10 +1496,10 @@ class TodoList extends Component(HTMLElement) {
   render() {
     return html`
       <ul>
-        <${Loop} items="{this.state.todos}" item-key="id">
+        <${Loop} items="{this.state.todos}" key="id" as="todo">
           <li>
-            <input type="checkbox" checked="{this.model.done}" />
-            <span>{this.model.text}</span>
+            <input type="checkbox" checked="{todo.done}" />
+            <span>{todo.text}</span>
           </li>
         </${Loop}>
       </ul>
@@ -1358,7 +1516,7 @@ Conditional rendering.
 ```javascript
 import { If } from 'veda-client';
 
-<${If} condition="{this.isVisible}">
+<${If} condition="{this.state.isVisible}">
   <div>Content</div>
 </${If}>
 ```
@@ -1370,6 +1528,7 @@ import { If } from 'veda-client';
 - Creates/removes content based on condition
 - Leaves comment node when hidden
 - Child elements cloned when shown
+- Same evalContext as Loop (access parent state/methods)
 
 **Example:**
 
@@ -1377,10 +1536,8 @@ import { If } from 'veda-client';
 class ConditionalView extends Component(HTMLElement) {
   constructor() {
     super();
-    this.state = this.reactive({
-      isLoggedIn: false,
-      hasPermission: false
-    });
+    this.state.isLoggedIn = false;
+    this.state.hasPermission = false;
   }
 
   render() {
@@ -1652,7 +1809,7 @@ render() {
 </div>
 
 // ✅ Use Loop for generic arrays
-<${Loop} items="{this.todos}" item-key="id">
+<${Loop} items="{this.todos}" key="id" as="item">
   <todo-item></todo-item>
 </${Loop}>
 ```
@@ -3056,11 +3213,9 @@ class TodoApp extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = this.reactive<TodoState>({
-      todos: [],
-      filter: 'all',
-      editing: false
-    });
+    this.state.todos = [];
+    this.state.filter = 'all';
+    this.state.editing = false;
   }
 
   get filteredTodos() {
@@ -3091,10 +3246,8 @@ class TodoApp extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = this.reactive<TodoState>({
-      todos: [],
-      filter: 'all'
-    });
+    this.state.todos = [];
+    this.state.filter = 'all';
   }
 
   get filteredTodos() {
@@ -3210,14 +3363,12 @@ class TodoItem extends Component(HTMLLIElement) {
 
   constructor() {
     super();
-    this.state = this.reactive<TodoState>({
-      editing: false,
-      editText: ''
-    });
+    this.state.editing = false;
+    this.state.editText = '';
   }
 
   get title(): string {
-    return this.model?.['v-s:title']?.[0]?.data as string ?? '';
+    return this.state.model?.['v-s:title']?.[0]?.data as string ?? '';
   }
 
   get completed(): boolean {
@@ -3380,13 +3531,11 @@ class TodoList extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = this.reactive<TodoListState>({
-      todos: [
-        { id: 1, text: 'Learn TypeScript', done: false },
-        { id: 2, text: 'Build app', done: true }
-      ],
-      filter: 'all'
-    });
+    this.state.todos = [
+      { id: 1, text: 'Learn TypeScript', done: false },
+      { id: 2, text: 'Build app', done: true }
+    ];
+    this.state.filter = 'all';
   }
 
   // Typed getter
@@ -3400,7 +3549,7 @@ class TodoList extends Component(HTMLElement) {
   render() {
     return html`
       <ul>
-        <${Loop} items="{this.filteredTodos}" item-key="id">
+        <${Loop} items="{this.filteredTodos}" key="id" as="item">
           <li>
             <span>{this.model.text}</span>
             <span>{this.model.done ? '✓' : '○'}</span>
@@ -3429,11 +3578,9 @@ class EditableField extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = this.reactive<EditableState>({
-      editing: false,
-      value: '',
-      savedValue: ''
-    });
+    this.state.editing = false;
+    this.state.value = '';
+    this.state.savedValue = '';
   }
 
   async connectedCallback() {
@@ -3652,7 +3799,7 @@ class MyComponent extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = this.reactive({ count: 0 });
+    this.state.count = 0;
   }
 
   myMethod() {

@@ -89,14 +89,12 @@
 
       constructor() {
         super();
-        this.state = reactive({
-          items: [
-            { id: 1, title: 'Item 1', completed: false },
-            { id: 2, title: 'Item 2', completed: false },
-            { id: 3, title: 'Item 3', completed: false }
-          ],
-          nextId: 4
-        });
+        this.state.items = [
+          { id: 1, title: 'Item 1', completed: false },
+          { id: 2, title: 'Item 2', completed: false },
+          { id: 3, title: 'Item 3', completed: false }
+        ];
+        this.state.nextId = 4;
       }
 
       addItem() {
@@ -132,8 +130,8 @@
             <button onclick="{shuffleItems}">Shuffle</button>
           </div>
 
-          <veda-loop items="{this.state.items}" item-key="id">
-            <item-component></item-component>
+          <veda-loop items="{this.state.items}" key="id" as="item">
+            <item-component :item="{item}"></item-component>
           </veda-loop>
 
           <p><small>Open DevTools to see: only changed items re-render</small></p>
@@ -147,25 +145,25 @@
 
       connectedCallback() {
         super.connectedCallback();
-        console.log('ItemComponent mounted:', this.model?.id);
+        console.log('ItemComponent mounted:', this.state.item?.id);
       }
 
       disconnectedCallback() {
-        console.log('ItemComponent unmounted:', this.model?.id);
+        console.log('ItemComponent unmounted:', this.state.item?.id);
         super.disconnectedCallback?.();
       }
 
       get title() {
-        return this.model?.title || '';
+        return this.state.item?.title || '';
       }
 
       get completed() {
-        return this.model?.completed || false;
+        return this.state.item?.completed || false;
       }
 
       handleToggle() {
         const event = new CustomEvent('toggle-item', {
-          detail: { id: this.model.id },
+          detail: { id: this.state.item.id },
           bubbles: true
         });
         this.dispatchEvent(event);
@@ -173,7 +171,7 @@
 
       handleRemove() {
         const event = new CustomEvent('remove-item', {
-          detail: { id: this.model.id },
+          detail: { id: this.state.item.id },
           bubbles: true
         });
         this.dispatchEvent(event);
@@ -198,10 +196,8 @@
 
       constructor() {
         super();
-        this.state = reactive({
-          showDetails: false,
-          isLoggedIn: false
-        });
+        this.state.showDetails = false;
+        this.state.isLoggedIn = false;
       }
 
       toggleDetails() {
@@ -256,15 +252,13 @@
 
       constructor() {
         super();
-        this.state = reactive({
-          filter: 'all',
-          items: [
-            { id: 1, title: 'Buy milk', completed: false },
-            { id: 2, title: 'Walk dog', completed: true },
-            { id: 3, title: 'Write code', completed: false },
-            { id: 4, title: 'Read book', completed: true }
-          ]
-        });
+        this.state.filter = 'all';
+        this.state.items = [
+          { id: 1, title: 'Buy milk', completed: false },
+          { id: 2, title: 'Walk dog', completed: true },
+          { id: 3, title: 'Write code', completed: false },
+          { id: 4, title: 'Read book', completed: true }
+        ];
       }
 
       get filteredItems() {
@@ -314,8 +308,8 @@
           </div>
 
           <veda-if condition="{this.hasItems}">
-            <veda-loop items="{this.filteredItems}" item-key="id">
-              <simple-item></simple-item>
+            <veda-loop items="{this.filteredItems}" key="id" as="item">
+              <simple-item :item="{item}"></simple-item>
             </veda-loop>
           </veda-if>
 
@@ -336,8 +330,8 @@
 
       render() {
         return html`
-          <div class="item ${this.model?.completed ? 'completed' : ''}">
-            {this.model?.title}
+          <div class="item ${this.state.item?.completed ? 'completed' : ''}">
+            {this.state.item?.title}
           </div>
         `;
       }

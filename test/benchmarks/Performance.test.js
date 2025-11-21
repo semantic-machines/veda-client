@@ -202,7 +202,7 @@ export default ({test, assert}) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ value: 0 });
+        this.state.value = 0;
       }
 
       render() {
@@ -246,7 +246,7 @@ export default ({test, assert}) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ count: 0 });
+        this.state.count = 0;
       }
 
       render() {
@@ -328,7 +328,7 @@ export default ({test, assert}) => {
 
       constructor() {
         super();
-        this.state = this.reactive({ items: Array.from({ length: 10 }, (_, i) => i) });
+        this.state.items = Array.from({ length: 10 }, (_, i) => i);
       }
 
       render() {

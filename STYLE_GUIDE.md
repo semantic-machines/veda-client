@@ -23,15 +23,14 @@ Best practices and coding patterns for Veda Client Framework.
 class TodoList extends Component(HTMLElement) {
   constructor() {
     super();
-    this.state = this.reactive({
-      todos: []
-    });
+    // State is automatically reactive
+    this.state.todos = [];
   }
 
   render() {
     return html`
-      <${Loop} items="{this.state.todos}" item-key="id">
-        <li>{this.model.text}</li>
+      <${Loop} items="{this.state.todos}" key="id" as="todo">
+        <li>{todo.text}</li>
       </${Loop}>
     `;
   }
@@ -45,10 +44,9 @@ class TodoList extends Component(HTMLElement) {
 class TodoList extends Component(HTMLElement) {
   constructor() {
     super();
-    this.state = this.reactive({
-      todos: [],
-      filter: 'all'
-    });
+    // State is automatically reactive
+    this.state.todos = [];
+    this.state.filter = 'all';
   }
 
   get filteredTodos() {
@@ -63,8 +61,8 @@ class TodoList extends Component(HTMLElement) {
 
   render() {
     return html`
-      <${Loop} items="{this.filteredTodos}" item-key="id">
-        <li>{this.model.text}</li>
+      <${Loop} items="{this.filteredTodos}" key="id" as="todo">
+        <li>{todo.text}</li>
       </${Loop}>
     `;
   }
@@ -204,7 +202,7 @@ this.watch(
 
 ### Reactive State vs Plain State
 
-**Use reactive state** (`this.reactive()`) when:
+**Component state is automatically reactive when:
 - Component has local state that changes
 - State changes should trigger UI updates
 - Working with reactive models
@@ -214,10 +212,9 @@ this.watch(
 class TodoItem extends Component(HTMLLIElement) {
   constructor() {
     super();
-    this.state = this.reactive({
-      editing: false,
-      hovered: false
-    });
+    // State is automatically reactive
+    this.state.editing = false;
+    this.state.hovered = false;
   }
 }
 ```
@@ -250,7 +247,7 @@ class StaticHeader extends Component(HTMLElement) {
 
 ```javascript
 // ✅ Good - dynamic list
-<${Loop} items="{this.state.todos}" item-key="id">
+<${Loop} items="{this.state.todos}" key="id">
   <todo-item></todo-item>
 </${Loop}>
 ```
@@ -348,20 +345,24 @@ static tag = 'appHeader';
 
 ```javascript
 // ✅ Good
-this.state = this.reactive({
-  editing: false,
-  loading: false,
-  selectedId: null,
-  filter: 'all'
-});
+constructor() {
+  super();
+  // State is automatically reactive
+  this.state.editing = false;
+  this.state.loading = false;
+  this.state.selectedId = null;
+  this.state.filter = 'all';
+}
 
 // ❌ Bad
-this.state = this.reactive({
-  e: false,        // What is 'e'?
-  l: false,        // What is 'l'?
-  sel: null,       // Abbreviation unclear
-  f: 'all'         // Single letter
-});
+constructor() {
+  super();
+  // State is automatically reactive
+  this.state.e = false;        // What is 'e'?
+  this.state.l = false;        // What is 'l'?
+  this.state.sel = null;       // Abbreviation unclear
+  this.state.f = 'all';        // Single letter
+}
 ```
 
 ### Event Handler Names
@@ -467,7 +468,7 @@ handleBulkUpdate() {
 
 ### Loop Performance
 
-**Always provide item-key** for efficient reconciliation:
+**Always provide key attribute** for efficient reconciliation:
 
 ```javascript
 // ❌ Bad - slow reconciliation
@@ -476,7 +477,7 @@ handleBulkUpdate() {
 </${Loop}>
 
 // ✅ Good - efficient key-based reconciliation
-<${Loop} items="{this.items}" item-key="id">
+<${Loop} items="{this.items}" key="id">
   <div>{this.model.name}</div>
 </${Loop}>
 ```
@@ -493,7 +494,7 @@ get currentPage() {
   );
 }
 
-<${Loop} items="{this.currentPage}" item-key="id">
+<${Loop} items="{this.currentPage}" key="id">
   <item-card></item-card>
 </${Loop}>
 ```
@@ -508,7 +509,7 @@ render() {
   const sorted = this.items.sort((a, b) => a.priority - b.priority);
   const filtered = sorted.filter(x => x.active);
   return html`
-    <${Loop} items="${filtered}" item-key="id">...</${Loop}>
+    <${Loop} items="${filtered}" key="id">...</${Loop}>
   `;
 }
 
@@ -521,7 +522,7 @@ get activeItems() {
 
 render() {
   return html`
-    <${Loop} items="{this.activeItems}" item-key="id">...</${Loop}>
+    <${Loop} items="{this.activeItems}" key="id">...</${Loop}>
   `;
 }
 ```
@@ -572,14 +573,15 @@ this.effect(() => {
 ```javascript
 // ❌ Bad - creates new state on every render
 render() {
-  const localState = this.reactive({ count: 0 });
+  const localState = reactive({ count: 0 });
   return html`<div>{localState.count}</div>`;
 }
 
 // ✅ Good - create state in constructor
 constructor() {
   super();
-  this.state = this.reactive({ count: 0 });
+  // State is automatically reactive
+  this.state.count = 0;
 }
 
 render() {

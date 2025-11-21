@@ -5,13 +5,13 @@ import {effect} from '../Effect.js';
 /**
  * If component for conditional rendering
  *
- * Usage:
- * <veda-if condition="{this.showDetails}">
+ * Usage (v3.0):
+ * <veda-if condition="{this.state.showDetails}">
  *   <div>Details content</div>
  * </veda-if>
  *
  * Multiple children:
- * <veda-if condition="{this.isLoggedIn}">
+ * <veda-if condition="{this.state.isLoggedIn}">
  *   <h1>Welcome</h1>
  *   <user-profile></user-profile>
  * </veda-if>
@@ -104,8 +104,18 @@ export default function IfComponent(Class = HTMLElement) {
       const tempContainer = document.createElement('div');
       tempContainer.appendChild(content);
 
-      // Pass parent context to _process so expressions are evaluated in parent's context
-      this._process(tempContainer, this._vedaParentContext);
+      // Create evalContext with prototype chain: parent.state -> parent
+      // This allows access to parent state and methods
+      let evalContext = this._vedaParentContext;
+      if (this._vedaParentContext && this._vedaParentContext.state) {
+        evalContext = this._vedaParentContext.state;
+        if (evalContext && typeof evalContext === 'object') {
+          Object.setPrototypeOf(evalContext, this._vedaParentContext);
+        }
+      }
+
+      // Pass evalContext to _process so expressions are evaluated correctly
+      this._process(tempContainer, evalContext);
 
       const processedContent = document.createDocumentFragment();
       while (tempContainer.firstChild) {

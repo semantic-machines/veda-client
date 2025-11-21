@@ -53,7 +53,7 @@ class Counter extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = this.reactive({ count: 0 });
+    this.state.count = 0;
   }
 
   increment = () => this.state.count++;
@@ -79,19 +79,17 @@ import Component, { html, Loop } from 'veda-client';
 class TodoList extends Component(HTMLElement) {
   constructor() {
     super();
-    this.state = this.reactive({
-      todos: [
-        { id: 1, text: 'Learn Veda', done: false },
-        { id: 2, text: 'Build app', done: false }
-      ]
-    });
+    this.state.todos = [
+      { id: 1, text: 'Learn Veda', done: false },
+      { id: 2, text: 'Build app', done: false }
+    ];
   }
 
   render() {
     return html`
       <ul>
-        <${Loop} items="{this.state.todos}" item-key="id">
-          <li>{this.model.text}</li>
+        <${Loop} items="{this.state.todos}" key="id" as="todo">
+          <li>{todo.text}</li>
         </${Loop}>
       </ul>
     `;
@@ -108,7 +106,6 @@ class TodoList extends Component(HTMLElement) {
 - **[Performance Benchmarks](./BENCHMARKS.md)** - Measured performance metrics
 - **[Style Guide](./STYLE_GUIDE.md)** - Best practices and coding patterns
 - **[Changelog](./CHANGELOG.md)** - Version history and breaking changes
-- **[Migration Guide](./MIGRATION.md)** - Upgrading from previous versions
 - **[Troubleshooting](./TROUBLESHOOTING.md)** - Common issues and solutions
 - **[Security](./SECURITY.md)** - Security best practices
 - **[Limitations](./LIMITATIONS.md)** - Known limitations and workarounds
@@ -205,7 +202,7 @@ import { Loop, If } from 'veda-client';
 </${If}>
 
 // List rendering with reconciliation
-<${Loop} items="{this.items}" item-key="id">
+<${Loop} items="{this.items}" key="id" as="item">
   <item-card></item-card>
 </${Loop}>
 ```
@@ -264,7 +261,8 @@ class App extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state = this.reactive<AppState>({ count: 0 });
+    // State is automatically reactive
+    this.state.count = 0;
   }
 }
 ```

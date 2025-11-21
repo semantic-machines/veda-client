@@ -124,7 +124,7 @@ All benchmarks run on Node.js with `--expose-gc` flag using JSDOM environment.
 
 ### General Guidelines
 
-1. **Always use `item-key`** for Loop components
+1. **Always use `key` attribute** for Loop components
 2. **Paginate lists** > 500 items if reordering is needed
 3. **Use computed properties** - they're extremely fast (<0.001ms)
 4. **Trust the batching** - multiple updates = single render

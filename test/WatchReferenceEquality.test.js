@@ -13,10 +13,8 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: [1, 2, 3],
-          user: { name: 'Alice' }
-        });
+        this.state.items = [1, 2, 3];
+        this.state.user = { name: 'Alice' };
         this.watchCallCount = 0;
       }
     }
@@ -60,9 +58,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          items: [1, 2, 3]
-        });
+        this.state.items = [1, 2, 3];
         this.lengthCallCount = 0;
       }
     }
@@ -102,9 +98,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          user: { name: 'Alice', age: 30 }
-        });
+        this.state.user = { name: 'Alice', age: 30 };
         this.watchCallCount = 0;
       }
     }
@@ -146,9 +140,7 @@ export default ({ test, assert }) => {
 
       constructor() {
         super();
-        this.state = this.reactive({
-          user: { name: 'Alice', age: 30 }
-        });
+        this.state.user = { name: 'Alice', age: 30 };
         this.nameCallCount = 0;
       }
     }
