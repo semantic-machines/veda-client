@@ -10,6 +10,6 @@ export default function RelationComponent<E extends RelationComponentClass = typ
 } & E;
 
 export interface RelationComponentInstance {
-  renderValue(value: Model, container: HTMLElement | ShadowRoot): Promise<void>;
+  renderValue(value: Model, container: HTMLElement | ShadowRoot, index: number): Promise<void>;
 }
 

@@ -5,8 +5,8 @@ import { ComponentInstance, ComponentConstructor } from './Component.js';
  *
  * @example
  * ```html
- * <veda-loop items="{this.todos}" item-key="id">
- *   <todo-item></todo-item>
+ * <veda-loop items="{this.todos}" as="todo" key="id">
+ *   <todo-item :todo="{todo}"></todo-item>
  * </veda-loop>
  * ```
  */
@@ -18,9 +18,18 @@ export interface LoopComponentInstance extends ComponentInstance {
   items?: string;
 
   /**
+   * Variable name for item in template (default: 'item')
+   * @example "todo", "user", "product"
+   * @default "item"
+   */
+  as?: string;
+
+  /**
    * Property name to use as unique key for reconciliation
+   * Also accepts 'item-key' for backward compatibility
    * @default "id"
    */
+  key?: string;
   'item-key'?: string;
 }
 

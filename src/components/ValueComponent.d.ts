@@ -10,9 +10,8 @@ export default function ValueComponent<E extends ValueComponentClass = typeof HT
 
 export interface ValueComponentInstance {
   prop: string;
-  handler: (...args: any[]) => void;
-  
+
   render(): void;
-  renderValue(value: any, container: HTMLElement | ShadowRoot): void;
+  renderValue(value: any, container: HTMLElement | ShadowRoot, index: number): void;
 }
 

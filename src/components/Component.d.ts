@@ -4,8 +4,14 @@ export function html(strings: TemplateStringsArray, ...values: any[]): string;
 export function raw(strings: TemplateStringsArray, ...values: any[]): string;
 export function safe(value: any): string | string[];
 
-export interface ComponentInstance<M extends Model = Model> {
+export interface ComponentState<M extends Model = Model> {
   model?: M;
+  [key: string]: any;
+}
+
+export interface ComponentInstance<M extends Model = Model> {
+  state: ComponentState<M>; // Reactive state object with typed model
+  model?: M; // Direct model access (alternative to state.model)
   template?: string;
   rendered: Promise<void>;
 
@@ -23,9 +29,11 @@ export interface ComponentInstance<M extends Model = Model> {
   populate(): Promise<void>;
 
   // Reactive methods
-  reactive<T extends object>(obj: T): T;
   effect(fn: () => void): () => void;
   watch<T>(getter: () => T, callback: (newValue: T, oldValue: T | undefined) => void, options?: { immediate?: boolean }): () => void;
+
+  // Internal helper method
+  _findParentComponent(): HTMLElement | null;
 }
 
 export interface ComponentConstructor {
