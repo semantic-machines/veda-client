@@ -18,6 +18,6 @@ router.add('#/:comp/:id', (comp, id) => {
   const model = new Model(id);
   const tag = tagDictionary[comp];
   const component = document.createElement(tag);
-  component.model = model;
+  component.state.model = model;
   main.replaceChildren(component);
 });

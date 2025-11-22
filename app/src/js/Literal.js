@@ -18,7 +18,7 @@ export default class Literal extends Component(HTMLElement) {
 
   render () {
     const maxChars = Number(this.maxChars) || Infinity;
-    const value = safe(getLiteralValue(this.model, this.property));
+    const value = safe(getLiteralValue(this.state.model, this.property));
     const truncated = value.slice(0, maxChars);
     return value.length > maxChars ? `${truncated}...` : truncated;
   }

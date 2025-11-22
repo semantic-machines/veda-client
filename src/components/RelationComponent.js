@@ -18,10 +18,15 @@ export default function RelationComponent (Class = HTMLElement) {
         template.innerHTML = this.template;
         const fragment = template.content.cloneNode(true);
 
-        // Use plain object as context instead of DOM element to avoid memory leak
-        const contextElement = { model: value };
+        // Create pseudo-component context with state.model for consistency
+        // This allows using {this.state.model.id} syntax everywhere
+        const pseudoState = reactive({ model: value });
+        const evalContext = { state: pseudoState };
 
-        this._process(fragment, contextElement);
+        // Set up prototype chain: pseudoState -> this (for method access)
+        Object.setPrototypeOf(pseudoState, this);
+
+        this._process(fragment, evalContext);
 
         const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT);
         let node = walker.nextNode();

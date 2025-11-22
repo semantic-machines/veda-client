@@ -132,7 +132,10 @@ export default function ({ test, assert }) {
     await instance.renderValue(mockModel, container, 0);
 
     assert(processCalledWithContext !== null, 'Should call _process with context');
-    assert(processCalledWithContext.model === mockModel, 'Context should have model set');
+    assert(processCalledWithContext.state !== undefined, 'Context should have state');
+    // State is reactive (Proxy), so we check the property value
+    const contextModel = processCalledWithContext.state.model;
+    assert(contextModel.id === mockModel.id, `Context should have state.model with correct id`);
   });
 
   test('RelationComponent - renders without template using super (lines 7-8)', async () => {

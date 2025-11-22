@@ -11,7 +11,7 @@ export default class AppSimple extends Component(HTMLElement) {
   render () {
     return html`
       <div rel="v-s:hasSettings">
-        <p about="{this.model.id}" is="${ParagraphComponent}">
+        <p about="{this.state.model.id}" is="${ParagraphComponent}">
           <span property="rdfs:label"></span>
           <button onclick="{testMethod6}">Test button 6</button>
         </p>

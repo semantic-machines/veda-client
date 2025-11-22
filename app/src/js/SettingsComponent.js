@@ -19,11 +19,11 @@ export default class SettingsComponent extends Component(HTMLElement) {
     return html`
       Separate component
       <h2>
-        <a href="#/settings/{this.model.id}">
+        <a href="#/settings/{this.state.model.id}">
           <span property="id"></span>
         </a>
       </h2>
-      <p about="{this.model.v-s:hasApplication?.0.id}" is="${ParagraphComponent}">
+      <p about="{this.state.model.v-s:hasApplication.0.id}" is="${ParagraphComponent}">
         <span property="rdfs:label"></span>
         <button onclick="{testMethod4}">Test button 4</button>
       </p>
@@ -31,9 +31,9 @@ export default class SettingsComponent extends Component(HTMLElement) {
       <hr>
       <div rel="v-s:hasApplication">
         <div style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;">
-          id = {this.model.id}
+          id = {this.state.model.id}
           <p property="rdfs:label"></p>
-          <a property="id" href="#/app1/{this.model.id}"></a>
+          <a property="id" href="#/app1/{this.state.model.id}"></a>
           <button onclick="{testMethod5}">Test button 5</button>
         </div>
       </div>
