@@ -18,8 +18,8 @@ export default function RelationComponent (Class = HTMLElement) {
         template.innerHTML = this.template;
         const fragment = template.content.cloneNode(true);
 
-        const contextElement = document.createElement('div');
-        contextElement.model = value;
+        // Use plain object as context instead of DOM element to avoid memory leak
+        const contextElement = { model: value };
 
         this._process(fragment, contextElement);
 
