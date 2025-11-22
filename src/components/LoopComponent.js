@@ -35,6 +35,7 @@ export default function LoopComponent(Class = HTMLElement) {
         while (temp.firstChild) {
           this.#template.appendChild(temp.firstChild);
         }
+        temp.innerHTML = ''; // Clear temp to help GC
       }
 
       this.replaceChildren();
