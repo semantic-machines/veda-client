@@ -172,38 +172,59 @@ this.watch(() => state.items.length, callback);
 
 ### 5. Component Tree Depth Limits
 
-**Issue:** Component method search and parent context search have hard-coded depth limits.
+**Issue:** Component method search and parent context search have hard-coded depth limits to prevent infinite loops and performance issues.
 
 **Limits:**
 - **Method search depth:** 20 levels (Component.js line 460)
-  ```javascript
-  #findMethod(name) {
-    let depth = 0;
-    while (parent && depth < 20) { // Hard limit
-  ```
+  - For event handler method lookup (e.g., `onclick="{handleClick}"`)
+  - Why 20? Covers deeply nested component hierarchies while preventing infinite loops
+  - Typical apps use 3-8 levels, max reasonable depth is ~15 levels
 
 - **Loop parent context depth:** 10 levels (LoopComponent.js line 237)
-  ```javascript
-  #findParentComponent() {
-    let depth = 0;
-    while (context && depth < 10) { // Hard limit
-  ```
+  - For finding parent component context in Loop/If components
+  - Why 10? Lower limit because Loop should be close to its data source component
+  - Why different from 20? Loop context search is more performance-critical (runs per item)
+
+**What happens at limit:**
+- Method search: Handler silently fails, console warning logged
+- Context search: Returns null, Loop/If may not have access to parent data
 
 **Impact:**
 - Method handlers won't work if component is nested >20 levels deep
 - Loop components won't find parent context if nested >10 levels deep
 
+**Example of problem:**
+```javascript
+// 21 levels deep - method search fails
+<div>
+  <component-1>
+    <component-2>
+      <!-- ... 18 more levels ... -->
+      <component-21>
+        <button onclick="{handleClick}">
+          <!-- ❌ Won't find handleClick (depth > 20) -->
+        </button>
+      </component-21>
+    </component-2>
+  </component-1>
+</div>
+```
+
 **Workaround:**
 - Keep component nesting shallow (< 10-15 levels)
-- For deep trees, pass methods explicitly via props
-- Refactor deeply nested structures
+- For deep trees, pass methods explicitly via props:
+  ```javascript
+  <deep-child :onClick="{this.handleClick}"></deep-child>
+  ```
+- Refactor deeply nested structures (usually indicates design issues)
 
-**Why limits exist:**
-- Prevent infinite loops in circular DOM structures
-- Performance optimization (limit tree traversal)
-- Deep nesting is usually a design smell
+**Why these specific limits:**
+1. **Prevent infinite loops:** Circular DOM structures (rare but possible with Shadow DOM/slots)
+2. **Performance:** Limit DOM tree traversal cost (O(n) search per lookup)
+3. **Design smell:** Deep nesting >15 levels usually indicates architectural problems
+4. **Different use cases:** Method search is less common (20 is generous), context search is per-item (10 is safer)
 
-**Status:** Documented limitation (intentional safeguard)
+**Status:** Documented limitation (intentional safeguard). If you hit these limits, your component architecture likely needs refactoring.
 
 ---
 

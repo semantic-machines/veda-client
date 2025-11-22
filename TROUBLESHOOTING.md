@@ -26,7 +26,9 @@ constructor() {
 }
 ```
 
-**Effect not tracking array changes:**
+**Effect not tracking what you expect (fine-grained reactivity):**
+
+This is usually not a bug - it's how fine-grained reactivity works. Effects only re-run when properties they **actually read** change.
 
 ```javascript
 // ❌ Effect only tracks length - won't react to index changes
@@ -41,12 +43,14 @@ effect(() => {
 });
 this.state.items[0] = newValue; // Triggers!
 
-// ✅ Array methods trigger all effects
+// ✅ Array methods trigger all tracking (they modify multiple properties)
 this.state.items.push(newValue);  // Triggers all tracking
 this.state.items.splice(0, 1, v); // Triggers all tracking
 ```
 
-**Note:** This is fine-grained reactivity - effects only re-run when properties they **actually read** change.
+**Key principle:** Track what you need to react to! If you need to react to any array change, your effect must read all indices (e.g., iterate over array) or use array mutation methods.
+
+**For more details:** See [FAQ Q1](./FAQ.md#q1-why-isnt-my-array-updating-in-the-ui) and [REACTIVITY.md](./REACTIVITY.md#fine-grained-array-reactivity)
 
 **Watch not triggering on array/object changes:**
 
@@ -171,9 +175,9 @@ render() {
 
 ### Model Properties Not Reactive
 
-**Symptom:** State changes don't update UI.
+**Symptom:** Model changes don't update UI.
 
-**Solution:** In v3.0, component state is automatically reactive:
+**Solution:** In v3.0+, component state is automatically reactive and includes model changes:
 
 ```javascript
 constructor() {
@@ -181,11 +185,19 @@ constructor() {
   // State is automatically reactive - model updates are tracked
   this.state.model = new Model('d:123');
 }
+
+// Model changes trigger automatic re-render via reactive state
+async handleUpdate() {
+  this.state.model['v-s:title'] = ['New Title'];
+  await this.state.model.save();
+  // UI updates automatically!
+}
 ```
 
 **How it works:**
-- Component state is automatically reactive in v3.0
-- Model changes automatically trigger component updates
+- Component `this.state` is automatically reactive in v3.0+
+- When you assign `this.state.model = new Model(...)`, the model becomes part of reactive state
+- Model property changes trigger reactive updates automatically
 
 ### Model Load Fails Silently
 

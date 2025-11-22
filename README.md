@@ -124,34 +124,33 @@ class TodoList extends Component(HTMLElement) {
 
 The framework exports the following modules from `./src/index.js`:
 
-| Module | Export | Description |
-|--------|--------|-------------|
-| **Core** | `Component` | Base class for creating reactive web components |
-|  | `html` | Template tag for safe HTML rendering |
-|  | `safe` | Function to escape HTML and remove expressions |
-|  | `raw` | Template tag for raw HTML (use with caution) |
-|  | `reactive` | Create reactive objects for state management |
-|  | `effect` | Create auto-tracking effect |
-|  | `computed` | Create computed value |
-| **Components** | `Loop` | List rendering with reconciliation |
-|  | `If` | Conditional rendering |
-| **Data** | `Model` | RDF/semantic data model |
-|  | `Backend` | Backend API communication |
-|  | `Subscription` | WebSocket subscriptions |
-| **Reactivity** | `flushEffects` | Manually flush effect queue |
-|  | `trigger` | Manually trigger effects |
-|  | `untrack` | Disable tracking in callback |
-|  | `pauseTracking` | Pause dependency tracking |
-|  | `resumeTracking` | Resume dependency tracking |
-|  | `Reactive` | Re-exported Reactive type (from Reactive.js) |
-| **Utilities** | `Router` | Hash-based router |
-|  | `Emitter` | Event emitter mixin |
-|  | `BackendError` | Backend error class |
-|  | `genUri`, `guid`, `timeout`, `diff`, `eq` | Utility functions |
-| **Types** | `Reactive<T>` | TypeScript type for reactive objects |
-|  | `ReactiveOptions` | Options for reactive() function |
-|  | `ComponentInstance` | Component instance type |
-|  | `ModelValue` | RDF value type |
+| Module | Export | Description | Source |
+|--------|--------|-------------|--------|
+| **Core** | `Component` | Base class for creating reactive web components | Component.js |
+|  | `html` | Template tag for safe HTML rendering | Component.js |
+|  | `safe` | Function to escape HTML and remove expressions | Component.js |
+|  | `raw` | Template tag for raw HTML (use with caution) | Component.js |
+|  | `reactive` | Create reactive objects for state management | Component.js |
+|  | `effect` | Create auto-tracking effect | Component.js |
+|  | `computed` | Create computed value | Reactive.js |
+| **Components** | `Loop` | List rendering with reconciliation | LoopComponent.js |
+|  | `If` | Conditional rendering | IfComponent.js |
+| **Data** | `Model` | RDF/semantic data model | Model.js |
+|  | `Backend` | Backend API communication | Backend.js |
+|  | `Subscription` | WebSocket subscriptions | Subscription.js |
+| **Reactivity** | `flushEffects` | Manually flush effect queue | Effect.js |
+|  | `trigger` | Manually trigger effects | Effect.js |
+|  | `untrack` | Disable tracking in callback | Effect.js |
+|  | `pauseTracking` | Pause dependency tracking | Effect.js |
+|  | `resumeTracking` | Resume dependency tracking | Effect.js |
+| **Utilities** | `Router` | Hash-based router | Router.js |
+|  | `Emitter` | Event emitter mixin | Emitter.js |
+|  | `BackendError` | Backend error class | BackendError.js |
+|  | `genUri`, `guid`, `timeout`, `diff`, `eq` | Utility functions | Util.js |
+| **Types** | `Reactive<T>` | TypeScript type for reactive objects | Reactive.d.ts |
+|  | `ReactiveOptions` | Options for reactive() function | Reactive.d.ts |
+|  | `ComponentInstance` | Component instance type | Component.d.ts |
+|  | `ModelValue` | RDF value type | Model.d.ts |
 
 **Not exported (declarative syntax only):**
 - `PropertyComponent` - Use `<span property="v-s:title"></span>`

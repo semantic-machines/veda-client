@@ -8,39 +8,31 @@ Complete API documentation for Veda Client Framework.
 
 Understanding key terms used throughout this documentation:
 
-**Reactive Proxy:**
-The Proxy object returned by `reactive()` that wraps your data and enables automatic dependency tracking. This is the low-level mechanism.
+**Reactive Object / Reactive Proxy:**
+Any object wrapped with `reactive()` that enables automatic dependency tracking through a Proxy. This is the core mechanism.
 
 ```javascript
-const proxy = reactive({ count: 0 });
-console.log(proxy.__isReactive); // true
+const obj = reactive({ count: 0 });
+console.log(obj.__isReactive); // true
 ```
 
-**Reactive State:**
-Component state that is automatically reactive. `this.state` is created automatically by the Component base class.
+**Component State (`this.state`):**
+In v3.0+, every component automatically has a reactive `this.state` object. This is simply a reactive object created by the Component base class for convenience.
 
 ```javascript
 class MyComponent extends Component(HTMLElement) {
   constructor() {
     super();
-    // this.state is automatically reactive!
+    // this.state is automatically a reactive object!
     this.state.count = 0;
   }
 }
 ```
 
-**Reactive Object:**
-Any object wrapped with `reactive()`, whether in a component or standalone. Generic term for reactive data.
-
-```javascript
-// Standalone reactive object (not in component)
-const store = reactive({ users: [] });
-```
-
 **Usage Guidelines:**
-- **"Reactive proxy"** - when discussing the technical Proxy wrapper
-- **"Reactive state"** - when referring to component state (`this.state`)
-- **"Reactive object"** - when referring to standalone reactive data or generic reactive objects
+- Use **"reactive object"** as the primary term (simple and consistent)
+- Use **"component state"** or **"`this.state`"** when specifically referring to component-level state
+- Avoid **"reactive state"** as it's ambiguous (could mean either)
 
 ---
 
@@ -266,11 +258,11 @@ class MyComponent extends Component(HTMLElement) {
 
 ### Reactive Methods
 
-#### `watch<T>(getter, callback, options?): () => void`
+#### `this.watch<T>(getter, callback, options?): () => void`
 
-Watches reactive value changes and runs callback when value changes.
+Component method that watches reactive value changes and runs callback when value changes.
 
-**Note:** `watch()` is a Component method, available only within component classes via `this.watch()`.
+**⚠️ Important:** `watch()` is a **Component instance method**, not a standalone function. It must be called as `this.watch()` inside a component class. It is not exported from the main package.
 
 **Parameters:**
 - `getter: () => T` - Function that returns the value to watch
@@ -432,14 +424,17 @@ state.user.name = 'Bob'; // Callback called
 
 **Design decision:** Reference equality is fast and predictable. For deep watching, watch specific properties.
 
-#### `effect(fn: () => void): () => void`
+#### `this.effect(fn: () => void): () => void`
 
-Creates effect with automatic cleanup.
+Component method that creates an effect with automatic cleanup on component disconnect.
+
+**Note:** This is a convenience wrapper around the standalone `effect()` function. The standalone `effect()` is also available (see [Reactivity](#reactivity) section).
 
 ```javascript
 async connectedCallback() {
   await super.connectedCallback();
 
+  // Component method - auto-cleanup on disconnect
   this.effect(() => {
     console.log('Count:', this.state.count);
   });
@@ -588,17 +583,28 @@ Fine-grained reactivity system with automatic dependency tracking.
 
 ### `reactive<T>(target: T, options?): T`
 
-Creates reactive proxy.
+Creates a reactive proxy that tracks property access and triggers effects on changes.
+
+**Note:** Inside components, `this.state` is automatically a reactive object - you don't need to call `reactive()` explicitly. Use `reactive()` for standalone reactive objects outside components.
 
 ```javascript
 import { reactive } from 'veda-client';
 
-const state = reactive({
+// Outside component - create reactive object
+const store = reactive({
   count: 0,
   user: { name: 'Alice' }
 });
 
-state.count++; // Triggers effects
+store.count++; // Triggers effects
+
+// Inside component - this.state is already reactive
+class MyComponent extends Component(HTMLElement) {
+  constructor() {
+    super();
+    this.state.count = 0; // Already reactive!
+  }
+}
 ```
 
 **Options:**
@@ -645,7 +651,7 @@ Prevents prototype pollution attacks where malicious code could modify Object.pr
 - Date, RegExp, Promise not wrapped
 
 **Note on array reactivity:**
-Array index assignment IS reactive when effects track specific indices. This is fine-grained reactivity - effects only re-run when they access properties that change. See [REACTIVITY.md](./REACTIVITY.md#fine-grained-array-reactivity) for details.
+Array index assignment IS reactive through the Proxy set trap. However, this is **fine-grained reactivity** - effects only re-run when properties they actually read change. An effect that reads `items[0]` will re-run when index 0 changes, but NOT when you push a new item (unless the effect also reads array length or other indices). See [REACTIVITY.md - Fine-Grained Array Reactivity](./REACTIVITY.md#fine-grained-array-reactivity) for detailed explanation.
 
 ### `computed<T>(getter: () => T)`
 
@@ -736,18 +742,21 @@ console.log(doubled.value); // runCount = 2 (cached!)
 
 ### `effect(fn: () => void, options?): () => void`
 
-Creates auto-tracking effect.
+Standalone function that creates an auto-tracking effect. This is the low-level API used by components.
+
+**Note:** Inside components, prefer `this.effect()` which provides automatic cleanup. Use standalone `effect()` for effects outside components.
 
 ```javascript
 import { effect } from 'veda-client';
 
+// Outside component - manual cleanup required
 const cleanup = effect(() => {
   console.log('Count:', state.count);
 });
 
 state.count++; // Logs: "Count: 1"
 
-cleanup(); // Stop effect
+cleanup(); // Must call manually to stop effect
 ```
 
 **Options:**

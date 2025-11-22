@@ -202,7 +202,7 @@ this.watch(
 
 ### Reactive State vs Plain State
 
-**Component state is automatically reactive when:
+**Use component reactive state (this.state) when:**
 - Component has local state that changes
 - State changes should trigger UI updates
 - Working with reactive models
@@ -212,12 +212,14 @@ this.watch(
 class TodoItem extends Component(HTMLLIElement) {
   constructor() {
     super();
-    // State is automatically reactive
+    // State is automatically reactive in v3.0+
     this.state.editing = false;
     this.state.hovered = false;
   }
 }
 ```
+
+**Note:** In v3.0+, all components have reactive `this.state` automatically. You don't need to call `reactive()` explicitly in components.
 
 **Use plain state** when:
 - Component has no local state
@@ -347,7 +349,7 @@ static tag = 'appHeader';
 // ✅ Good
 constructor() {
   super();
-  // State is automatically reactive
+  // State is automatically reactive in v3.0+
   this.state.editing = false;
   this.state.loading = false;
   this.state.selectedId = null;
@@ -357,7 +359,6 @@ constructor() {
 // ❌ Bad
 constructor() {
   super();
-  // State is automatically reactive
   this.state.e = false;        // What is 'e'?
   this.state.l = false;        // What is 'l'?
   this.state.sel = null;       // Abbreviation unclear
@@ -577,11 +578,10 @@ render() {
   return html`<div>{localState.count}</div>`;
 }
 
-// ✅ Good - create state in constructor
+// ✅ Good - use component's built-in reactive state
 constructor() {
   super();
-  // State is automatically reactive
-  this.state.count = 0;
+  this.state.count = 0; // Already reactive!
 }
 
 render() {

@@ -19,7 +19,7 @@ this.state.items[0] = newValue;  // Won't trigger the effect!
 
 **Solution:**
 
-Array index assignment **IS reactive**, but only when the effect tracks that specific index or property:
+Array index assignment **IS reactive**, but this is **fine-grained reactivity** - effects only re-run when properties they **actually read** change.
 
 ```javascript
 // ✅ Reactive - effect tracks the specific index
@@ -38,10 +38,13 @@ this.state.items[0] = newValue; // Will trigger!
 this.effect(() => {
   console.log(this.state.items.length); // Only tracks length property
 });
-this.state.items[0] = newValue; // Won't trigger!
+this.state.items[0] = newValue; // Won't trigger (length unchanged)!
 ```
 
-**This is fine-grained reactivity** - effects only re-run when dependencies they actually read change.
+**Understanding fine-grained reactivity:**
+The effect re-runs ONLY when properties it read during execution change. If your effect reads `items.length`, it only re-runs when length changes. If it reads `items[0]`, it only re-runs when index 0 changes.
+
+**For more details:** See [REACTIVITY.md - Fine-Grained Array Reactivity](./REACTIVITY.md#fine-grained-array-reactivity)
 
 **If you need to track array changes without reading specific indices:**
 ```javascript

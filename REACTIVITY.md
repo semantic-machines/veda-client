@@ -6,9 +6,11 @@ Veda Client provides a fine-grained reactivity system inspired by Vue 3 and Soli
 
 The reactivity system consists of three main parts:
 
-1. **Reactive state** - Objects wrapped in a Proxy that track property access
+1. **Reactive objects** - Objects wrapped in a Proxy that track property access
 2. **Effect system** - Automatically tracks dependencies and re-runs when they change
-3. **Component reactivity** - Components have automatic reactive state via `this.state`
+3. **Component integration** - Components have automatic reactive state via `this.state`
+
+**Key concept - Fine-grained reactivity:** Effects only re-run when properties they **actually read** change. If an effect reads `state.items[0]`, it only re-runs when index 0 changes, not when index 1 changes or when you push to the array (unless the effect also reads array length).
 
 ## Reactive Expressions
 
@@ -573,6 +575,8 @@ Creates a reactive object from a plain object.
 
 **Returns:** Reactive object
 
+**Note:** In v3.0+, component `this.state` is automatically reactive. Use `reactive()` for standalone objects outside components.
+
 ### `effect(fn, options?)`
 
 Creates an effect that tracks dependencies and re-runs when they change.
@@ -583,14 +587,15 @@ Creates an effect that tracks dependencies and re-runs when they change.
 
 **Returns:** Cleanup function
 
-### `ReactiveComponent(ElementClass, ModelClass?)`
+**Note:** Inside components, use `this.effect()` for automatic cleanup. Use standalone `effect()` outside components.
 
-Creates a reactive component class.
+### Component Methods (v3.0+)
 
-**Methods:**
-- `watch(getter, callback)` - Watch a value
-- `effect(fn)` - Create an effect
-- `reactive(obj)` - Create reactive objects
+All components automatically have:
+
+- `this.state` - Automatically reactive state object
+- `this.watch(getter, callback, options?)` - Watch reactive value changes with auto-cleanup
+- `this.effect(fn)` - Create effect with auto-cleanup on disconnect
 
 ## Architecture
 
