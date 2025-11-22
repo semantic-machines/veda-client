@@ -29,8 +29,9 @@ export default function ValueComponent (Class = HTMLElement) {
       ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
       : this;
 
+    const modelValue = this.state.model[this.prop];
     const values = this.state.model.hasValue(this.prop)
-      ? (Array.isArray(this.state.model[this.prop]) ? this.state.model[this.prop] : [this.state.model[this.prop]])
+      ? (Array.isArray(modelValue) ? modelValue : [modelValue])
       : [];
 
     container.replaceChildren();

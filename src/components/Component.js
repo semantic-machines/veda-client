@@ -490,231 +490,183 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     #processAttributes (node) {
-      // Process reactive attributes for custom components
       if (node.tagName && (node.tagName.includes('-') || node.hasAttribute('is'))) {
-        const tagName = node.tagName.toLowerCase();
-        const isFrameworkComponent = tagName === 'veda-if' || tagName === 'veda-loop';
-
-        // Framework components handle their own special attributes
-        const frameworkAttrs = isFrameworkComponent ? ['condition', 'items', 'as', 'key', 'item-key'] : [];
-
-        // For custom components, process attributes with {} expressions
-        for (const attr of [...node.attributes]) {
-          const attrName = attr.nodeName;
-
-          // Handle property binding with : prefix
-          if (attrName.startsWith(':')) {
-            const propName = attrName.slice(1) // Remove ':'
-              .replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()); // Convert kebab-case to camelCase
-            const expression = attr.nodeValue;
-
-            // Remove the :prop attribute
-            node.removeAttribute(attrName);
-
-            // Evaluate expression to get value
-            const evalContext = this._currentEvalContext || this;
-
-            if (this.#isReactive && expression.includes('{')) {
-              // Create effect for reactive property binding
-              const cleanup = effect(() => {
-                let value;
-
-                // Check if expression is a pure value like "{todo}" without string concatenation
-                const pureExprMatch = expression.match(/^\{(.+)\}$/);
-                if (pureExprMatch) {
-                  // Pure expression - evaluate directly without string conversion
-                  value = ExpressionParser.evaluate(pureExprMatch[1].trim(), evalContext);
-                } else {
-                  // Expression with string parts - use replace for string interpolation
-                  value = expression.replace(/\{([^}]+)\}/g, (_, code) => {
-                    return ExpressionParser.evaluate(code.trim(), evalContext);
-                  });
-                }
-
-                // Check if node has state (custom component) or is native element
-                if (node.state) {
-                  // Custom component - set to state
-                  node.state[propName] = value;
-                } else {
-                  // Native element - set as DOM property
-                  node[propName] = value;
-                }
-              });
-              this.#renderEffects.push(cleanup);
-            } else {
-              // Non-reactive: evaluate once
-              const value = expression.replace(/\{([^}]+)\}/g, (_, code) => {
-                return this.#evaluate(code.trim(), node);
-              });
-
-              if (node.state) {
-                node.state[propName] = value;
-              } else {
-                node[propName] = value;
-              }
-            }
-            continue;
-          }
-
-          // Skip framework-specific attributes
-          if (frameworkAttrs.includes(attr.name)) {
-            continue;
-          }
-
-          if (attr.value && attr.value.includes('{')) {
-            const template = attr.nodeValue;
-
-            // Use evalContext to check reactivity (for veda-if/veda-loop contexts)
-            const contextForReactivity = this._currentEvalContext || this;
-            const isReactive = contextForReactivity.state?.__isReactive || false;
-
-            // Create effect to update the attribute
-            if (isReactive && /\{([^}]+)\}/g.test(template)) {
-              // Capture evalContext for the effect closure
-              const evalContext = this._currentEvalContext || this;
-              const cleanup = effect(() => {
-                const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
-                  // Use captured evalContext for evaluation
-                  return ExpressionParser.evaluate(code.trim(), evalContext) ?? '';
-                });
-                // Only update if value changed to prevent unnecessary updates
-                if (node.getAttribute(attrName) !== value) {
-                  node.setAttribute(attrName, value);
-                }
-              });
-              this.#renderEffects.push(cleanup);
-            } else {
-              // Non-reactive: evaluate once
-              const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
-                return this.#evaluate(code.trim(), node) ?? '';
-              });
-              attr.nodeValue = value;
-            }
-          }
-        }
-        // Don't process other attributes for custom components
+        this.#processCustomComponentAttributes(node);
         return;
       }
 
+      this.#processNativeElementAttributes(node);
+    }
+
+    #processCustomComponentAttributes(node) {
+      const tagName = node.tagName.toLowerCase();
+      const isFrameworkComponent = tagName === 'veda-if' || tagName === 'veda-loop';
+      const frameworkAttrs = isFrameworkComponent ? ['condition', 'items', 'as', 'key', 'item-key'] : [];
+
       for (const attr of [...node.attributes]) {
-        // Handle event attributes with { } syntax
-        if (attr.name.startsWith('on') && attr.name.length > 2 && attr.value.includes('{')) {
-          const eventName = attr.name.slice(2).toLowerCase(); // onclick -> click
-          const expr = attr.value.replace(/[{}]/g, '').trim();
+        const attrName = attr.nodeName;
 
-          // Remove attribute to prevent browser's default eval behavior
-          node.removeAttribute(attr.name);
-
-          try {
-            // Try to evaluate as expression first
-            const result = ExpressionParser.evaluate(expr, this, true); // preserveContext = true
-
-            if (result && typeof result.value === 'function') {
-              // Expression resolved to function with context
-              node.addEventListener(eventName, (e) => {
-                result.value.call(result.context, e, node);
-              });
-            } else if (/^\w+$/.test(expr)) {
-              // Simple method name - search up component tree lazily on event
-              node.addEventListener(eventName, (e) => {
-                const method = this.#findMethod(expr);
-                if (method) {
-                  method.call(this, e, node);
-                } else {
-                  console.warn(`Method '${expr}' not found in component tree`);
-                }
-              });
-            } else {
-              console.warn(`Handler expression '${expr}' did not resolve to a function`);
-            }
-          } catch (error) {
-            console.warn(`Invalid event handler expression '${expr}':`, error.message);
-          }
+        if (attrName.startsWith(':')) {
+          this.#processPropertyBinding(node, attr);
+          continue;
         }
-        // Handle regular attributes with { } interpolation
-        else if (attr.value && attr.value.includes('{')) {
-          const attrName = attr.nodeName;
-          const template = attr.nodeValue;
 
-          // Boolean attributes that should be set as properties for proper DOM behavior
-          const booleanProps = {
-            'checked': 'checked',
-            'disabled': 'disabled',
-            'selected': 'selected',
-            'readonly': 'readOnly',
-            'required': 'required',
-            'multiple': 'multiple',
-            'hidden': 'hidden'
-          };
-          const propName = booleanProps[attrName];
+        if (frameworkAttrs.includes(attr.name)) {
+          continue;
+        }
 
-          // Use evalContext to check reactivity (for veda-if/veda-loop contexts)
-          const contextForReactivity = this._currentEvalContext || this;
-          const isReactive = contextForReactivity.state?.__isReactive || false;
+        if (attr.value?.includes('{')) {
+          this.#processAttributeExpression(node, attr);
+        }
+      }
+    }
 
-          // If reactive component, create effect for this attribute
-          if (isReactive && /\{([^}]+)\}/g.test(template)) {
-            // Remove attribute initially to prevent it from being evaluated by browser
-            node.removeAttribute(attrName);
+    #processPropertyBinding(node, attr) {
+      const attrName = attr.nodeName;
+      const propName = attrName.slice(1).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+      const expression = attr.nodeValue;
 
-            // Capture evalContext for the effect closure
-            const evalContext = this._currentEvalContext || this;
-            const cleanup = effect(() => {
-              let hasUndefinedOrNull = false;
-              const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
-                // Use ExpressionParser for simple expressions
-                const rawValue = ExpressionParser.evaluate(code.trim(), evalContext);
-                // Track if any expression returned null/undefined
-                if (rawValue === null || rawValue === undefined) {
-                  hasUndefinedOrNull = true;
-                }
-                return rawValue ?? '';
-              });
+      node.removeAttribute(attrName);
 
-              if (propName) {
-                // For boolean properties, set both property and attribute
-                // Boolean attributes should be false for: false, null, undefined, 'false'
-                // And true for: true, 'true', '', attribute name, non-empty strings
-                const boolValue = !hasUndefinedOrNull &&
-                                  value !== 'false' &&
-                                  (value === 'true' || value === '' || value === attrName);
-                if (node[propName] !== boolValue) {
-                  node[propName] = boolValue;
-                  node.toggleAttribute(attrName, boolValue);
-                }
-              } else {
-                // Only update if value changed
-                if (node.getAttribute(attrName) !== value) {
-                  node.setAttribute(attrName, value);
-                }
-              }
-            });
+      const evalContext = this._currentEvalContext || this;
 
-            this.#renderEffects.push(cleanup);
-          } else {
-            // Non-reactive: evaluate once
-            let hasUndefinedOrNull = false;
-            const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
-              const rawValue = this.#evaluate(code.trim());
-              // Track if any expression returned null/undefined
-              if (rawValue === null || rawValue === undefined) {
-                hasUndefinedOrNull = true;
-              }
-              return rawValue ?? '';
-            });
+      if (this.#isReactive && expression.includes('{')) {
+        const cleanup = effect(() => {
+          const pureExprMatch = expression.match(/^\{(.+)\}$/);
+          const value = pureExprMatch
+            ? ExpressionParser.evaluate(pureExprMatch[1].trim(), evalContext)
+            : expression.replace(/\{([^}]+)\}/g, (_, code) =>
+                ExpressionParser.evaluate(code.trim(), evalContext));
 
-            if (propName) {
-              // Boolean attributes should be false for: false, null, undefined, 'false'
-              // And true for: true, 'true', '', attribute name, non-empty strings
-              const boolValue = !hasUndefinedOrNull &&
-                                value !== 'false' &&
-                                (value === 'true' || value === '' || value === attrName);
-              node[propName] = boolValue;
-              node.toggleAttribute(attrName, boolValue);
-            } else {
-              attr.nodeValue = value;
-            }
+          const target = node.state || node;
+          target[propName] = value;
+        });
+        this.#renderEffects.push(cleanup);
+      } else {
+        const value = expression.replace(/\{([^}]+)\}/g, (_, code) =>
+          this.#evaluate(code.trim(), node));
+
+        const target = node.state || node;
+        target[propName] = value;
+      }
+    }
+
+    #processAttributeExpression(node, attr) {
+      const attrName = attr.nodeName;
+      const template = attr.nodeValue;
+      const contextForReactivity = this._currentEvalContext || this;
+      const isReactive = contextForReactivity.state?.__isReactive || false;
+
+      if (isReactive && /\{([^}]+)\}/g.test(template)) {
+        const evalContext = this._currentEvalContext || this;
+        const cleanup = effect(() => {
+          const value = template.replace(/\{([^}]+)\}/g, (_, code) =>
+            ExpressionParser.evaluate(code.trim(), evalContext) ?? '');
+
+          if (node.getAttribute(attrName) !== value) {
+            node.setAttribute(attrName, value);
           }
+        });
+        this.#renderEffects.push(cleanup);
+      } else {
+        const value = template.replace(/\{([^}]+)\}/g, (_, code) =>
+          this.#evaluate(code.trim(), node) ?? '');
+        attr.nodeValue = value;
+      }
+    }
+
+    #processNativeElementAttributes(node) {
+      for (const attr of [...node.attributes]) {
+        if (attr.name.startsWith('on') && attr.name.length > 2 && attr.value.includes('{')) {
+          this.#processEventAttribute(node, attr);
+        } else if (attr.value?.includes('{')) {
+          this.#processRegularAttribute(node, attr);
+        }
+      }
+    }
+
+    #processEventAttribute(node, attr) {
+      const eventName = attr.name.slice(2).toLowerCase();
+      const expr = attr.value.replace(/[{}]/g, '').trim();
+
+      node.removeAttribute(attr.name);
+
+      try {
+        const result = ExpressionParser.evaluate(expr, this, true);
+
+        if (result && typeof result.value === 'function') {
+          node.addEventListener(eventName, (e) => {
+            result.value.call(result.context, e, node);
+          });
+        } else if (/^\w+$/.test(expr)) {
+          node.addEventListener(eventName, (e) => {
+            const method = this.#findMethod(expr);
+            if (method) {
+              method.call(this, e, node);
+            } else {
+              console.warn(`Method '${expr}' not found in component tree`);
+            }
+          });
+        } else {
+          console.warn(`Handler expression '${expr}' did not resolve to a function`);
+        }
+      } catch (error) {
+        console.warn(`Invalid event handler expression '${expr}':`, error.message);
+      }
+    }
+
+    #processRegularAttribute(node, attr) {
+      const attrName = attr.nodeName;
+      const template = attr.nodeValue;
+
+      const booleanProps = {
+        'checked': 'checked', 'disabled': 'disabled', 'selected': 'selected',
+        'readonly': 'readOnly', 'required': 'required', 'multiple': 'multiple',
+        'hidden': 'hidden'
+      };
+      const propName = booleanProps[attrName];
+
+      const contextForReactivity = this._currentEvalContext || this;
+      const isReactive = contextForReactivity.state?.__isReactive || false;
+
+      if (isReactive && /\{([^}]+)\}/g.test(template)) {
+        node.removeAttribute(attrName);
+
+        const evalContext = this._currentEvalContext || this;
+        const cleanup = effect(() => {
+          const { value, hasNull } = this.#evaluateTemplate(template, evalContext);
+          this.#setAttributeOrProperty(node, attrName, propName, value, hasNull);
+        });
+        this.#renderEffects.push(cleanup);
+      } else {
+        const { value, hasNull } = this.#evaluateTemplate(template, this);
+        this.#setAttributeOrProperty(node, attrName, propName, value, hasNull, attr);
+      }
+    }
+
+    #evaluateTemplate(template, context) {
+      let hasNull = false;
+      const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
+        const rawValue = ExpressionParser.evaluate(code.trim(), context);
+        if (rawValue === null || rawValue === undefined) hasNull = true;
+        return rawValue ?? '';
+      });
+      return { value, hasNull };
+    }
+
+    #setAttributeOrProperty(node, attrName, propName, value, hasNull, attr = null) {
+      if (propName) {
+        const boolValue = !hasNull && value !== 'false' &&
+                         (value === 'true' || value === '' || value === attrName);
+        if (node[propName] !== boolValue) {
+          node[propName] = boolValue;
+          node.toggleAttribute(attrName, boolValue);
+        }
+      } else {
+        if (attr) {
+          attr.nodeValue = value;
+        } else if (node.getAttribute(attrName) !== value) {
+          node.setAttribute(attrName, value);
         }
       }
     }
@@ -728,28 +680,28 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       return cleanup;
     }
 
-  /**
-   * Helper: watch a value and run callback when it changes
-   *
-   * NOTE: Uses reference equality (===) for comparison.
-   * For objects/arrays, callback will only trigger if the reference changes,
-   * not when properties inside are modified.
-   *
-   * Examples:
-   *   this.watch(() => state.count, (val) => ...);  // Triggers on count change
-   *   this.watch(() => state.items, (val) => ...);  // Only triggers if items = newArray
-   *   state.items.push(x);  // Won't trigger (same reference)
-   *   state.items = [...state.items, x];  // Triggers (new reference)
-   *
-   * WORKAROUNDS for arrays/objects:
-   *   1. Watch specific property: this.watch(() => state.items.length, ...)
-   *   2. Watch nested property: this.watch(() => state.user.name, ...)
-   *   3. Reassign after mutation: state.items.push(x); state.items = state.items.slice();
-   *
-   * @param {Function} getter - Function that returns the value to watch
-   * @param {Function} callback - Callback to run when value changes
-   * @param {Object} options - Options { immediate: true } to run callback immediately
-   */
+    /**
+     * Helper: watch a value and run callback when it changes
+     *
+     * NOTE: Uses reference equality (===) for comparison.
+     * For objects/arrays, callback will only trigger if the reference changes,
+     * not when properties inside are modified.
+     *
+     * Examples:
+     *   this.watch(() => state.count, (val) => ...);  // Triggers on count change
+     *   this.watch(() => state.items, (val) => ...);  // Only triggers if items = newArray
+     *   state.items.push(x);  // Won't trigger (same reference)
+     *   state.items = [...state.items, x];  // Triggers (new reference)
+     *
+     * WORKAROUNDS for arrays/objects:
+     *   1. Watch specific property: this.watch(() => state.items.length, ...)
+     *   2. Watch nested property: this.watch(() => state.user.name, ...)
+     *   3. Reassign after mutation: state.items.push(x); state.items = state.items.slice();
+     *
+     * @param {Function} getter - Function that returns the value to watch
+     * @param {Function} callback - Callback to run when value changes
+     * @param {Object} options - Options { immediate: true } to run callback immediately
+     */
   watch(getter, callback, options = {}) {
       let oldValue;
       let isFirst = true;
@@ -771,6 +723,21 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       this.#effects.push(cleanup);
       return cleanup;
+    }
+
+    /**
+     * Find parent component (excluding framework components)
+     */
+    _findParentComponent() {
+      let parent = this.parentElement;
+      for (let depth = 0; parent && depth < 10; depth++, parent = parent.parentElement) {
+        const tag = parent.tagName?.toLowerCase();
+        const isComponent = tag?.includes('-') || parent.hasAttribute('is');
+        const isFramework = tag === 'veda-if' || tag === 'veda-loop';
+
+        if (isComponent && !isFramework) return parent;
+      }
+      return null;
     }
   }
 }

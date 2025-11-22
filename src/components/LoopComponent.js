@@ -25,26 +25,19 @@ export default function LoopComponent(Class = HTMLElement) {
     #template = null;
 
     async connectedCallback() {
-      // Find and cache parent component context
-      this._vedaParentContext = this.#findParentComponent();
+      this._vedaParentContext = this._findParentComponent();
 
-      // Extract template - Component._process() stores innerHTML in this.template
+      // Extract and store template
       this.#template = document.createDocumentFragment();
-
       if (this.template) {
         const temp = document.createElement('div');
         temp.innerHTML = this.template;
-
-        // Use all children
         while (temp.firstChild) {
           this.#template.appendChild(temp.firstChild);
         }
       }
 
-      // Clear original children - they'll be recreated for each item
       this.replaceChildren();
-
-      // Now call super which will process the component
       await super.connectedCallback();
 
       const itemsExpr = this.getAttribute('items');
@@ -70,9 +63,8 @@ export default function LoopComponent(Class = HTMLElement) {
 
     #evaluateItems(expr) {
       try {
-        const cleanExpr = expr.replace(/^\{|\}$/g, '').trim();
+        const cleanExpr = expr.trim().replace(/^\{/, '').replace(/\}$/, '');
 
-        // Use cached parent context
         const context = this._vedaParentContext;
 
         if (!context) {
@@ -174,99 +166,55 @@ export default function LoopComponent(Class = HTMLElement) {
     }
 
     #createItemElement(item, index) {
-      // Clone template
       const fragment = this.#template.cloneNode(true);
-
-      // Get first element child (skip text nodes)
       let element = fragment.firstElementChild;
 
       if (!element) {
         console.warn('Loop template must contain an element');
         element = document.createElement('div');
         element.appendChild(fragment);
-        // Put the wrapper back into fragment so _process can handle it
         fragment.appendChild(element);
-      } else {
-        // If there are multiple children, warn user to wrap them
-        if (fragment.children.length > 1) {
-          console.warn(
-            'Loop component: Multiple root elements detected.',
-            'Please wrap them in a single root element (e.g. <div>, <li>, etc.).',
-            'Only the first element will be used, others will be ignored.'
-          );
-          // Use only the first element - don't wrap in div
-        }
+      } else if (fragment.children.length > 1) {
+        console.warn(
+          'Loop component: Multiple root elements detected.',
+          'Please wrap them in a single root element (e.g. <div>, <li>, etc.).',
+          'Only the first element will be used, others will be ignored.'
+        );
       }
 
-      // Get item name from 'as' attribute (default: 'item')
       const itemName = this.getAttribute('as') || 'item';
-
-      // Create REACTIVE evaluation context
-      // This allows updates to trigger re-renders automatically
-      const evalContext = reactive({
-        [itemName]: item,
-        index: index
-      });
+      const evalContext = reactive({ [itemName]: item, index });
 
       // Set up prototype chain: evalContext -> parent.state -> parent
-      // This allows access to:
-      // 1. Item data: {todo.text}
-      // 2. Index: {index}
-      // 3. Parent state: {this.state.filter}
-      // 4. Parent methods: {handleClick}
       if (this._vedaParentContext) {
         const parentState = this._vedaParentContext.state;
+        Object.setPrototypeOf(evalContext, parentState || this._vedaParentContext);
         if (parentState) {
-          Object.setPrototypeOf(evalContext, parentState);
           Object.setPrototypeOf(parentState, this._vedaParentContext);
-        } else {
-          Object.setPrototypeOf(evalContext, this._vedaParentContext);
         }
       }
 
-      // Process the fragment (not just the element) so walker can see the root element
       this._process(fragment, evalContext);
-
-      // After processing, get the element from fragment (it may have been replaced)
       element = fragment.firstElementChild;
 
       return { element, evalContext };
     }
 
-    #findParentComponent() {
-      let context = this.parentElement;
-      let depth = 0;
-      while (context && depth < 10) {
-        const tagName = context.tagName?.toLowerCase();
-        const isComponent = tagName?.includes('-') || context.hasAttribute('is');
-        const isFrameworkComponent = tagName === 'veda-if' || tagName === 'veda-loop';
-
-        if (isComponent && !isFrameworkComponent) {
-          return context;
-        }
-        context = context.parentElement;
-        depth++;
-      }
-      return null;
-    }
-
     render() {
-      // Loop component doesn't use standard render
-      // It manages its children through reconciliation
       return '';
     }
   };
 }
 
 // Define the component only if running in browser
-let Loop;
-if (typeof customElements !== 'undefined') {
-  const LoopComponentClass = LoopComponent(HTMLElement);
-  customElements.define(LoopComponentClass.tag, LoopComponentClass);
-  Loop = LoopComponentClass;
-} else {
-  Loop = LoopComponent;
-}
+const Loop = (() => {
+  if (typeof customElements !== 'undefined') {
+    const LoopComponentClass = LoopComponent(HTMLElement);
+    customElements.define(LoopComponentClass.tag, LoopComponentClass);
+    return LoopComponentClass;
+  }
+  return LoopComponent;
+})();
 
 export { Loop };
 

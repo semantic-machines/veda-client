@@ -27,27 +27,19 @@ export default function IfComponent(Class = HTMLElement) {
 
     async connectedCallback() {
       this.#placeholder = document.createComment('veda-if');
+      this._vedaParentContext = this._findParentComponent();
 
-      // Find and store parent component context for expression evaluation
-      this._vedaParentContext = this.#findParentComponent();
-
-      // Extract template - Component._process() stores innerHTML in this.template
+      // Extract and store template
       this.#template = document.createDocumentFragment();
-
       if (this.template) {
         const temp = document.createElement('div');
         temp.innerHTML = this.template;
-
-        // Use all children
         while (temp.firstChild) {
           this.#template.appendChild(temp.firstChild);
         }
       }
 
-      // Clear original children - they'll be added back conditionally
       this.replaceChildren();
-
-      // Now call super which will process the component
       await super.connectedCallback();
 
       const conditionExpr = this.getAttribute('condition');
@@ -57,8 +49,7 @@ export default function IfComponent(Class = HTMLElement) {
       }
 
       this.#ifEffect = effect(() => {
-        const currentCondition = this.getAttribute('condition');
-        const condition = this.#evaluateCondition(currentCondition);
+        const condition = this.#evaluateCondition(this.getAttribute('condition'));
         this.#updateVisibility(condition);
       });
     }
@@ -74,9 +65,8 @@ export default function IfComponent(Class = HTMLElement) {
 
     #evaluateCondition(expr) {
       try {
-        const cleanExpr = expr.replace(/^{|}$/g, '').trim();
+        const cleanExpr = expr.trim().replace(/^\{/, '').replace(/\}$/, '');
 
-        // Use cached parent context
         const context = this._vedaParentContext;
 
         if (!context) {
@@ -93,84 +83,54 @@ export default function IfComponent(Class = HTMLElement) {
     }
 
   #updateVisibility(show) {
-    // Check if current content nodes are still in the DOM
-    const hasValidContent = this.#currentContent &&
-      this.#currentContent.length > 0 &&
-      this.#currentContent.some(n => n.parentNode === this);
+    const hasContent = this.#currentContent?.length > 0;
 
-    if (show && !hasValidContent) {
-      const content = this.#template.cloneNode(true);
-
+    if (show && !hasContent) {
       const tempContainer = document.createElement('div');
-      tempContainer.appendChild(content);
+      tempContainer.appendChild(this.#template.cloneNode(true));
 
-      // Create evalContext with prototype chain: parent.state -> parent
-      // This allows access to parent state and methods
-      let evalContext = this._vedaParentContext;
-      if (this._vedaParentContext && this._vedaParentContext.state) {
-        evalContext = this._vedaParentContext.state;
-        if (evalContext && typeof evalContext === 'object') {
-          Object.setPrototypeOf(evalContext, this._vedaParentContext);
-        }
-      }
-
-      // Pass evalContext to _process so expressions are evaluated correctly
+      const evalContext = this.#createEvalContext();
       this._process(tempContainer, evalContext);
 
-      const processedContent = document.createDocumentFragment();
+      const fragment = document.createDocumentFragment();
       while (tempContainer.firstChild) {
-        processedContent.appendChild(tempContainer.firstChild);
+        fragment.appendChild(tempContainer.firstChild);
       }
 
-      this.appendChild(processedContent);
+      this.appendChild(fragment);
       this.#currentContent = Array.from(this.childNodes).filter(n => n !== this.#placeholder);
 
-    } else if (!show && hasValidContent) {
-      this.#currentContent.forEach(node => {
-        if (node.parentNode === this) {
-          this.removeChild(node);
-        }
-      });
+    } else if (!show && hasContent) {
+      this.#currentContent.forEach(node => node.remove());
       this.#currentContent = null;
-
       this.appendChild(this.#placeholder);
     }
   }
 
-    #findParentComponent() {
-      let context = this.parentElement;
-      let depth = 0;
-      while (context && depth < 10) {
-        const tagName = context.tagName?.toLowerCase();
-        const isComponent = tagName?.includes('-') || context.hasAttribute('is');
-        const isFrameworkComponent = tagName === 'veda-if' || tagName === 'veda-loop';
+  #createEvalContext() {
+    const parent = this._vedaParentContext;
+    if (!parent?.state) return parent;
 
-        if (isComponent && !isFrameworkComponent) {
-          return context;
-        }
-        context = context.parentElement;
-        depth++;
-      }
-      return null;
-    }
+    const evalContext = parent.state;
+    Object.setPrototypeOf(evalContext, parent);
+    return evalContext;
+  }
 
     render() {
-      // If component doesn't use standard render
-      // It manages its children through conditional rendering
       return '';
     }
   };
 }
 
 // Define the component only if running in browser
-let If;
-if (typeof customElements !== 'undefined') {
-  const IfComponentClass = IfComponent(HTMLElement);
-  customElements.define(IfComponentClass.tag, IfComponentClass);
-  If = IfComponentClass;
-} else {
-  If = IfComponent;
-}
+const If = (() => {
+  if (typeof customElements !== 'undefined') {
+    const IfComponentClass = IfComponent(HTMLElement);
+    customElements.define(IfComponentClass.tag, IfComponentClass);
+    return IfComponentClass;
+  }
+  return IfComponent;
+})();
 
 export { If };
 

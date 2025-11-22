@@ -5,49 +5,44 @@ export default function PropertyComponent (Class = HTMLElement) {
     static observedAttributes = ['lang'];
 
     attributeChangedCallback (name, oldValue, newValue) {
-      if (!oldValue || oldValue === newValue) return;
-      super.render();
+      if (oldValue && oldValue !== newValue) {
+        super.render();
+      }
     }
 
     renderValue (value, container, index) {
       if (typeof value === 'string') {
         const lang = document.documentElement.lang;
         this.setAttribute('lang', lang);
-        if (value.endsWith(`^^${lang.toUpperCase()}`)) {
-          value = value.substring(0, value.indexOf('^^'));
-        } else if (value.indexOf('^^') > 0 && value.indexOf('^^') === value.length - 4) {
+        const langSuffix = `^^${lang.toUpperCase()}`;
+
+        if (value.endsWith(langSuffix)) {
+          value = value.slice(0, -langSuffix.length);
+        } else if (value.includes('^^') && value.length - value.lastIndexOf('^^') === 4) {
           return;
         }
       }
 
-      // Check if we have custom rendering content
-      const hasCustomContent = this.template && this.template.trim().length > 0;
-
+      const hasCustomContent = this.template?.trim();
       if (!hasCustomContent) {
         return super.renderValue(value, container, index);
       }
 
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = this.template;
-
-      const fragment = document.createDocumentFragment();
-      while (tempDiv.firstChild) {
-        fragment.appendChild(tempDiv.firstChild);
-      }
+      const template = document.createElement('template');
+      template.innerHTML = this.template;
+      const fragment = template.content.cloneNode(true);
 
       const slot = fragment.querySelector('slot');
+      const valueText = value.toString();
+
       if (slot) {
-        const valueNode = document.createTextNode(value.toString());
-        slot.parentNode.replaceChild(valueNode, slot);
+        slot.replaceWith(document.createTextNode(valueText));
       } else {
         const node = fragment.firstElementChild;
-        if (node) {
-          node.textContent = value.toString();
-        }
+        if (node) node.textContent = valueText;
       }
 
       this._process(fragment);
-
       container.appendChild(fragment);
     }
   };
