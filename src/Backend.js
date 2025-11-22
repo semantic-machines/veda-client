@@ -1,25 +1,44 @@
 import BackendError from './BackendError.js';
 import {timeout} from './Util.js';
 
+/* c8 ignore next - Browser/Node.js environment check */
 const storage = typeof localStorage !== 'undefined' ? localStorage : {};
 
+/**
+ * Static class for backend communication.
+ * Handles authentication, data retrieval, and manipulation.
+ */
 export default class Backend {
   static #ticket;
   static user_uri;
   static expires;
+  /* c8 ignore next - Browser/Node.js environment check */
   static base = typeof location !== 'undefined' ? location.origin : 'http://localhost:8080';
 
   static errorListeners = new Set();
 
+  /**
+   * Register a global error listener for backend errors.
+   * @param {Function} listener - Callback function receiving the error object
+   * @returns {Function} Unsubscribe function
+   */
   static onError(listener) {
     this.errorListeners.add(listener);
     return () => this.errorListeners.delete(listener);
   }
 
+  /**
+   * Emit an error to all registered listeners.
+   * @param {Error} error - The error to emit
+   */
   static emitError(error) {
     this.errorListeners.forEach(fn => fn(error));
   }
 
+  /**
+   * Initialize the backend configuration.
+   * @param {string} base - Base URL of the backend server (default: current origin or localhost:8080)
+   */
   static init (base = this.base) {
     const {ticket, user_uri, expires} = storage;
     Backend.#ticket = ticket;
@@ -49,6 +68,13 @@ export default class Backend {
     delete storage.expires;
   }
 
+  /**
+   * Authenticate user.
+   * @param {string} login - User login
+   * @param {string} password - User password
+   * @param {string} [secret] - Optional secret
+   * @returns {Promise<{user_uri: string, ticket: string, expires: number}>} Auth result
+   */
   static authenticate (login, password, secret) {
     const params = {
       method: 'POST',
@@ -58,6 +84,11 @@ export default class Backend {
     return Backend.#call_server(params).then(Backend.#handleTicket);
   }
 
+  /**
+   * Get trusted ticket for a user (requires admin privileges).
+   * @param {string} login - User login
+   * @returns {Promise<{user_uri: string, ticket: string, expires: number}>} Auth result
+   */
   static get_ticket_trusted (login) {
     const params = {
       method: 'GET',
@@ -68,6 +99,11 @@ export default class Backend {
     return Backend.#call_server(params).then(Backend.#handleTicket);
   }
 
+  /**
+   * Check if the current or provided ticket is valid.
+   * @param {string} [ticket] - Ticket to check (defaults to current ticket)
+   * @returns {Promise<boolean>} True if valid
+   */
   static is_ticket_valid (ticket = Backend.#ticket) {
     const params = {
       method: 'GET',
@@ -77,6 +113,10 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
+  /**
+   * Logout the current user and invalidate ticket.
+   * @returns {Promise<void>}
+   */
   static logout () {
     const params = {
       method: 'GET',
@@ -89,6 +129,12 @@ export default class Backend {
     });
   }
 
+  /**
+   * Get access rights for a resource.
+   * @param {string} uri - Resource URI
+   * @param {string} [user_id] - User URI (optional, defaults to current user)
+   * @returns {Promise<Object>} Rights object
+   */
   static get_rights (uri, user_id) {
     const params = {
       method: 'GET',
@@ -99,6 +145,11 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
+  /**
+   * Get origin of rights for a resource (why user has rights).
+   * @param {string} uri - Resource URI
+   * @returns {Promise<Object>} Rights origin info
+   */
   static get_rights_origin (uri) {
     const params = {
       method: 'GET',
@@ -109,6 +160,11 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
+  /**
+   * Get membership information for a resource (groups/orgs it belongs to).
+   * @param {string} uri - Resource URI
+   * @returns {Promise<Object>} Membership info
+   */
   static get_membership (uri) {
     const params = {
       method: 'GET',
@@ -119,6 +175,12 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
+  /**
+   * Get state of an async operation in a module.
+   * @param {string} module_id - Module identifier
+   * @param {number} wait_op_id - Operation ID to wait for
+   * @returns {Promise<number>} Current operation ID
+   */
   static get_operation_state (module_id, wait_op_id) {
     const params = {
       method: 'GET',
@@ -128,6 +190,13 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
+  /**
+   * Wait for a specific operation to complete in a module.
+   * @param {string} module_id - Module identifier
+   * @param {number} op_id - Operation ID
+   * @param {number} [__maxCalls=10] - Internal recursion limit
+   * @returns {Promise<boolean>} True if operation completed
+   */
   static wait_module (module_id, op_id, __maxCalls = 10) {
     if (!__maxCalls) return Promise.resolve(false);
     return timeout(250 * (10 - __maxCalls)).then(() =>
@@ -140,7 +209,20 @@ export default class Backend {
     );
   }
 
-  static query (queryStr, sort, databases, top, limit, from, sql, tries = 10, signal) {
+  /**
+   * Execute a search query.
+   * @param {string|Object} queryStr - VQL query string or params object
+   * @param {string} [sort] - Sort expression (e.g. "'v-s:created' desc")
+   * @param {string[]} [databases] - Databases to search in
+   * @param {number} [top] - Number of results to return
+   * @param {number} [limit] - Limit results
+   * @param {number} [from] - Offset
+   * @param {string} [sql] - SQL query (advanced)
+   * @param {AbortSignal} [signal] - Abort signal
+   * @param {number} [tries=10] - Retry attempts for busy server
+   * @returns {Promise<{result: string[], count: number, estimated: number}>} Query results
+   */
+  static query (queryStr, sort, databases, top, limit, from, sql, signal, tries = 10) {
     if (!tries) return Promise.reject(new BackendError(429));
     const arg = queryStr;
     const isObj = typeof arg === 'object';
@@ -154,12 +236,18 @@ export default class Backend {
     return Backend.#call_server(params).catch(async (backendError) => {
       if (backendError.code === 999 && tries > 1) {
         await timeout(1000);
-        return Backend.query(queryStr, sort, databases, top, limit, from, sql, --tries, signal);
+        return Backend.query(queryStr, sort, databases, top, limit, from, sql, signal, --tries);
       }
       throw backendError;
     });
   }
 
+  /**
+   * Execute a stored query.
+   * @param {Object} data - Stored query parameters
+   * @param {AbortSignal} [signal] - Abort signal
+   * @returns {Promise<Object>} Query results
+   */
   static stored_query (data, signal) {
     const params = {
       method: 'POST',
@@ -171,7 +259,14 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
-  static get_individual (uri, cache = true, signal) {
+  /**
+   * Get individual resource by URI.
+   * @param {string} uri - Resource URI
+   * @param {boolean} [cache=true] - Allow server-side caching
+   * @param {AbortSignal} [signal] - Abort signal
+   * @returns {Promise<Object>} JSON resource data
+   */
+  static get_individual (uri, cache = true, signal = undefined) {
     const params = {
       method: 'GET',
       url: 'get_individual',
@@ -182,6 +277,12 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
+  /**
+   * Get multiple individuals by URIs.
+   * @param {string[]} uris - Array of resource URIs
+   * @param {AbortSignal} [signal] - Abort signal
+   * @returns {Promise<Object[]>} Array of JSON resource data
+   */
   static get_individuals (uris, signal) {
     const params = {
       method: 'POST',
@@ -193,6 +294,12 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
+  /**
+   * Remove an individual.
+   * @param {string} uri - Resource URI to remove
+   * @param {AbortSignal} [signal] - Abort signal
+   * @returns {Promise<Object>} Operation result
+   */
   static remove_individual (uri, signal) {
     const params = {
       method: 'PUT',
@@ -204,6 +311,12 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
+  /**
+   * Create or update an individual (full replace).
+   * @param {Object} individual - JSON object
+   * @param {AbortSignal} [signal] - Abort signal
+   * @returns {Promise<Object>} Operation result
+   */
   static put_individual (individual, signal) {
     const params = {
       method: 'PUT',
@@ -215,6 +328,13 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
+  /**
+   * Add values to an existing individual (append).
+   * Useful for concurrent updates to avoid race conditions.
+   * @param {Object} individual - Partial JSON object with values to add
+   * @param {AbortSignal} [signal] - Abort signal
+   * @returns {Promise<Object>} Operation result
+   */
   static add_to_individual (individual, signal) {
     const params = {
       method: 'PUT',
@@ -226,6 +346,13 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
+  /**
+   * Set specific values in an existing individual (replace specific properties).
+   * Useful for concurrent updates.
+   * @param {Object} individual - Partial JSON object with values to set
+   * @param {AbortSignal} [signal] - Abort signal
+   * @returns {Promise<Object>} Operation result
+   */
   static set_in_individual (individual, signal) {
     const params = {
       method: 'PUT',
@@ -237,6 +364,13 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
+  /**
+   * Remove specific values from an existing individual.
+   * Useful for concurrent updates.
+   * @param {Object} individual - Partial JSON object with values to remove
+   * @param {AbortSignal} [signal] - Abort signal
+   * @returns {Promise<Object>} Operation result
+   */
   static remove_from_individual (individual, signal) {
     const params = {
       method: 'PUT',
@@ -248,6 +382,12 @@ export default class Backend {
     return Backend.#call_server(params);
   }
 
+  /**
+   * Create or update multiple individuals (batch).
+   * @param {Object[]} individuals - Array of JSON resource data
+   * @param {AbortSignal} [signal] - Abort signal
+   * @returns {Promise<Object>} Operation result
+   */
   static put_individuals (individuals, signal) {
     const params = {
       method: 'PUT',
@@ -303,6 +443,15 @@ export default class Backend {
     }
   }
 
+  /**
+   * Upload a file to the server.
+   * @param {Object} params
+   * @param {string} params.path - Target path
+   * @param {string} params.uri - Resource URI
+   * @param {File|string} params.file - File object or base64 string
+   * @param {AbortSignal} [params.signal] - Abort signal
+   * @returns {Promise<void>}
+   */
   static async uploadFile ({path, uri, file, signal}) {
     const form = new FormData();
     form.append('path', path);

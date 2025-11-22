@@ -10,8 +10,12 @@ export default function Emitter(Class = Object) {
     on (events, fn) {
       if (typeof fn === 'function') {
         events.replace(/[^\s]+/g, (name, pos) => {
-          this[CALLBACKS][name] = this[CALLBACKS][name] || [];
-          this[CALLBACKS][name].push(fn);
+          const callbacks = this[CALLBACKS];
+          // Initialize array directly to avoid prototype chain issues
+          if (!Object.hasOwnProperty.call(callbacks, name)) {
+            callbacks[name] = [];
+          }
+          callbacks[name].push(fn);
           fn.typed = pos > 0;
         });
       }
@@ -22,8 +26,9 @@ export default function Emitter(Class = Object) {
       if (events === '*') this[CALLBACKS] = {};
       else if (fn) {
         events.replace(/[^\s]+/g, (name) => {
-          if (this[CALLBACKS][name]) {
-            this[CALLBACKS][name] = this[CALLBACKS][name].filter((cb) => {
+          const callbacks = this[CALLBACKS];
+          if (Object.hasOwnProperty.call(callbacks, name)) {
+            callbacks[name] = callbacks[name].filter((cb) => {
               return cb !== fn;
             });
           }
@@ -46,7 +51,12 @@ export default function Emitter(Class = Object) {
     }
 
     emit (name, ...args) {
-      const fns = this[CALLBACKS][name] || [];
+      // Use CALLBACKS symbol to avoid prototype chain conflicts
+      const callbacks = this[CALLBACKS];
+      const fns = (callbacks && Object.hasOwnProperty.call(callbacks, name)) 
+        ? callbacks[name] 
+        : [];
+      
       let c = 0;
       fns.forEach((fn, i) => {
         if (fn.one) {

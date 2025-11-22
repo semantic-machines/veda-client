@@ -9,6 +9,6 @@ export default function PropertyComponent<E extends PropertyComponentClass = typ
 } & E;
 
 export interface PropertyComponentInstance {
-  renderValue(value: any, container: HTMLElement | ShadowRoot): void;
+  renderValue(value: any, container: HTMLElement | ShadowRoot, index: number): void;
 }
 

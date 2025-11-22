@@ -2,6 +2,8 @@ export default class Router {
   static #instance;
 
   constructor () {
+    // Singleton pattern: return existing instance if available
+    // eslint-disable-next-line sonarjs/no-return-in-constructor
     if (Router.#instance) return Router.#instance;
 
     Router.#instance = this;

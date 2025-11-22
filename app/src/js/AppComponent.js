@@ -38,6 +38,19 @@ export default class AppComponent extends Component(HTMLElement) {
           padding: 12px 15px;
         }
 
+        /* CSS counter для автоматической нумерации строк */
+        .styled-table tbody {
+          counter-reset: row-number;
+        }
+
+        .styled-table tbody > tr {
+          counter-increment: row-number;
+        }
+
+        .styled-table tbody > tr td:first-child::before {
+          content: counter(row-number);
+        }
+
         /* Критично: tbody > tr должен работать */
         .styled-table tbody > tr {
           border-bottom: 1px solid #dddddd;
@@ -60,8 +73,8 @@ export default class AppComponent extends Component(HTMLElement) {
         <h1 property="rdfs:label"></h1>
         <ul>
           <li property="rdfs:comment"></li>
-          <li>{{ this.model.rdfs:comment.0 }}</li>
-          <li>${ this.model['rdfs:comment'][0] }</li>
+          <li>{this.model.rdfs:comment.0}</li>
+          <li>${this.model['rdfs:comment']?.[0]}</li>
           <li>${this
             ? html`111 <span>true</span>`
             : html`<span>false</span>`
@@ -69,27 +82,27 @@ export default class AppComponent extends Component(HTMLElement) {
         </ul>
         <p about="rdfs:label" property="rdfs:label"></p>
         <ul property="rdfs:label"><li><span><slot></slot></span></li></ul>
-        <button onclick="{{testMethod1}}">Test button 1</button>
+        <button onclick="{testMethod1}">Test button 1</button>
         <p about="v-s:hasSettings" property="rdfs:label"></p>
         <div rel="v-s:hasSettings">
-          <${SettingsComponent} about="{{this.model.id}}" style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;"></${SettingsComponent}>
+          <${SettingsComponent} about="{this.model.id}" style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;"></${SettingsComponent}>
         </div>
         <div rel="v-s:hasSettings" shadow>
-          <span about="{{this.model.id}}">
+          <span about="{this.model.id}">
             <style>
               * {font-style: italic;}
             </style>
             <div style="margin: 0 20px 20px 0; padding: 10px; border: 1px solid gray; display: inline-block;">
               Inline component
               <h2 property="rdfs:label"></h2>
-              <a href="#/settings/{{this.model.id}}">
-                {{this.model.id}}
+              <a href="#/settings/{this.model.id}">
+                {this.model.id}
               </a>
               <ul rel="v-s:hasApplication">
                 <li property="rdfs:label"></li>
               </ul>
-              <${Literal} about="{{this.model.id}}" property="rdfs:label"></${Literal}>
-              <button onclick="{{testMethod2}}">Test button 2</button>
+              <${Literal} about="{this.model.id}" property="rdfs:label"></${Literal}>
+              <button onclick="{testMethod2}">Test button 2</button>
             </div>
           </span>
         </div>
@@ -107,12 +120,12 @@ export default class AppComponent extends Component(HTMLElement) {
           </tr>
         </thead>
         <tbody rel="v-s:hasSettings">
-          <tr about="{{this.model.id}}">
-            <td>1</td>
-            <td style="font-family: monospace;">{{this.model.id}}</td>
-            <td property="rdfs:label"></td>
+          <tr about="{this.model.id}">
+            <td></td>
+            <td style="font-family: monospace;">{this.model.id}</td>
+            <td><span property="rdfs:label"></span></td>
             <td>
-              <button onclick="{{testMethod2}}" style="padding: 5px 10px;">Edit</button>
+              <button onclick="{testMethod2}" style="padding: 5px 10px;">Edit</button>
             </td>
           </tr>
         </tbody>

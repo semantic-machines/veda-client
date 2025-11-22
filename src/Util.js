@@ -59,12 +59,12 @@ export function diff (first, second) {
   if (first === second) return [];
   const delta = [];
   for (const prop of props(first)) {
-    if (!Object.prototype.hasOwnProperty.call(second, prop) || !eq(first[prop], second[prop])) {
+    if (!Object.hasOwn(second, prop) || !eq(first[prop], second[prop])) {
       delta.push(prop);
     }
   }
   for (const prop of props(second)) {
-    if (!Object.prototype.hasOwnProperty.call(first, prop)) {
+    if (!Object.hasOwn(first, prop)) {
       delta.push(prop);
     }
   }

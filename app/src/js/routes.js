@@ -4,8 +4,8 @@ import './SettingsComponent.js';
 import './AppSimple.js';
 
 const tagDictionary = {
-  app: 'veda-app-simple',
-  app1: 'veda-app',
+  app1: 'veda-app-simple',
+  app: 'veda-app',
   settings: 'veda-settings',
 };
 

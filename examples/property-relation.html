@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Property & Relation Components Example</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .example {
+      margin: 30px 0;
+      padding: 20px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+    }
+    .example h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    button {
+      padding: 8px 16px;
+      margin: 5px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #f8f8f8;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #e8e8e8;
+    }
+    input {
+      padding: 8px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin: 5px;
+      width: 300px;
+    }
+    .property-value {
+      font-weight: bold;
+      color: #2196F3;
+      font-size: 18px;
+    }
+    .relation-item {
+      padding: 10px;
+      margin: 5px 0;
+      background: #f5f5f5;
+      border-left: 3px solid #2196F3;
+      border-radius: 4px;
+    }
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tag {
+      padding: 4px 12px;
+      background: #4CAF50;
+      color: white;
+      border-radius: 16px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Property & Relation Components</h1>
+  <p>Reactive components for displaying and managing model properties and relations.</p>
+
+  <div class="example">
+    <property-example></property-example>
+  </div>
+
+  <div class="example">
+    <relation-example></relation-example>
+  </div>
+
+  <script type="module">
+    import { Component, html, Model, reactive } from '../dist/index.js';
+
+    // Example 1: Property Component with reactive updates
+    class PropertyExample extends Component(HTMLElement) {
+      static tag = 'property-example';
+
+      constructor() {
+        super();
+        // Create model with test data
+        this.state.model = new Model({
+          id: 'd:PropertyTest',
+          'v-s:title': ['Test Document'],
+          'v-s:description': ['This is a description'],
+          'v-s:tags': ['javascript', 'web-components', 'reactive']
+        });
+      }
+
+      updateTitle() {
+        const newTitle = prompt('Enter new title:', this.state.model['v-s:title'][0]);
+        if (newTitle) {
+          this.state.model['v-s:title'] = [newTitle];
+        }
+      }
+
+      updateDescription() {
+        const newDesc = prompt('Enter new description:', this.state.model['v-s:description'][0]);
+        if (newDesc) {
+          this.state.model['v-s:description'] = [newDesc];
+        }
+      }
+
+      addTag() {
+        const newTag = prompt('Enter new tag:');
+        if (newTag) {
+          this.state.model['v-s:tags'] = [...this.state.model['v-s:tags'], newTag];
+        }
+      }
+
+      removeTag(event) {
+        const tag = event.target.dataset.tag;
+        this.state.model['v-s:tags'] = this.state.model['v-s:tags'].filter(t => t !== tag);
+      }
+
+      render() {
+        return html`
+          <h3>Example 1: Property Component</h3>
+
+          <p>
+            <strong>Title (property):</strong><br>
+            <span property="v-s:title" class="property-value"></span>
+            <button onclick="{updateTitle}">Change Title</button>
+          </p>
+
+          <p>
+            <strong>Description (property):</strong><br>
+            <span property="v-s:description" class="property-value"></span>
+            <button onclick="{updateDescription}">Change Description</button>
+          </p>
+
+          <p>
+            <strong>Tags (multiple values):</strong><br>
+            <span property="v-s:tags" class="tag-list">
+              <span class="tag"><slot></slot></span>
+            </span>
+            <button onclick="{addTag}">Add Tag</button>
+          </p>
+
+          <p><small>Property components automatically update when model changes</small></p>
+        `;
+      }
+    }
+
+    // Example 2: Relation Component with reactive lists
+    class RelationExample extends Component(HTMLElement) {
+      static tag = 'relation-example';
+
+      constructor() {
+        super();
+        // Create main model
+        this.state.model = new Model({
+          id: 'd:RelationTest',
+          'v-s:title': ['Project List'],
+          'v-s:hasProject': []
+        });
+
+        // Create some related models
+        this.projectCounter = 1;
+        this.addProject();
+        this.addProject();
+      }
+
+      addProject() {
+        const project = new Model({
+          id: `d:Project${this.projectCounter}`,
+          'v-s:title': [`Project ${this.projectCounter}`],
+          'v-s:status': ['active']
+        });
+
+        this.state.model['v-s:hasProject'] = [...this.state.model['v-s:hasProject'], project];
+        this.projectCounter++;
+      }
+
+      removeProject(event) {
+        const projectId = event.target.dataset.id;
+        this.state.model['v-s:hasProject'] = this.state.model['v-s:hasProject'].filter(p => p.id !== projectId);
+      }
+
+      render() {
+        return html`
+          <h3>Example 2: Relation Component</h3>
+
+          <p>
+            <strong>Main document:</strong> <span property="v-s:title"></span>
+          </p>
+
+          <p>
+            <strong>Related projects (${this.state.model['v-s:hasProject']?.length || 0}):</strong>
+            <button onclick="{addProject}">Add Project</button>
+          </p>
+
+          <div rel="v-s:hasProject">
+            <div class="relation-item">
+              <strong property="v-s:title"></strong>
+              (<span property="v-s:status"></span>)
+              <button onclick="{removeProject}" data-id="{this.state.model.id}">Remove</button>
+            </div>
+          </div>
+
+          <p><small>Relation components automatically update when related objects change</small></p>
+        `;
+      }
+    }
+
+    customElements.define(PropertyExample.tag, PropertyExample);
+    customElements.define(RelationExample.tag, RelationExample);
+  </script>
+</body>
+</html>
+

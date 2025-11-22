@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "Veda Client DevTools",
+  "version": "0.1.0",
+  "description": "Developer tools for debugging Veda Client Framework applications",
+  "devtools_page": "devtools.html",
+  "permissions": [
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content-script.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["src/hook.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
+

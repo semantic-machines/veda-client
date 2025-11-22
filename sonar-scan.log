@@ -1,0 +1,36 @@
+INFO: Scanner configuration file: /opt/sonar-scanner-5.0.1.3006-linux/conf/sonar-scanner.properties
+INFO: Project root configuration file: /repo/veda-client/sonar-project.properties
+INFO: SonarScanner 5.0.1.3006
+INFO: Java 17.0.7 Eclipse Adoptium (64-bit)
+INFO: Linux 6.8.0-85-generic amd64
+INFO: User cache: /home/roman/.sonar/cache
+ERROR: SonarQube server [http://localhost:9000] can not be reached
+INFO: ------------------------------------------------------------------------
+INFO: EXECUTION FAILURE
+INFO: ------------------------------------------------------------------------
+INFO: Total time: 0.229s
+INFO: Final Memory: 7M/80M
+INFO: ------------------------------------------------------------------------
+ERROR: Error during SonarScanner execution
+org.sonarsource.scanner.api.internal.ScannerException: Unable to execute SonarScanner analysis
+	at org.sonarsource.scanner.api.internal.IsolatedLauncherFactory.lambda$createLauncher$0(IsolatedLauncherFactory.java:85)
+	at java.base/java.security.AccessController.doPrivileged(Unknown Source)
+	at org.sonarsource.scanner.api.internal.IsolatedLauncherFactory.createLauncher(IsolatedLauncherFactory.java:74)
+	at org.sonarsource.scanner.api.internal.IsolatedLauncherFactory.createLauncher(IsolatedLauncherFactory.java:70)
+	at org.sonarsource.scanner.api.EmbeddedScanner.doStart(EmbeddedScanner.java:185)
+	at org.sonarsource.scanner.api.EmbeddedScanner.start(EmbeddedScanner.java:123)
+	at org.sonarsource.scanner.cli.Main.execute(Main.java:74)
+	at org.sonarsource.scanner.cli.Main.main(Main.java:62)
+Caused by: java.lang.IllegalStateException: Fail to get bootstrap index from server
+	at org.sonarsource.scanner.api.internal.BootstrapIndexDownloader.getIndex(BootstrapIndexDownloader.java:42)
+	at org.sonarsource.scanner.api.internal.JarDownloader.getScannerEngineFiles(JarDownloader.java:58)
+	at org.sonarsource.scanner.api.internal.JarDownloader.download(JarDownloader.java:53)
+	at org.sonarsource.scanner.api.internal.IsolatedLauncherFactory.lambda$createLauncher$0(IsolatedLauncherFactory.java:76)
+	... 7 more
+Caused by: java.lang.IllegalStateException: Status returned by url [http://localhost:9000/batch/index] is not valid: [400]
+	at org.sonarsource.scanner.api.internal.ServerConnection.callUrl(ServerConnection.java:118)
+	at org.sonarsource.scanner.api.internal.ServerConnection.downloadString(ServerConnection.java:99)
+	at org.sonarsource.scanner.api.internal.BootstrapIndexDownloader.getIndex(BootstrapIndexDownloader.java:39)
+	... 10 more
+ERROR: 
+ERROR: Re-run SonarScanner using the -X switch to enable full debug logging.

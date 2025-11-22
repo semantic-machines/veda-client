@@ -23,18 +23,9 @@ export default class Literal extends Component(HTMLElement) {
     return value.length > maxChars ? `${truncated}...` : truncated;
   }
 
-  up = () => {
-    this.update();
-  }
-
   added () {
     this.property = this.getAttribute('property');
     this.maxChars = this.getAttribute('max-chars');
-    this.model.on(this.property, this.up);
-  }
-
-  removed () {
-    this.model.off(this.property, this.up);
   }
 }
 

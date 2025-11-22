@@ -1,33 +1,42 @@
 import ValueComponent from './ValueComponent.js';
+import {reactive} from '../Reactive.js';
 
 export default function RelationComponent (Class = HTMLElement) {
   return class RelationComponentClass extends ValueComponent(Class) {
-    async renderValue (value, container) {
-      if (!this.template) {
-        return super.renderValue(value, container);
+    async renderValue (value, container, index) {
+      const hasCustomContent = this.template?.trim();
+      if (!hasCustomContent) {
+        return super.renderValue(value, container, index);
       }
 
-      // Save current model
-      const originalModel = this.model;
+      const originalModel = this.state.model;
 
       try {
-        // Temporarily set model to value for processing
-        this.model = value;
+        this.state.model = value;
 
-        // Create fragment from template
         const template = document.createElement('template');
         template.innerHTML = this.template;
-        const fragment = template.content;
+        const fragment = template.content.cloneNode(true);
 
-        // Process fragment (uses this.model = value)
-        // All components will be children in DOM tree for method lookup
-        this._process(fragment);
+        const contextElement = document.createElement('div');
+        contextElement.model = value;
 
-        // Append fragment children to container
+        this._process(fragment, contextElement);
+
+        const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT);
+        let node = walker.nextNode();
+
+        while (node) {
+          if ((node.tagName.includes('-') || node.hasAttribute('is')) && !node.hasAttribute('about')) {
+            if (!node.state) node.state = reactive({});
+            node.state.model = value;
+          }
+          node = walker.nextNode();
+        }
+
         container.append(fragment);
       } finally {
-        // Restore original model
-        this.model = originalModel;
+        this.state.model = originalModel;
       }
     }
   };

@@ -2,6 +2,8 @@ import Model from './Model.js';
 
 export default class Value {
   constructor (data, type = null, lang = null) {
+    // Factory pattern: return null or serialized value for convenience
+    // eslint-disable-next-line sonarjs/no-return-in-constructor
     if (data === null) return;
     if (typeof data !== 'undefined' && type !== null) {
       this.data = data;
@@ -12,13 +14,16 @@ export default class Value {
       this.type = data.type;
       data.lang && (this.lang = data.lang.toUpperCase());
     } else {
+      // Factory pattern: auto-serialize unknown types
+      // eslint-disable-next-line sonarjs/no-return-in-constructor
       return Value.serialize(data);
     }
   }
 
   static parse (value) {
     if (value.type === 'String') {
-      return `${value.data}${value.lang && value.lang !== 'NONE' ? `^^${value.lang}` : ''}`;
+      const langSuffix = value.lang && value.lang !== 'NONE' ? `^^${value.lang}` : '';
+      return `${value.data}${langSuffix}`;
     } else if (value.type === 'Uri') {
       return new Model(value.data);
     } else if (value.type === 'Datetime') {

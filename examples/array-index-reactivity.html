@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Array Index Reactivity Demo</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .demo {
+      border: 1px solid #ddd;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      background: #f9f9f9;
+    }
+    button {
+      padding: 8px 16px;
+      margin: 5px;
+      cursor: pointer;
+      border: 1px solid #0066cc;
+      background: #0066cc;
+      color: white;
+      border-radius: 4px;
+    }
+    button:hover {
+      background: #0052a3;
+    }
+    .value {
+      font-weight: bold;
+      color: #0066cc;
+    }
+    .label {
+      color: #666;
+      font-size: 0.9em;
+    }
+    pre {
+      background: #282c34;
+      color: #abb2bf;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    .success {
+      color: #22863a;
+      background: #dcffe4;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Array Index Reactivity Demo</h1>
+  
+  <p>This demo shows that <strong>array index assignment IS reactive</strong> in Veda Client when effects track specific indices.</p>
+
+  <div class="demo">
+    <h3>Demo 1: Direct Index Access</h3>
+    <p class="label">Effect tracks items[0] directly:</p>
+    <div>
+      <span class="label">items[0] = </span>
+      <span class="value" id="value-0">-</span>
+    </div>
+    <div>
+      <span class="label">Effect runs: </span>
+      <span class="value" id="triggers-0">0</span>
+    </div>
+    <button id="btn-change-0">Change items[0]</button>
+    <button id="btn-change-1">Change items[1] (won't trigger)</button>
+  </div>
+
+  <div class="demo">
+    <h3>Demo 2: Multiple Independent Indices</h3>
+    <p class="label">Two separate effects track items[0] and items[1]:</p>
+    <div>
+      <span class="label">items[0] = </span>
+      <span class="value" id="multi-0">-</span>
+      <span class="label" style="margin-left: 20px;">triggers: </span>
+      <span class="value" id="multi-triggers-0">0</span>
+    </div>
+    <div>
+      <span class="label">items[1] = </span>
+      <span class="value" id="multi-1">-</span>
+      <span class="label" style="margin-left: 20px;">triggers: </span>
+      <span class="value" id="multi-triggers-1">0</span>
+    </div>
+    <button id="btn-multi-0">Change items[0]</button>
+    <button id="btn-multi-1">Change items[1]</button>
+  </div>
+
+  <div class="demo">
+    <h3>Demo 3: Length vs Index Tracking</h3>
+    <p class="label">Effect only tracks length, not individual elements:</p>
+    <div>
+      <span class="label">Array length = </span>
+      <span class="value" id="length-value">3</span>
+    </div>
+    <div>
+      <span class="label">Length effect runs: </span>
+      <span class="value" id="length-triggers">0</span>
+    </div>
+    <button id="btn-index-change">items[0] = random (won't trigger)</button>
+    <button id="btn-push">push() (will trigger)</button>
+  </div>
+
+  <div class="demo">
+    <h3>How it Works</h3>
+    <p>This is <strong>fine-grained reactivity</strong> - effects only re-run when they access properties that change.</p>
+    
+    <pre><code>// ✅ Effect tracks items[0]
+effect(() => {
+  console.log(state.items[0]); // Reads index 0
+});
+state.items[0] = 99; // ✅ Triggers!
+
+// ❌ Effect tracks only length
+effect(() => {
+  console.log(state.items.length); // Reads length
+});
+state.items[0] = 99; // ❌ Won't trigger (length unchanged)
+state.items.push(4); // ✅ Triggers (length changed)</code></pre>
+
+    <p class="success">Array index assignment has always been reactive in Veda - it was incorrectly documented as a limitation!</p>
+  </div>
+
+  <script type="module">
+    import {reactive, effect} from '../dist/index.js';
+
+    // Demo 1: Direct index access
+    const state1 = reactive({ items: [10, 20, 30] });
+    let triggers1 = 0;
+    
+    effect(() => {
+      document.getElementById('value-0').textContent = state1.items[0];
+      triggers1++;
+      document.getElementById('triggers-0').textContent = triggers1;
+    });
+
+    document.getElementById('btn-change-0').onclick = () => {
+      state1.items[0] = Math.floor(Math.random() * 100);
+    };
+
+    document.getElementById('btn-change-1').onclick = () => {
+      state1.items[1] = Math.floor(Math.random() * 100);
+    };
+
+    // Demo 2: Multiple indices
+    const state2 = reactive({ items: [100, 200, 300] });
+    let triggers2_0 = 0;
+    let triggers2_1 = 0;
+
+    effect(() => {
+      document.getElementById('multi-0').textContent = state2.items[0];
+      triggers2_0++;
+      document.getElementById('multi-triggers-0').textContent = triggers2_0;
+    });
+
+    effect(() => {
+      document.getElementById('multi-1').textContent = state2.items[1];
+      triggers2_1++;
+      document.getElementById('multi-triggers-1').textContent = triggers2_1;
+    });
+
+    document.getElementById('btn-multi-0').onclick = () => {
+      state2.items[0] = Math.floor(Math.random() * 1000);
+    };
+
+    document.getElementById('btn-multi-1').onclick = () => {
+      state2.items[1] = Math.floor(Math.random() * 1000);
+    };
+
+    // Demo 3: Length tracking
+    const state3 = reactive({ items: [1, 2, 3] });
+    let triggers3 = 0;
+
+    effect(() => {
+      document.getElementById('length-value').textContent = state3.items.length;
+      triggers3++;
+      document.getElementById('length-triggers').textContent = triggers3;
+    });
+
+    document.getElementById('btn-index-change').onclick = () => {
+      state3.items[0] = Math.floor(Math.random() * 100);
+    };
+
+    document.getElementById('btn-push').onclick = () => {
+      state3.items.push(Math.floor(Math.random() * 100));
+    };
+  </script>
+</body>
+</html>
+

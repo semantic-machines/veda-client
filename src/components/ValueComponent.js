@@ -1,35 +1,51 @@
 import Component from './Component.js';
+import {effect} from '../Effect.js';
 
 export default function ValueComponent (Class = HTMLElement) {
   return class ValueComponentClass extends Component(Class) {
-    added () {
-      this.prop = this.getAttribute('property') ?? this.getAttribute('rel');
-      this.handler = this.update.bind(this);
-      this.model.on(this.prop, this.handler);
-    }
+    #propEffect = null;
+    #valueNodes = new Map();
 
-    removed () {
-      if (this.prop && this.handler) {
-        this.model.off(this.prop, this.handler);
-      }
-    }
+  added () {
+    this.prop = this.getAttribute('property') ?? this.getAttribute('rel');
 
-    render () {
-      const container = this.hasAttribute('shadow')
-        ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
-        : this;
-      container.replaceChildren();
-      if (!this.model.hasValue(this.prop)) return;
-      if (Array.isArray(this.model[this.prop])) {
-        this.model[this.prop].forEach((value) => this.renderValue(value, container));
-      } else {
-        this.renderValue(this.model[this.prop], container);
-      }
+    if (!this.#propEffect) {
+      this.#propEffect = effect(() => {
+        this.render();
+      });
     }
+  }
 
-    renderValue (value, container) {
+  removed () {
+    if (this.#propEffect) {
+      this.#propEffect();
+      this.#propEffect = null;
+    }
+    this.#valueNodes.clear();
+  }
+
+  render () {
+    const container = this.hasAttribute('shadow')
+      ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
+      : this;
+
+    const modelValue = this.state.model[this.prop];
+    const values = this.state.model.hasValue(this.prop)
+      ? (Array.isArray(modelValue) ? modelValue : [modelValue])
+      : [];
+
+    container.replaceChildren();
+    this.#valueNodes.clear();
+
+    values.forEach((value, index) => {
+      this.renderValue(value, container, index);
+    });
+  }
+
+    renderValue (value, container, index) {
       const node = document.createTextNode(value.toString());
       container.appendChild(node);
+      this.#valueNodes.set(index, {value, node});
     }
   };
 }

@@ -1,10 +1,10 @@
 import Emitter from './Emitter.js';
-import Observable from './Observable.js';
 import Backend from './Backend.js';
 import WeakCache from './WeakCache.js';
 import Subscription from './Subscription.js';
 import Value from './Value.js';
 import {genUri, decorator} from './Util.js';
+import {reactive} from './Reactive.js';
 
 const IS_NEW = Symbol('isNew');
 const IS_SYNC = Symbol('isSync');
@@ -16,37 +16,106 @@ const REMOVE_PROMISE = Symbol('removePromise');
 const MEMBERSHIPS = Symbol('memberships');
 const RIGHTS = Symbol('rights');
 
-export default class Model extends Observable(Emitter(Object)) {
+// Dangerous property names that could break Model or cause prototype pollution
+const DANGEROUS_PROPS = new Set([
+  '__proto__',
+  'constructor',
+  'prototype'
+]);
+
+/**
+ * Semantic Data Model.
+ * Represents an RDF resource with properties.
+ * Automatically handles loading, saving, and reactivity.
+ */
+export default class Model extends Emitter(Object) {
   static cache = new WeakCache();
 
+  /**
+   * Create or retrieve a Model instance.
+   * @param {string|Object} [data] - URI string or JSON resource data object. If undefined, creates new blank model.
+   * @returns {Model} Reactive model instance
+   */
   constructor (data) {
-    super();
+    super(); // eslint-disable-line constructor-super
 
-    this.on('modified', () => this.isSync(false));
+    // Note: For cached models returning early, this listener is already attached
+    // from the first construction, so we don't duplicate it
+    this.on('modified', () => {
+      this.isSync(false);
+    });
 
     if (typeof data === 'string') {
       this.id = data;
       this.isNew(false);
       this.isSync(false);
       this.isLoaded(false);
-      return Model.cache.get(this.id) ?? (Model.cache.set(this.id, this), this);
+
+      const cached = Model.cache.get(this.id);
+      if (cached) {
+        // Factory pattern: return existing instance from cache
+        // eslint-disable-next-line no-constructor-return
+        return cached; // Already reactive and has listener
+      }
     } else if (typeof data === 'undefined' || data === null) {
       this.id = genUri();
       this.isNew(true);
       this.isSync(false);
       this.isLoaded(false);
-      return (Model.cache.set(this.id, this), this);
     } else if (typeof data === 'object') {
       const id = data['@'];
-      const cached = Model.cache.get(id) ?? (Model.cache.set(id, this), this);
-      cached.apply(data);
-      cached.isNew(false);
-      cached.isSync(true);
-      cached.isLoaded(true);
-      return cached;
+      const cached = Model.cache.get(id);
+
+      if (cached) {
+        // No need to reattach listener - already attached from first construction
+        cached.apply(data);
+        cached.isNew(false);
+        cached.isSync(true);
+        cached.isLoaded(true);
+        // Factory pattern: return existing instance from cache
+        // eslint-disable-next-line no-constructor-return
+        return cached; // Already reactive and has listener
+      }
+
+      this.id = id;
+      this.apply(data);
+      this.isNew(false);
+      this.isSync(true);
+      this.isLoaded(true);
     }
+
+    const reactiveModel = reactive(this, {
+      onSet: function(key, value) {
+        if (typeof this.emit === 'function') {
+          this.emit(key, value);
+          this.emit('modified', key, value);
+        }
+      },
+      onDelete: function(key) {
+        if (typeof this.emit === 'function') {
+          this.emit(key);
+          this.emit('modified', key);
+        }
+      }
+    });
+
+    // Cache the reactive proxy
+    Model.cache.set(this.id, reactiveModel);
+
+    // DevTools integration
+    if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
+      window.__VEDA_DEVTOOLS_HOOK__.trackModel(reactiveModel);
+    }
+
+    // Factory pattern: return reactive proxy instead of this
+    // eslint-disable-next-line no-constructor-return
+    return reactiveModel;
   }
 
+  /**
+   * Apply data to the model.
+   * @param {Object} data - JSON resource data
+   */
   apply (data) {
     const thisProps = new Set(Object.getOwnPropertyNames(this));
     const dataProps = new Set(Object.getOwnPropertyNames(data));
@@ -55,7 +124,16 @@ export default class Model extends Observable(Emitter(Object)) {
     propsToDelete.forEach(prop => prop !== 'id' && delete this[prop]);
 
     dataProps.forEach((prop) => {
-      if (prop === '@') return this.id = data['@'] ?? genUri();
+      // Skip dangerous property names to prevent prototype pollution
+      if (DANGEROUS_PROPS.has(prop)) {
+        console.warn(`Model.apply: Skipping dangerous property name: ${prop}`);
+        return;
+      }
+
+      if (prop === '@') {
+        this.id = data['@'] ?? genUri();
+        return;
+      }
       let value = data[prop];
       if (Array.isArray(value)) {
         value = value.map(Value.parse);
@@ -66,6 +144,10 @@ export default class Model extends Observable(Emitter(Object)) {
     });
   }
 
+  /**
+   * Convert model to JSON resource data.
+   * @returns {Object} JSON resource data
+   */
   toJSON () {
     const keys = Object.getOwnPropertyNames(this);
     const json = keys.reduce((acc, key) => {
@@ -90,6 +172,9 @@ export default class Model extends Observable(Emitter(Object)) {
     return this.id;
   }
 
+  /**
+   * Subscribe to server-side updates for this individual.
+   */
   subscribe () {
     const updater = (id) => {
       const model = new Model(id);
@@ -100,50 +185,97 @@ export default class Model extends Observable(Emitter(Object)) {
     Subscription.subscribe(this, [this.id, this.hasValue('v-s:updateCounter') ? this['v-s:updateCounter'][0] : 0, updater]);
   }
 
+  /**
+   * Unsubscribe from server-side updates.
+   */
   unsubscribe () {
     Subscription.unsubscribe(this.id);
   }
 
+  /**
+   * Check if model is new (not saved).
+   * @param {boolean} [value] - Set value
+   * @returns {boolean}
+   */
   isNew (value) {
-    return typeof value === 'undefined' ? this[IS_NEW] : this[IS_NEW] = !!value;
+    if (typeof value === 'undefined') {
+      return this[IS_NEW];
+    }
+    this[IS_NEW] = !!value;
+    return this[IS_NEW];
   }
 
+  /**
+   * Check if model is synced with backend.
+   * @param {boolean} [value] - Set value
+   * @returns {boolean}
+   */
   isSync (value) {
-    return typeof value === 'undefined' ? this[IS_SYNC] : this[IS_SYNC] = !!value;
+    if (typeof value === 'undefined') {
+      return this[IS_SYNC];
+    }
+    this[IS_SYNC] = !!value;
+    return this[IS_SYNC];
   }
 
+  /**
+   * Check if model data is loaded.
+   * @param {boolean} [value] - Set value
+   * @returns {boolean}
+   */
   isLoaded (value) {
-    return typeof value === 'undefined' ? this[IS_LOADED] : this[IS_LOADED] = !!value;
+    if (typeof value === 'undefined') {
+      return this[IS_LOADED];
+    }
+    this[IS_LOADED] = !!value;
+    return this[IS_LOADED];
   }
 
+  /**
+   * Check if property has specific value(s).
+   * @param {string} prop - Property URI
+   * @param {any} [value] - Value to check. If undefined, checks if property exists.
+   * @returns {boolean}
+   */
   hasValue (prop, value) {
     if (!prop && typeof value !== 'undefined') {
       return Object.getOwnPropertyNames(this).reduce((prev, prop) => prev || this.hasValue(prop, value), false);
     }
-    let found = !!(typeof this[prop] !== 'undefined');
+    const found = typeof this[prop] !== 'undefined';
     if (typeof value !== 'undefined' && value !== null) {
       const serialized = Value.serialize(value);
       let propValue = this[prop];
       if (propValue instanceof Function) return false;
       propValue = Array.isArray(propValue) ? propValue : [propValue];
-      found = found && propValue.some((item) => serialized.isEqual(Value.serialize(item)));
+      return found && propValue.some((item) => serialized.isEqual(Value.serialize(item)));
     }
     return found;
   }
 
+  /**
+   * Add value to a property.
+   * @param {string} prop - Property URI
+   * @param {any} value - Value to add
+   */
   addValue (prop, value) {
     if (!this.hasValue(prop)) {
       this[prop] = value;
     } else {
       const currentValue = this[prop];
       if (Array.isArray(currentValue)) {
-        this[prop] = [...currentValue, value];
+        const newValue = [...currentValue, value];
+        this[prop] = newValue;
       } else {
         this[prop] = [currentValue, value];
       }
     }
   }
 
+  /**
+   * Remove value from a property.
+   * @param {string} prop - Property URI
+   * @param {any} value - Value to remove
+   */
   removeValue (prop, value) {
     if (!prop && typeof value !== 'undefined') {
       return Object.getOwnPropertyNames(this).forEach((prop) => this.removeValue(prop, value));
@@ -156,9 +288,15 @@ export default class Model extends Observable(Emitter(Object)) {
       } else {
         delete this[prop];
       }
+      this.isSync(false); // Mark model as modified
     }
   }
 
+  /**
+   * Get property value chain (traversal).
+   * @param {...string} props - Property chain
+   * @returns {Promise<any>} Resulting value
+   */
   async getPropertyChain (...props) {
     await this.load();
     const prop = props.shift();
@@ -168,6 +306,11 @@ export default class Model extends Observable(Emitter(Object)) {
     return next.getPropertyChain(...props);
   }
 
+  /**
+   * Load data from backend.
+   * @param {boolean} [cache=true] - Use cache
+   * @returns {Promise<Model>} This model
+   */
   async load (cache = true) {
     if (this[LOAD_PROMISE]) {
       return this[LOAD_PROMISE];
@@ -193,6 +336,10 @@ export default class Model extends Observable(Emitter(Object)) {
     return this[LOAD_PROMISE];
   }
 
+  /**
+   * Reload data from backend (bypass cache).
+   * @returns {Promise<Model>} This model
+   */
   async reset () {
     if (this[RESET_PROMISE]) {
       return this[RESET_PROMISE];
@@ -210,6 +357,10 @@ export default class Model extends Observable(Emitter(Object)) {
     return this[RESET_PROMISE];
   }
 
+  /**
+   * Save model to backend.
+   * @returns {Promise<Model>} This model
+   */
   async save () {
     if (this[SAVE_PROMISE]) {
       return this[SAVE_PROMISE];
@@ -233,6 +384,10 @@ export default class Model extends Observable(Emitter(Object)) {
     return this[SAVE_PROMISE];
   }
 
+  /**
+   * Remove model from backend.
+   * @returns {Promise<Model>} This model (marked as new/removed)
+   */
   async remove () {
     if (this[REMOVE_PROMISE]) {
       return this[REMOVE_PROMISE];
@@ -253,6 +408,12 @@ export default class Model extends Observable(Emitter(Object)) {
     return this[REMOVE_PROMISE];
   }
 
+  /**
+   * Get label for this object based on preferred language.
+   * @param {string} [prop="rdfs:label"] - Property to use for label
+   * @param {string[]} [lang=['RU']] - Preferred languages (e.g. ['EN', 'RU'])
+   * @returns {string} Label text
+   */
   toLabel (prop="rdfs:label", lang = ['RU']) {
     if (!this.hasValue(prop)) return '';
     let label = '';
@@ -270,6 +431,10 @@ export default class Model extends Observable(Emitter(Object)) {
     return label.replace(/\^\^../g, "");
   }
 
+  /**
+   * Load membership information (groups/orgs).
+   * @returns {Promise<Model>} Memberships model
+   */
   async loadMemberships () {
     const membershipJSON = await Backend.get_membership(this.id);
     membershipJSON['@'] = genUri();
@@ -277,11 +442,20 @@ export default class Model extends Observable(Emitter(Object)) {
     return this[MEMBERSHIPS];
   }
 
+  /**
+   * Check if model is a member of a group/org.
+   * @param {string} id - Group/Org URI
+   * @returns {Promise<boolean>}
+   */
   async isMemberOf (id) {
     if (!this[MEMBERSHIPS]) await this.loadMemberships();
     return this[MEMBERSHIPS].hasValue('v-s:memberOf', id);
   }
 
+  /**
+   * Load effective rights for current user on this object.
+   * @returns {Promise<Model>} Rights model
+   */
   async loadRight () {
     if (this[RIGHTS]) return this[RIGHTS];
     if (this.isNew()) {
@@ -298,21 +472,37 @@ export default class Model extends Observable(Emitter(Object)) {
     return this[RIGHTS];
   }
 
+  /**
+   * Check if current user can create this type of object.
+   * @returns {Promise<boolean>}
+   */
   async canCreate () {
     await this.loadRight();
     return this[RIGHTS].hasValue('v-s:canCreate', true);
   }
 
+  /**
+   * Check if current user can read this object.
+   * @returns {Promise<boolean>}
+   */
   async canRead () {
     await this.loadRight();
     return this[RIGHTS].hasValue('v-s:canRead', true);
   }
 
+  /**
+   * Check if current user can update this object.
+   * @returns {Promise<boolean>}
+   */
   async canUpdate () {
     await this.loadRight();
     return this[RIGHTS].hasValue('v-s:canUpdate', true);
   }
 
+  /**
+   * Check if current user can delete this object.
+   * @returns {Promise<boolean>}
+   */
   async canDelete () {
     await this.loadRight();
     return this[RIGHTS].hasValue('v-s:canDelete', true);

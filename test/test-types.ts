@@ -51,7 +51,7 @@ async function testModel() {
 
   // Events
   model.on('modified', (prop) => {
-    console.log('Modified:', prop);
+    // Modified callback
   });
 }
 
@@ -59,7 +59,7 @@ async function testModel() {
 function testComponent() {
   class MyComponent extends Component() {
     added() {
-      console.log('Component added');
+      // Component lifecycle
     }
 
     render() {
@@ -79,7 +79,7 @@ function testRouter() {
   const router = new Router();
 
   router.add('#/users/:id', (id: string) => {
-    console.log('User ID:', id);
+    // Route handler
   });
 
   router.route('#/users/123');
@@ -94,7 +94,7 @@ function testSubscription() {
     model.id,
     0,
     (id: string, updateCounter?: number) => {
-      console.log('Update:', id, updateCounter);
+      // Subscription callback
     }
   ]);
 }
@@ -117,5 +117,5 @@ function testValue() {
   const serialized = Value.serialize('test string');
 }
 
-console.log('TypeScript types check passed!');
+// TypeScript types check passed
 

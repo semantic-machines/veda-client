@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reactive Counter Example</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    .counter {
+      padding: 20px;
+      border: 2px solid #333;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    .computed {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f0f0f0;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Reactive Counter Example</h1>
+
+  <reactive-counter></reactive-counter>
+
+  <div style="margin-top: 30px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+    <h3>How it works:</h3>
+    <ul>
+      <li>Click buttons to change counter</li>
+      <li>Notice that ONLY the changed text updates (no full re-render)</li>
+      <li>Computed properties (doubled, isEven) automatically update</li>
+      <li>No manual update() calls needed</li>
+    </ul>
+  </div>
+
+  <script type="module">
+    import Component, { html } from '../dist/index.js';
+
+    class ReactiveCounter extends Component(HTMLElement) {
+      static tag = 'reactive-counter';
+
+      constructor() {
+        super();
+        // State is automatically reactive
+        this.state.count = 0;
+      }
+
+      // Computed property - automatically recalculates
+      get doubled() {
+        return this.state.count * 2;
+      }
+
+      get isEven() {
+        return this.state.count % 2 === 0;
+      }
+
+      async connectedCallback() {
+        await super.connectedCallback();
+
+        // Watch for changes and log them
+        this.watch(() => this.state.count, (newVal, oldVal) => {
+          console.log(`Count changed from ${oldVal} to ${newVal}`);
+        });
+
+        // Effect for CSS class
+        this.watch(() => this.isEven, (even) => {
+          this.style.background = even ? '#e8f5e9' : '#fff3e0';
+        });
+      }
+
+      increment() {
+        // Just update state - DOM updates automatically!
+        this.state.count++;
+      }
+
+      decrement() {
+        this.state.count--;
+      }
+
+      reset() {
+        this.state.count = 0;
+      }
+
+      render() {
+        return html`
+          <div class="counter">
+            <h2>Counter: {this.state.count}</h2>
+
+            <div>
+              <button onclick="{decrement}">-1</button>
+              <button onclick="{increment}">+1</button>
+              <button onclick="{reset}">Reset</button>
+            </div>
+
+            <div class="computed">
+              <p><strong>Doubled:</strong> {this.doubled}</p>
+              <p><strong>Is Even:</strong> {this.isEven ? 'Yes' : 'No'}</p>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    customElements.define(ReactiveCounter.tag, ReactiveCounter);
+  </script>
+</body>
+</html>
+

@@ -91,16 +91,24 @@ export default ({test, assert}) => {
 
   test('Роутер - валидация регулярных выражений', async () => {
     const r = new Router();
+    let param;
 
-    r.add('#/valid/(?:[0-9]+)', (param) => {
-      assert(param === undefined)
+    // Valid regex - non-capturing group with digits
+    r.add('#/valid/(?:[0-9]+)', (capturedParam) => {
+      param = capturedParam;
     });
 
+    // Test that the route works
+    r.route('#/valid/123');
+    // Non-capturing group (?:...) doesn't capture, so param should be undefined
+    assert(param === undefined, 'Non-capturing group should not capture parameter');
+
+    // Invalid regex - nested groups
     try {
       r.add('#/invalid/(?:a(?:b))', () => {});
       assert(false, 'Должна быть ошибка для вложенных групп');
     } catch (e) {
-      assert(true);
+      assert(true, 'Should throw error for nested groups');
     }
 
     r.clear();
@@ -206,12 +214,33 @@ export default ({test, assert}) => {
     const r = new Router();
     let routeCalled = false;
 
-    r.add('#/test-go', () => {
+    r.add('#/testgo', () => {
       routeCalled = true;
     });
 
-    r.go('#/test-go');
+    r.go('#/testgo');
     assert(routeCalled === true);
+
+    r.clear();
+  });
+
+  test('Роутер - go с PopStateEvent', () => {
+    if (typeof window === 'undefined') return;
+
+    const r = new Router();
+    let routeCalled = false;
+
+    r.add('#/testpopstate', () => {
+      routeCalled = true;
+    });
+
+    // Simulate location hash change first
+    window.location.hash = '#/testpopstate';
+
+    const popStateEvent = new PopStateEvent('popstate', { state: null });
+    r.go(popStateEvent);
+
+    assert(routeCalled === true, 'Route should be called on popstate event');
 
     r.clear();
   });
@@ -223,6 +252,53 @@ export default ({test, assert}) => {
     // Проверяем что метод toString работает с маршрутами
     const routes = r.get('#/test');
     assert(routes.length === 1);
+
+    r.clear();
+  });
+
+  test('Роутер - go в Node.js окружении (line 19)', () => {
+    // В Node.js окружении go() должен вернуться раньше
+    const r = new Router();
+    
+    // Временно удаляем window если он есть (для jsdom)
+    const originalWindow = global.window;
+    delete global.window;
+    
+    try {
+      // go() должен просто вернуться без ошибок
+      r.go('#/test');
+      assert(true, 'go() should return early in Node.js environment');
+    } finally {
+      // Восстанавливаем window
+      if (originalWindow) {
+        global.window = originalWindow;
+      }
+    }
+    
+    r.clear();
+  });
+
+  test('Роутер - пустые токены в начале/конце пути (line 76)', () => {
+    const r = new Router();
+    let called = false;
+
+    // Паттерн с двойными слэшами создаёт пустые токены
+    r.add('#//test', () => {
+      called = true;
+    });
+
+    r.route('#//test');
+    assert(called === true, 'Route with empty tokens should match');
+
+    // Паттерн с пустым токеном в конце
+    r.clear();
+    called = false;
+    r.add('#/test/', () => {
+      called = true;
+    });
+
+    r.route('#/test/');
+    assert(called === true, 'Route with trailing slash should match');
 
     r.clear();
   });

@@ -1,8 +1,12 @@
 export {default as Backend} from './Backend.js';
+export {default as BackendError} from './BackendError.js';
 export {default as Subscription} from './Subscription.js';
 export {default as Emitter} from './Emitter.js';
-export {default as Observable} from './Observable.js';
 export {default as Model} from './Model.js';
-export {default as Component, html, safe, raw} from './components/Component.js';
+export {default as Component, html, safe, raw, reactive, effect} from './components/Component.js';
+export {Loop} from './components/LoopComponent.js';
+export {If} from './components/IfComponent.js';
+export {computed} from './Reactive.js';
+export {flushEffects, trigger, untrack, pauseTracking, resumeTracking} from './Effect.js';
 export {default as Router} from './Router.js';
 export * from './Util.js';

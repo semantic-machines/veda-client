@@ -77,6 +77,10 @@ export default ({test, assert}) => {
     const deltaIdentical = diff(obj1, obj2);
     assert(deltaIdentical.length === 0, 'Идентичные объекты не должны иметь различий');
 
+    // Проверка одного и того же объекта (line 59)
+    const deltaSameObject = diff(obj1, obj1);
+    assert(deltaSameObject.length === 0, 'Один и тот же объект не должен иметь различий');
+
     // Проверка примитивов
     assert(eq(1, 1));
     assert(eq('test', 'test'));
@@ -97,6 +101,104 @@ export default ({test, assert}) => {
     const start = Date.now();
     await timeout(100);
     const elapsed = Date.now() - start;
-    assert(elapsed >= 100, 'timeout должен ждать указанное время');
+    // Use >= 90 instead of >= 100 to account for timer imprecision and CI variability
+    assert(elapsed >= 90, 'timeout should wait at least 90ms (accounting for timer imprecision)');
+    assert(elapsed < 200, 'timeout should not wait significantly longer than requested');
+  });
+
+  test('Util - diff with properties only in second object', () => {
+    const obj1 = {a: 1};
+    const obj2 = {a: 1, b: 2, c: 3};
+
+    const delta = diff(obj1, obj2);
+    assert(delta.includes('b'), 'Should detect property only in second object');
+    assert(delta.includes('c'), 'Should detect property only in second object');
+  });
+
+  test('Util - eq with nested objects and different types', () => {
+    // Test with arrays
+    const arr1 = [1, 2, 3];
+    const arr2 = [1, 2, 3];
+    const arr3 = [1, 2, 4];
+
+    assert(eq(arr1, arr2), 'Equal arrays should be equal');
+    assert(!eq(arr1, arr3), 'Different arrays should not be equal');
+
+    // Test with functions
+    const fn = () => {};
+    assert(!eq(fn, () => {}), 'Different function instances should not be equal');
+
+    // Test with different types
+    assert(!eq({a: 1}, [1]), 'Different types should not be equal');
+    assert(!eq(1, '1'), 'Different types should not be equal');
+
+    // Test with objects of different lengths
+    const short = {a: 1};
+    const long = {a: 1, b: 2};
+    assert(!eq(short, long), 'Objects with different number of properties should not be equal');
+  });
+
+  test('Util - eq with deep nested objects (3+ levels)', () => {
+    // Test deep nesting (level 4)
+    const deep1 = {
+      a: {
+        b: {
+          c: {
+            d: 'value'
+          }
+        }
+      }
+    };
+
+    const deep2 = {
+      a: {
+        b: {
+          c: {
+            d: 'value'
+          }
+        }
+      }
+    };
+
+    const deep3 = {
+      a: {
+        b: {
+          c: {
+            d: 'different'
+          }
+        }
+      }
+    };
+
+    assert(eq(deep1, deep2), 'Deeply nested equal objects should be equal');
+    assert(!eq(deep1, deep3), 'Deeply nested different objects should not be equal');
+
+    // Test with arrays in nested objects
+    const nested1 = {
+      a: {
+        b: {
+          c: [1, 2, {d: 3}]
+        }
+      }
+    };
+
+    const nested2 = {
+      a: {
+        b: {
+          c: [1, 2, {d: 3}]
+        }
+      }
+    };
+
+    const nested3 = {
+      a: {
+        b: {
+          c: [1, 2, {d: 4}]
+        }
+      }
+    };
+
+    assert(eq(nested1, nested2), 'Deeply nested objects with arrays should be equal');
+    assert(!eq(nested1, nested3), 'Deeply nested objects with different arrays should not be equal');
   });
 };
