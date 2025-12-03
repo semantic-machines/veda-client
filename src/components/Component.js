@@ -62,6 +62,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
   #childrenRendered = [];
   #effects = []; // User-created effects via watch()
   #renderEffects = []; // Auto-created effects for {expressions}
+  #eventListeners = []; // Event listeners to cleanup on disconnect
   #isReactive = false; // Tracks if component uses reactive state
 
     async #setRendered() {
@@ -73,10 +74,15 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     constructor() {
       super();
       // Auto-create reactive state for all components with DevTools integration
+      // Use WeakRef to avoid preventing GC of component
+      const componentRef = new WeakRef(this);
       this.state = reactive({}, {
         onSet: (key, value, oldValue) => {
           if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
-            window.__VEDA_DEVTOOLS_HOOK__.trackComponentStateChange(this);
+            const component = componentRef.deref();
+            if (component) {
+              window.__VEDA_DEVTOOLS_HOOK__.trackComponentStateChange(component);
+            }
           }
         }
       });
@@ -114,11 +120,16 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         window.__VEDA_DEVTOOLS_HOOK__.untrackComponent(this);
       }
 
-      // Cleanup reactive effects
+      // Cleanup reactive effects and event listeners
       this.#cleanupEffects();
+      this.#cleanupEventListeners();
 
-      // Note: model.subscribe() called for backend push notifications,
-      // but local reactivity is handled via effect() - no model.on('modified') needed
+      // Clear state to release any model references
+      if (this.state) {
+        for (const key of Object.keys(this.state)) {
+          this.state[key] = null;
+        }
+      }
 
       const removed = this.removed();
       if (removed instanceof Promise) await removed;
@@ -137,6 +148,38 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       this.#effects = [];
       this.#renderEffects.forEach(cleanup => cleanup());
       this.#renderEffects = [];
+    }
+
+    /**
+     * Clean up all event listeners
+     */
+    #cleanupEventListeners() {
+      this.#eventListeners.forEach(({ node, eventName, handler }) => {
+        node.removeEventListener(eventName, handler);
+      });
+      this.#eventListeners = [];
+    }
+
+    /**
+     * Public method for external cleanup (used by If/Loop components)
+     */
+    _cleanupAllEventListeners() {
+      this.#cleanupEventListeners();
+    }
+
+    /**
+     * Get current count of render effects (for Loop component)
+     */
+    _getRenderEffectsCount() {
+      return this.#renderEffects.length;
+    }
+
+    /**
+     * Extract render effects added after startIndex (for Loop component)
+     */
+    _extractRenderEffects(startIndex) {
+      const extracted = this.#renderEffects.splice(startIndex);
+      return extracted;
     }
 
     // Internal field for storing innerHTML of child components
@@ -214,9 +257,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       if (this.state.model) {
         try {
           await this.state.model.load?.();
-        } catch (error) {
-          // Backend may not be configured (e.g., in tests)
-          console.warn('Model load failed:', error.message);
+        } catch {
+          // Backend may not be configured (e.g., in tests) - ignore
         }
         this.state.model.subscribe?.();
       }
@@ -467,7 +509,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     #findMethod (name) {
       // Search for method in current component
       if (typeof this[name] === 'function') {
-        return this[name];
+        return { method: this[name], context: this };
       }
 
       // Search up the component tree via parentElement and shadow DOM hosts
@@ -478,7 +520,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         depth++;
         const isComponent = parent.tagName?.includes('-') || parent.hasAttribute('is');
         if (isComponent && typeof parent[name] === 'function') {
-          return parent[name];
+          return { method: parent[name], context: parent };
         }
 
         // Try to go up: first try parentElement, if null try shadow host
@@ -555,7 +597,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       const attrName = attr.nodeName;
       const template = attr.nodeValue;
       const contextForReactivity = this._currentEvalContext || this;
-      const isReactive = contextForReactivity.state?.__isReactive || false;
+      const isReactive = contextForReactivity.__isReactive || contextForReactivity.state?.__isReactive || false;
 
       if (isReactive && /\{([^}]+)\}/g.test(template)) {
         const evalContext = this._currentEvalContext || this;
@@ -595,18 +637,22 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         const result = ExpressionParser.evaluate(expr, this, true);
 
         if (result && typeof result.value === 'function') {
-          node.addEventListener(eventName, (e) => {
+          const handler = (e) => {
             result.value.call(result.context, e, node);
-          });
+          };
+          node.addEventListener(eventName, handler);
+          this.#eventListeners.push({ node, eventName, handler });
         } else if (/^\w+$/.test(expr)) {
-          node.addEventListener(eventName, (e) => {
-            const method = this.#findMethod(expr);
-            if (method) {
-              method.call(this, e, node);
+          const handler = (e) => {
+            const found = this.#findMethod(expr);
+            if (found) {
+              found.method.call(found.context, e, node);
             } else {
               console.warn(`Method '${expr}' not found in component tree`);
             }
-          });
+          };
+          node.addEventListener(eventName, handler);
+          this.#eventListeners.push({ node, eventName, handler });
         } else {
           console.warn(`Handler expression '${expr}' did not resolve to a function`);
         }
@@ -619,15 +665,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       const attrName = attr.nodeName;
       const template = attr.nodeValue;
 
-      const booleanProps = {
-        'checked': 'checked', 'disabled': 'disabled', 'selected': 'selected',
-        'readonly': 'readOnly', 'required': 'required', 'multiple': 'multiple',
-        'hidden': 'hidden'
-      };
-      const propName = booleanProps[attrName];
-
       const contextForReactivity = this._currentEvalContext || this;
-      const isReactive = contextForReactivity.state?.__isReactive || false;
+      const isReactive = contextForReactivity.__isReactive || contextForReactivity.state?.__isReactive || false;
 
       if (isReactive && /\{([^}]+)\}/g.test(template)) {
         node.removeAttribute(attrName);
@@ -635,12 +674,12 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         const evalContext = this._currentEvalContext || this;
         const cleanup = effect(() => {
           const { value, hasNull } = this.#evaluateTemplate(template, evalContext);
-          this.#setAttributeOrProperty(node, attrName, propName, value, hasNull);
+          this.#setAttributeOrProperty(node, attrName, value, hasNull);
         });
         this.#renderEffects.push(cleanup);
       } else {
         const { value, hasNull } = this.#evaluateTemplate(template, this);
-        this.#setAttributeOrProperty(node, attrName, propName, value, hasNull, attr);
+        this.#setAttributeOrProperty(node, attrName, value, hasNull, attr);
       }
     }
 
@@ -654,15 +693,32 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       return { value, hasNull };
     }
 
-    #setAttributeOrProperty(node, attrName, propName, value, hasNull, attr = null) {
-      if (propName) {
-        const boolValue = !hasNull && value !== 'false' &&
-                         (value === 'true' || value === '' || value === attrName);
-        if (node[propName] !== boolValue) {
-          node[propName] = boolValue;
-          node.toggleAttribute(attrName, boolValue);
+    #setAttributeOrProperty(node, attrName, value, hasNull, attr = null) {
+      // Check if this attribute should be set as DOM property
+      // Properties like value, checked, disabled exist on DOM elements
+      // Exclude style/class - they have object types and need attribute handling
+      const shouldUseProperty = attrName in node &&
+                                !attrName.startsWith('data-') &&
+                                attrName !== 'style' &&
+                                attrName !== 'class';
+
+      if (shouldUseProperty) {
+        // Boolean properties need special handling
+        if (typeof node[attrName] === 'boolean') {
+          const boolValue = !hasNull && value !== 'false' &&
+                           (value === 'true' || value === '' || value === attrName || value === true);
+          if (node[attrName] !== boolValue) {
+            node[attrName] = boolValue;
+            node.toggleAttribute(attrName, boolValue);
+          }
+        } else {
+          // String/other properties (like value)
+          if (node[attrName] !== value) {
+            node[attrName] = value;
+          }
         }
       } else {
+        // Regular attribute
         if (attr) {
           attr.nodeValue = value;
         } else if (node.getAttribute(attrName) !== value) {

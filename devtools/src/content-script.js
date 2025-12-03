@@ -61,5 +61,3 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
   }
 });
 
-console.log('[Veda DevTools] Content script loaded');
-

@@ -699,11 +699,8 @@ export default function ({ test, assert }) {
   });
 
   test('LoopComponent - handles missing parent component context', async () => {
-    // Tests line 245: return null when parent component not found
+    // Tests line 94-96: return [] when parent component not found
     // This happens when Loop is used outside a component context
-    const originalWarn = console.warn;
-    let warnMessage = '';
-    console.warn = (...args) => { warnMessage = args.join(' '); };
 
     // Create Loop directly without parent component
     const LoopClass = LoopComponent(HTMLElement);
@@ -721,10 +718,9 @@ export default function ({ test, assert }) {
 
     await new Promise(resolve => setTimeout(resolve, 50));
 
-    // Should warn about missing context
-    assert(warnMessage.includes('Cannot find parent'), 'Should warn about missing parent context');
+    // Without parent context, items returns [], so no items should be rendered
+    assert.strictEqual(loop.querySelectorAll('div').length, 0, 'No items should be rendered without parent context');
 
-    console.warn = originalWarn;
     container.remove();
   });
 

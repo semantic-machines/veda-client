@@ -23,8 +23,10 @@ export default function LoopComponent(Class = HTMLElement) {
     #loopEffect = null;
     #itemsMap = new Map(); // key → {element, item, index, evalContext}
     #template = null;
+    #isDisconnected = false;  // Prevent double disconnectedCallback
 
     async connectedCallback() {
+      this.#isDisconnected = false;  // Reset on reconnect
       this._vedaParentContext = this._findParentComponent();
 
       // Extract and store template
@@ -54,11 +56,32 @@ export default function LoopComponent(Class = HTMLElement) {
     }
 
     disconnectedCallback() {
+      // Prevent double disconnectedCallback calls
+      if (this.#isDisconnected) return;
+      this.#isDisconnected = true;
+
       if (this.#loopEffect) {
         this.#loopEffect();
         this.#loopEffect = null;
       }
+      // Cleanup all item effects and release references
+      const itemName = this.getAttribute('as') || 'item';
+      for (const [, itemData] of this.#itemsMap) {
+        if (itemData.effects) {
+          itemData.effects.forEach(cleanup => cleanup());
+          itemData.effects = null;
+        }
+        if (itemData.evalContext) {
+          itemData.evalContext[itemName] = null;
+          itemData.evalContext.index = null;
+          itemData.evalContext = null;
+        }
+        itemData.element = null;
+        itemData.item = null;
+      }
       this.#itemsMap.clear();
+      this.#template = null;
+      this._vedaParentContext = null;
       super.disconnectedCallback?.();
     }
 
@@ -69,7 +92,6 @@ export default function LoopComponent(Class = HTMLElement) {
         const context = this._vedaParentContext;
 
         if (!context) {
-          console.warn('Loop: Cannot find parent component context');
           return [];
         }
 
@@ -106,9 +128,26 @@ export default function LoopComponent(Class = HTMLElement) {
       });
 
       // Remove items that are no longer in the list
-      for (const [key, {element}] of this.#itemsMap) {
+      for (const [key, itemData] of this.#itemsMap) {
         if (!newKeys.has(key)) {
-          element.remove();
+          // Cleanup effects created by Loop for this item
+          if (itemData.effects) {
+            itemData.effects.forEach(cleanup => cleanup());
+            itemData.effects = null;
+          }
+          // Clear evalContext to release model reference
+          if (itemData.evalContext) {
+            const itemName = this.getAttribute('as') || 'item';
+            itemData.evalContext[itemName] = null;
+            itemData.evalContext.index = null;
+            itemData.evalContext = null;
+          }
+          // Remove element - browser will call disconnectedCallback for custom elements
+          if (itemData.element) {
+            itemData.element.remove();
+          }
+          itemData.element = null;
+          itemData.item = null;
           this.#itemsMap.delete(key);
         }
       }
@@ -124,8 +163,8 @@ export default function LoopComponent(Class = HTMLElement) {
 
         if (!itemData) {
           // Create new element with index
-          const { element, evalContext } = this.#createItemElement(item, index);
-          itemData = { element, item, index, evalContext };
+          const { element, evalContext, effects } = this.#createItemElement(item, index);
+          itemData = { element, item, index, evalContext, effects };
           this.#itemsMap.set(key, itemData);
         } else {
           // Update existing element if item or index changed
@@ -195,10 +234,14 @@ export default function LoopComponent(Class = HTMLElement) {
         }
       }
 
+      // Capture effects created during _process for this specific element
+      const effectsStartIndex = this._getRenderEffectsCount();
       this._process(fragment, evalContext);
+      const itemEffects = this._extractRenderEffects(effectsStartIndex);
+
       element = fragment.firstElementChild;
 
-      return { element, evalContext };
+      return { element, evalContext, effects: itemEffects };
     }
 
     render() {

@@ -23,9 +23,12 @@ export default function IfComponent(Class = HTMLElement) {
     #ifEffect = null;
     #template = null;
     #currentContent = null;
+    #contentEffects = null;  // Effects for current content
     #placeholder = null;
+    #isDisconnected = false;  // Prevent double disconnectedCallback
 
     async connectedCallback() {
+      this.#isDisconnected = false;  // Reset on reconnect
       this.#placeholder = document.createComment('veda-if');
       this._vedaParentContext = this._findParentComponent();
 
@@ -56,11 +59,22 @@ export default function IfComponent(Class = HTMLElement) {
     }
 
     disconnectedCallback() {
+      // Prevent double disconnectedCallback calls
+      if (this.#isDisconnected) return;
+      this.#isDisconnected = true;
+
       if (this.#ifEffect) {
         this.#ifEffect();
         this.#ifEffect = null;
       }
+      // Cleanup content effects
+      if (this.#contentEffects) {
+        this.#contentEffects.forEach(cleanup => cleanup());
+        this.#contentEffects = null;
+      }
       this.#currentContent = null;
+      this.#template = null;
+      this._vedaParentContext = null;
       super.disconnectedCallback?.();
     }
 
@@ -71,7 +85,6 @@ export default function IfComponent(Class = HTMLElement) {
         const context = this._vedaParentContext;
 
         if (!context) {
-          console.warn('If: Cannot find parent component context');
           return false;
         }
 
@@ -91,7 +104,11 @@ export default function IfComponent(Class = HTMLElement) {
       tempContainer.appendChild(this.#template.cloneNode(true));
 
       const evalContext = this.#createEvalContext();
+
+      // Capture effects created during _process for this content
+      const effectsStartIndex = this._getRenderEffectsCount();
       this._process(tempContainer, evalContext);
+      this.#contentEffects = this._extractRenderEffects(effectsStartIndex);
 
       const fragment = document.createDocumentFragment();
       while (tempContainer.firstChild) {
@@ -103,7 +120,17 @@ export default function IfComponent(Class = HTMLElement) {
       this.#currentContent = Array.from(this.childNodes).filter(n => n !== this.#placeholder);
 
     } else if (!show && hasContent) {
-      this.#currentContent.forEach(node => node.remove());
+      // First cleanup effects created by If itself
+      if (this.#contentEffects) {
+        this.#contentEffects.forEach(cleanup => cleanup());
+        this.#contentEffects = null;
+      }
+      // Remove DOM nodes - browser will call disconnectedCallback for custom elements
+      this.#currentContent.forEach(node => {
+        if (node.parentNode) {
+          node.parentNode.removeChild(node);
+        }
+      });
       this.#currentContent = null;
       this.appendChild(this.#placeholder);
     }

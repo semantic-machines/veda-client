@@ -327,6 +327,12 @@ export default class Model extends Emitter(Object) {
         this.isNew(false);
         this.isSync(true);
         this.isLoaded(true);
+
+        // DevTools: update model info after load (now has rdf:type etc)
+        if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
+          window.__VEDA_DEVTOOLS_HOOK__.trackModelUpdate(this);
+        }
+
         return this;
       } finally {
         this[LOAD_PROMISE] = null;

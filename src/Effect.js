@@ -121,6 +121,10 @@ export function effect(fn, options = {}) {
 
   return () => {
     cleanup(effectFn);
+    // DevTools integration: untrack effect on cleanup
+    if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
+      window.__VEDA_DEVTOOLS_HOOK__.untrackEffect(effectFn);
+    }
   };
 }
 

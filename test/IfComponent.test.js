@@ -138,10 +138,7 @@ export default ({ test, assert }) => {
   });
 
   test('IfComponent - handles missing parent context', async () => {
-    // Tests line 97: return false when no parent context
-    const originalWarn = console.warn;
-    let warnMessage = '';
-    console.warn = (...args) => { warnMessage = args.join(' '); };
+    // Tests line 87-89: return false when no parent context (content not shown)
 
     // Use already registered veda-if or create new one
     const tagName = customElements.get('veda-if') ? 'veda-if' : 'veda-if-orphan2';
@@ -162,10 +159,9 @@ export default ({ test, assert }) => {
 
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Should warn about missing parent
-    assert.ok(warnMessage.includes('Cannot find parent'), 'Should warn about missing parent (line 97)');
+    // Without parent context, condition returns false, so content should not be shown
+    assert.strictEqual(ifEl.querySelector('span'), null, 'Content should not be shown without parent context');
 
-    console.warn = originalWarn;
     container.remove();
   });
 

@@ -8,10 +8,16 @@ const router = new Router();
 
 const TODO_LIST_ID = 'd:TodoList1';
 
+// Create TodoApp only once
+let todoApp = null;
+
 function showTodoApp() {
-  const component = document.createElement('todo-app-declarative');
-  component.setAttribute('about', TODO_LIST_ID);
-  main.replaceChildren(component);
+  if (!todoApp) {
+    todoApp = document.createElement('todo-app-declarative');
+    todoApp.setAttribute('about', TODO_LIST_ID);
+    main.replaceChildren(todoApp);
+  }
+  // Filter is handled inside TodoApp via hashchange listener
 }
 
 router.add('#/', showTodoApp);
