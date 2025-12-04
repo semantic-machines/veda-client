@@ -29,6 +29,8 @@ class DevToolsPanel extends Component(HTMLElement) {
     this.state.filterModels = '';
     this.state.filterEffects = '';
     this.state.selectedComponentId = null;
+    this.state.selectedModelId = null;
+    this.state.selectedEffectId = null;
 
     this.port = null;
   }
@@ -66,35 +68,44 @@ class DevToolsPanel extends Component(HTMLElement) {
   }
 
   setupResizer() {
-    const resizer = this.querySelector('.split-resizer');
-    const rightPanel = this.querySelector('.split-right');
-    if (!resizer || !rightPanel) return;
+    // Setup resizer for all split panels
+    const resizers = this.querySelectorAll('.split-resizer');
+    resizers.forEach(resizer => {
+      if (resizer._initialized) return;
+      resizer._initialized = true;
 
-    let isResizing = false;
-    let startX = 0;
-    let startWidth = 0;
+      const rightPanel = resizer.nextElementSibling;
+      if (!rightPanel) return;
 
-    resizer.addEventListener('mousedown', (e) => {
-      isResizing = true;
-      startX = e.clientX;
-      startWidth = rightPanel.offsetWidth;
-      document.body.style.cursor = 'col-resize';
-      document.body.style.userSelect = 'none';
-    });
+      let isResizing = false;
+      let startX = 0;
+      let startWidth = 0;
 
-    document.addEventListener('mousemove', (e) => {
-      if (!isResizing) return;
-      const diff = startX - e.clientX;
-      const newWidth = Math.max(200, Math.min(600, startWidth + diff));
-      rightPanel.style.width = newWidth + 'px';
-    });
+      resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startX = e.clientX;
+        startWidth = rightPanel.offsetWidth;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+      });
 
-    document.addEventListener('mouseup', () => {
-      if (isResizing) {
-        isResizing = false;
-        document.body.style.cursor = '';
-        document.body.style.userSelect = '';
-      }
+      const onMouseMove = (e) => {
+        if (!isResizing) return;
+        const diff = startX - e.clientX;
+        const newWidth = Math.max(200, Math.min(600, startWidth + diff));
+        rightPanel.style.width = newWidth + 'px';
+      };
+
+      const onMouseUp = () => {
+        if (isResizing) {
+          isResizing = false;
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+        }
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
     });
   }
 
@@ -382,6 +393,8 @@ class DevToolsPanel extends Component(HTMLElement) {
 
   switchTab(tab) {
     this.state.activeTab = tab;
+    // Setup resizers after DOM updates
+    requestAnimationFrame(() => this.setupResizer());
   }
 
   switchTabToComponents = () => this.switchTab('components');
@@ -394,14 +407,28 @@ class DevToolsPanel extends Component(HTMLElement) {
     this.state.filterModels = modelId;
     const model = this.state.models.find(m => m.modelId === modelId);
     if (model) {
-      const expandedItems = new Set(this.state.expandedItems);
-      expandedItems.add(`model-${model.id}`);
-      this.state.expandedItems = expandedItems;
+      this.state.selectedModelId = model.id;
+    }
+    requestAnimationFrame(() => this.setupResizer());
+  }
+
+  navigateToComponentModel = () => {
+    const modelId = this.selectedComponentModelId;
+    if (modelId) {
+      this.navigateToModel(modelId);
     }
   }
 
   selectComponent = (id) => {
     this.state.selectedComponentId = id;
+  }
+
+  selectModel = (id) => {
+    this.state.selectedModelId = id;
+  }
+
+  selectEffect = (id) => {
+    this.state.selectedEffectId = id;
   }
 
   handleFilterComponentsInput(e) {
@@ -414,6 +441,30 @@ class DevToolsPanel extends Component(HTMLElement) {
 
   handleFilterEffectsInput(e) {
     this.state.filterEffects = e.target.value;
+  }
+
+  clearFilterComponents = () => {
+    this.state.filterComponents = '';
+  }
+
+  clearFilterModels = () => {
+    this.state.filterModels = '';
+  }
+
+  clearFilterEffects = () => {
+    this.state.filterEffects = '';
+  }
+
+  get hasFilterComponents() {
+    return this.state.filterComponents.length > 0;
+  }
+
+  get hasFilterModels() {
+    return this.state.filterModels.length > 0;
+  }
+
+  get hasFilterEffects() {
+    return this.state.filterEffects.length > 0;
   }
 
   toggleExpand(type, id) {
@@ -570,6 +621,10 @@ class DevToolsPanel extends Component(HTMLElement) {
     return this.state.effects.filter(e => e.triggerCount > 10).length;
   }
 
+  get hasHotEffects() {
+    return this.hotEffectsCount > 0;
+  }
+
   // Selected component - returns empty object if none selected to avoid null errors
   get selectedComponent() {
     if (!this.state.selectedComponentId) return null;
@@ -642,16 +697,215 @@ class DevToolsPanel extends Component(HTMLElement) {
     return this.selectedComponentSafe.renderCount;
   }
 
+  // Selected Model
+  get selectedModel() {
+    if (!this.state.selectedModelId) return null;
+    return this.state.models.find(m => m.id === this.state.selectedModelId) || null;
+  }
+
+  get selectedModelSafe() {
+    return this.selectedModel || {
+      id: 0,
+      modelId: '',
+      type: '',
+      isLoaded: false,
+      properties: {},
+      createdAt: null,
+      updateCount: 0
+    };
+  }
+
+  get hasSelectedModel() {
+    return this.selectedModel !== null;
+  }
+
+  get noSelectedModel() {
+    return this.selectedModel === null;
+  }
+
+  get selectedModelInternalId() {
+    return this.selectedModelSafe.id;
+  }
+
+  get selectedModelUri() {
+    return this.selectedModelSafe.modelId || '';
+  }
+
+  get selectedModelType() {
+    return this.selectedModelSafe.type || 'Unknown';
+  }
+
+  get selectedModelIsLoaded() {
+    return this.selectedModelSafe.isLoaded;
+  }
+
+  get selectedModelCreatedAt() {
+    return this.formatTime(this.selectedModelSafe.createdAt);
+  }
+
+  get selectedModelUpdateCount() {
+    return this.selectedModelSafe.updateCount;
+  }
+
+  get selectedModelPropertyEntries() {
+    const model = this.selectedModel;
+    if (!model?.properties) return [];
+    return Object.entries(model.properties)
+      .filter(([key]) => key !== 'id')
+      .map(([key, value]) => {
+        const { text, links } = this.formatValueWithLinks(value);
+        return {
+          id: key,
+          key,
+          text,
+          links
+        };
+      });
+  }
+
+  formatValueWithLinks(value) {
+    if (value === null) return { text: 'null', links: [] };
+    if (value === undefined) return { text: 'undefined', links: [] };
+    if (typeof value === 'boolean') return { text: String(value), links: [] };
+    if (typeof value === 'number') return { text: String(value), links: [] };
+    if (typeof value === 'string') {
+      if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
+        return { text: new Date(value).toLocaleString(), links: [] };
+      }
+      if (value.includes('^^')) {
+        const [text, lang] = value.split('^^');
+        return { text: `"${text}" [${lang}]`, links: [] };
+      }
+      const str = value.length > 80 ? value.slice(0, 80) + '...' : value;
+      return { text: `"${str}"`, links: [] };
+    }
+    if (Array.isArray(value)) {
+      if (value.length === 0) return { text: '[]', links: [] };
+      const links = [];
+      const textParts = [];
+      for (const item of value) {
+        if (typeof item === 'object' && item._type === 'Model') {
+          links.push(item.id);
+        } else {
+          textParts.push(this.formatSingleValue(item));
+        }
+      }
+      return { text: textParts.join(', '), links };
+    }
+    if (typeof value === 'object') {
+      if (value._type === 'Model') {
+        return { text: '', links: [value.id] };
+      }
+      return { text: JSON.stringify(value).slice(0, 50), links: [] };
+    }
+    return { text: String(value), links: [] };
+  }
+
+  get selectedModelHasProperties() {
+    const entries = this.selectedModelPropertyEntries;
+    return !!(entries && entries.length);
+  }
+
+  // Selected Effect
+  get selectedEffect() {
+    if (!this.state.selectedEffectId) return null;
+    return this.state.effects.find(e => e.id === this.state.selectedEffectId) || null;
+  }
+
+  get selectedEffectSafe() {
+    return this.selectedEffect || {
+      id: 0,
+      createdAt: null,
+      triggerCount: 0,
+      lastTriggered: null,
+      source: ''
+    };
+  }
+
+  get hasSelectedEffect() {
+    return this.selectedEffect !== null;
+  }
+
+  get noSelectedEffect() {
+    return this.selectedEffect === null;
+  }
+
+  get selectedEffectId() {
+    return this.selectedEffectSafe.id;
+  }
+
+  get selectedEffectCreatedAt() {
+    return this.formatTime(this.selectedEffectSafe.createdAt);
+  }
+
+  get selectedEffectTriggerCount() {
+    return this.selectedEffectSafe.triggerCount;
+  }
+
+  get selectedEffectLastTriggered() {
+    return this.formatTime(this.selectedEffectSafe.lastTriggered);
+  }
+
+  get selectedEffectSource() {
+    return this.selectedEffectSafe.source || '';
+  }
+
+  get selectedEffectIsHot() {
+    return this.selectedEffectSafe.triggerCount > 10;
+  }
+
   formatValue(value) {
     if (value === null) return 'null';
     if (value === undefined) return 'undefined';
     if (typeof value === 'boolean') return String(value);
     if (typeof value === 'number') return String(value);
-    if (typeof value === 'string') return `"${value.length > 100 ? value.slice(0, 100) + '...' : value}"`;
-    if (Array.isArray(value)) return `Array(${value.length})`;
+    if (typeof value === 'string') {
+      // Check if it's a date
+      if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
+        return new Date(value).toLocaleString();
+      }
+      // Check if it's a localized string (contains ^^)
+      if (value.includes('^^')) {
+        const [text, lang] = value.split('^^');
+        return `"${text}" [${lang}]`;
+      }
+      const str = value.length > 80 ? value.slice(0, 80) + '...' : value;
+      return `"${str}"`;
+    }
+    if (Array.isArray(value)) {
+      if (value.length === 0) return '[]';
+      // Format array items
+      const items = value.slice(0, 5).map(v => this.formatSingleValue(v));
+      if (value.length > 5) {
+        items.push(`+${value.length - 5} more`);
+      }
+      return items.join(', ');
+    }
     if (typeof value === 'object') {
-      if (value._type === 'Model') return `Model(${value.id})`;
-      return JSON.stringify(value, null, 2);
+      if (value._type === 'Model') return value.id;
+      return JSON.stringify(value).slice(0, 50);
+    }
+    return String(value);
+  }
+
+  formatSingleValue(value) {
+    if (value === null) return 'null';
+    if (value === undefined) return 'undefined';
+    if (typeof value === 'boolean') return String(value);
+    if (typeof value === 'number') return String(value);
+    if (typeof value === 'string') {
+      if (/^\d{4}-\d{2}-\d{2}T/.test(value)) {
+        return new Date(value).toLocaleString();
+      }
+      if (value.includes('^^')) {
+        const [text, lang] = value.split('^^');
+        return `"${text}" [${lang}]`;
+      }
+      const str = value.length > 40 ? value.slice(0, 40) + '...' : value;
+      return `"${str}"`;
+    }
+    if (typeof value === 'object' && value._type === 'Model') {
+      return value.id;
     }
     return String(value);
   }
@@ -788,12 +1042,17 @@ class DevToolsPanel extends Component(HTMLElement) {
           <div class="panel-header">
             <h2 class="panel-title">Components</h2>
             <span class="panel-count">{this.state.components.length}</span>
+            <div class="filter-wrapper">
+              <input type="text"
+                     class="filter-input"
+                     placeholder="Filter..."
+                     value="{this.state.filterComponents}"
+                     oninput="{handleFilterComponentsInput}">
+              <${If} condition="{this.hasFilterComponents}">
+                <button class="filter-clear" onclick="{clearFilterComponents}" title="Clear">×</button>
+              </${If}>
+            </div>
           </div>
-          <input type="text"
-                 class="filter-input"
-                 placeholder="Filter..."
-                 value="{this.state.filterComponents}"
-                 oninput="{handleFilterComponentsInput}">
 
           <div class="items-list component-tree">
             <${If} condition="{this.hasFilteredComponents}">
@@ -850,7 +1109,7 @@ class DevToolsPanel extends Component(HTMLElement) {
             <${If} condition="{this.selectedComponentModelId}">
               <div class="details-property">
                 <span class="details-prop-key">model</span>
-                <span class="details-prop-value details-model-link">{this.selectedComponentModelId}</span>
+                <span class="details-prop-value details-model-link" onclick="{navigateToComponentModel}">{this.selectedComponentModelId}</span>
               </div>
             </${If}>
             <${Loop} items="{this.selectedComponentStateEntries}" key="id" as="entry">
@@ -893,61 +1152,200 @@ class DevToolsPanel extends Component(HTMLElement) {
 
   renderModels() {
     return html`
-      <div class="panel-header">
-        <h2 class="panel-title">Models</h2>
-        <span class="panel-count">{this.filteredModels.length} of {this.state.models.length}</span>
-      </div>
-      <input type="text"
-             class="filter-input"
-             placeholder="Filter by model ID or type..."
-             value="{this.state.filterModels}"
-             oninput="{handleFilterModelsInput}">
-
-      <div class="items-list">
-        <${If} condition="{this.hasFilteredModels}">
-          <${Loop} items="{this.filteredModels}" key="id" as="item">
-            <model-item :data="{item}"></model-item>
-          </${Loop}>
-        </${If}>
-
-        <${If} condition="{this.noFilteredModels}">
-          <div class="empty-state">
-            <div class="empty-icon">◇</div>
-            <div class="empty-text">No models found</div>
-            <div class="empty-hint">Models will appear here when components load RDF data</div>
+      <div class="split-panel">
+        <div class="split-left">
+          <div class="panel-header">
+            <h2 class="panel-title">Models</h2>
+            <span class="panel-count">{this.state.models.length}</span>
+            <div class="filter-wrapper">
+              <input type="text"
+                     class="filter-input"
+                     placeholder="Filter..."
+                     value="{this.state.filterModels}"
+                     oninput="{handleFilterModelsInput}">
+              <${If} condition="{this.hasFilterModels}">
+                <button class="filter-clear" onclick="{clearFilterModels}" title="Clear">×</button>
+              </${If}>
+            </div>
           </div>
-        </${If}>
+
+          <div class="items-list">
+            <${If} condition="{this.hasFilteredModels}">
+              <${Loop} items="{this.filteredModels}" key="id" as="item">
+                <model-item
+                  :data="{item}"
+                  :selected-id="{this.state.selectedModelId}"
+                  :on-select="{this.selectModel}">
+                </model-item>
+              </${Loop}>
+            </${If}>
+
+            <${If} condition="{this.noFilteredModels}">
+              <div class="empty-state">
+                <div class="empty-icon">◇</div>
+                <div class="empty-text">No models</div>
+              </div>
+            </${If}>
+          </div>
+        </div>
+
+        <div class="split-resizer" data-panel="models"></div>
+
+        <div class="split-right">
+          <${If} condition="{this.hasSelectedModel}">
+            ${this.renderModelDetails()}
+          </${If}>
+
+          <${If} condition="{this.noSelectedModel}">
+            <div class="empty-state">
+              <div class="empty-icon">←</div>
+              <div class="empty-text">Select a model</div>
+              <div class="empty-hint">Click on a model to see its properties</div>
+            </div>
+          </${If}>
+        </div>
+      </div>
+    `;
+  }
+
+  renderModelDetails() {
+    return html`
+      <div class="details-panel">
+        <div class="details-header">
+          <span class="details-tag">{this.selectedModelUri}</span>
+          <span class="details-id">#{this.selectedModelInternalId}</span>
+        </div>
+
+        <div class="details-section">
+          <div class="details-section-title">Info</div>
+          <div class="details-properties">
+            <div class="details-property">
+              <span class="details-prop-key">Type</span>
+              <span class="details-prop-value">{this.selectedModelType}</span>
+            </div>
+            <div class="details-property">
+              <span class="details-prop-key">Loaded</span>
+              <span class="details-prop-value">{this.selectedModelIsLoaded}</span>
+            </div>
+            <div class="details-property">
+              <span class="details-prop-key">Created</span>
+              <span class="details-prop-value">{this.selectedModelCreatedAt}</span>
+            </div>
+            <div class="details-property">
+              <span class="details-prop-key">Updates</span>
+              <span class="details-prop-value">{this.selectedModelUpdateCount}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="details-section">
+          <div class="details-section-title">Properties</div>
+          <div class="details-properties">
+            <${Loop} items="{this.selectedModelPropertyEntries}" key="id" as="entry">
+              <div class="details-property">
+                <span class="details-prop-key">{entry.key}:</span>
+                <property-value :text="{entry.text}" :links="{entry.links}"></property-value>
+              </div>
+            </${Loop}>
+          </div>
+        </div>
       </div>
     `;
   }
 
   renderEffects() {
     return html`
-      <div class="panel-header">
-        <h2 class="panel-title">Effects</h2>
-        <span class="panel-count">{this.filteredEffects.length} of {this.state.effects.length}</span>
-        <${If} condition="{this.hotEffectsCount > 0}">
-          <span class="badge badge-warning">{this.hotEffectsCount} hot</span>
-        </${If}>
+      <div class="split-panel">
+        <div class="split-left">
+          <div class="panel-header">
+            <h2 class="panel-title">Effects</h2>
+            <span class="panel-count">{this.state.effects.length}</span>
+            <${If} condition="{this.hasHotEffects}">
+              <span class="badge badge-warning">{this.hotEffectsCount} hot</span>
+            </${If}>
+            <div class="filter-wrapper">
+              <input type="text"
+                     class="filter-input"
+                     placeholder="Filter..."
+                     value="{this.state.filterEffects}"
+                     oninput="{handleFilterEffectsInput}">
+              <${If} condition="{this.hasFilterEffects}">
+                <button class="filter-clear" onclick="{clearFilterEffects}" title="Clear">×</button>
+              </${If}>
+            </div>
+          </div>
+
+          <div class="items-list">
+            <${If} condition="{this.hasFilteredEffects}">
+              <${Loop} items="{this.filteredEffects}" key="id" as="item">
+                <effect-item
+                  :data="{item}"
+                  :selected-id="{this.state.selectedEffectId}"
+                  :on-select="{this.selectEffect}">
+                </effect-item>
+              </${Loop}>
+            </${If}>
+
+            <${If} condition="{this.noFilteredEffects}">
+              <div class="empty-state">
+                <div class="empty-icon">⚡</div>
+                <div class="empty-text">No effects</div>
+              </div>
+            </${If}>
+          </div>
+        </div>
+
+        <div class="split-resizer" data-panel="effects"></div>
+
+        <div class="split-right">
+          <${If} condition="{this.hasSelectedEffect}">
+            ${this.renderEffectDetails()}
+          </${If}>
+
+          <${If} condition="{this.noSelectedEffect}">
+            <div class="empty-state">
+              <div class="empty-icon">←</div>
+              <div class="empty-text">Select an effect</div>
+              <div class="empty-hint">Click on an effect to see its details</div>
+            </div>
+          </${If}>
+        </div>
       </div>
-      <input type="text"
-             class="filter-input"
-             placeholder="Filter by effect ID..."
-             value="{this.state.filterEffects}"
-             oninput="{handleFilterEffectsInput}">
+    `;
+  }
 
-      <div class="items-list">
-        <${If} condition="{this.hasFilteredEffects}">
-          <${Loop} items="{this.filteredEffects}" key="id" as="item">
-            <effect-item :data="{item}"></effect-item>
-          </${Loop}>
-        </${If}>
+  renderEffectDetails() {
+    return html`
+      <div class="details-panel">
+        <div class="details-header">
+          <span class="details-tag">Effect #{this.selectedEffectId}</span>
+          <${If} condition="{this.selectedEffectIsHot}">
+            <span class="badge badge-warning">hot</span>
+          </${If}>
+        </div>
 
-        <${If} condition="{this.noFilteredEffects}">
-          <div class="empty-state">
-            <div class="empty-icon">⚡</div>
-            <div class="empty-text">No effects tracked</div>
-            <div class="empty-hint">Effects will appear here when reactive state changes</div>
+        <div class="details-section">
+          <div class="details-section-title">Info</div>
+          <div class="details-properties">
+            <div class="details-property">
+              <span class="details-prop-key">Created</span>
+              <span class="details-prop-value">{this.selectedEffectCreatedAt}</span>
+            </div>
+            <div class="details-property">
+              <span class="details-prop-key">Triggers</span>
+              <span class="details-prop-value">{this.selectedEffectTriggerCount}</span>
+            </div>
+            <div class="details-property">
+              <span class="details-prop-key">Last triggered</span>
+              <span class="details-prop-value">{this.selectedEffectLastTriggered}</span>
+            </div>
+          </div>
+        </div>
+
+        <${If} condition="{this.selectedEffectSource}">
+          <div class="details-section">
+            <div class="details-section-title">Source</div>
+            <pre class="effect-source">{this.selectedEffectSource}</pre>
           </div>
         </${If}>
       </div>
