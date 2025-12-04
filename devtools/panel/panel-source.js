@@ -76,6 +76,9 @@ class DevToolsPanel extends Component(HTMLElement) {
     // Keyboard shortcuts
     document.addEventListener('keydown', this.handleKeydown.bind(this));
 
+    // Setup resizer for split panels
+    this.setupResizer();
+
     // Hide highlight when DevTools panel closes
     window.addEventListener('beforeunload', this.handleBeforeUnload);
     window.addEventListener('pagehide', this.handleBeforeUnload);
@@ -88,6 +91,46 @@ class DevToolsPanel extends Component(HTMLElement) {
         tabId: chrome.devtools.inspectedWindow.tabId
       });
     }
+  }
+
+  setupResizer() {
+    // Use event delegation for resizers (works with dynamically created elements)
+    let isResizing = false;
+    let currentResizer = null;
+    let startX = 0;
+    let startWidth = 0;
+    let rightPanel = null;
+
+    document.addEventListener('mousedown', (e) => {
+      if (e.target.classList.contains('split-resizer')) {
+        isResizing = true;
+        currentResizer = e.target;
+        rightPanel = currentResizer.nextElementSibling;
+        if (rightPanel) {
+          startX = e.clientX;
+          startWidth = rightPanel.offsetWidth;
+          document.body.style.cursor = 'col-resize';
+          document.body.style.userSelect = 'none';
+        }
+      }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing || !rightPanel) return;
+      const diff = startX - e.clientX;
+      const newWidth = Math.max(200, Math.min(600, startWidth + diff));
+      rightPanel.style.width = newWidth + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        currentResizer = null;
+        rightPanel = null;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    });
   }
 
   disconnectedCallback() {
@@ -338,13 +381,13 @@ class DevToolsPanel extends Component(HTMLElement) {
     return html`
       <div class="toolbar">
         <button class="btn btn-primary" onclick="{handleRefresh}" title="Refresh (R)">
-          <span class="icon">↻</span> Refresh
+          ↻ Refresh
         </button>
         <button class="btn btn-secondary" onclick="{handleClear}" title="Clear all">
-          <span class="icon">✕</span> Clear
+          ✕ Clear
         </button>
         <button class="btn btn-secondary" onclick="{handleForceGC}" title="Force garbage collection">
-          <span class="icon">🗑</span> Force GC
+          ⌀ Force GC
         </button>
         <div class="toolbar-spacer"></div>
         <div class="stats">

@@ -52,7 +52,6 @@ export default class EffectItem extends Component(HTMLElement) {
 
     return html`
       <div class="{this.itemClass}" onclick="{handleSelect}">
-        <span class="effect-icon">⚡</span>
         <span class="list-item-title">Effect #{this.state.data.id}</span>
         <span class="{this.triggerBadgeClass}">{this.state.data.triggerCount}x</span>
         <${If} condition="{this.isHot}">

@@ -93,6 +93,21 @@ chrome.runtime.onConnect.addListener(function(port) {
       }
     }
 
+    // Handle profiling commands
+    if (message.type === 'start-profiling') {
+      const requestTabId = message.tabId;
+      if (requestTabId) {
+        chrome.tabs.sendMessage(requestTabId, { type: 'start-profiling' });
+      }
+    }
+
+    if (message.type === 'stop-profiling') {
+      const requestTabId = message.tabId;
+      if (requestTabId) {
+        chrome.tabs.sendMessage(requestTabId, { type: 'stop-profiling' });
+      }
+    }
+
     // Handle state editing
     if (message.type === 'set-component-state') {
       const requestTabId = message.tabId;

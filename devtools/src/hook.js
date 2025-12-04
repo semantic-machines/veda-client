@@ -180,6 +180,13 @@
 
         // Track render time
         const renderTime = startTime ? (performance.now() - startTime) : 0;
+
+        // Record for profiling
+        this.recordProfileEvent('render', {
+          tagName: data.tagName,
+          id,
+          time: renderTime
+        });
         if (!data.renderTimes) {
           data.renderTimes = [];
           data.totalRenderTime = 0;
@@ -535,6 +542,9 @@
       data.updateCount++;
       data.properties = this.serializeModelProperties(model);
 
+      // Record for profiling
+      this.recordProfileEvent('model-update', { id, type: data.type });
+
       // Update isLoaded status
       const isLoaded = typeof model.isLoaded === 'function' ? model.isLoaded() : false;
       data.isLoaded = isLoaded;
@@ -605,6 +615,9 @@
       if (data) {
         data.triggerCount++;
         data.lastTriggered = Date.now();
+
+        // Record for profiling
+        this.recordProfileEvent('effect', { id, triggerCount: data.triggerCount });
 
         // Only emit every N triggers to reduce noise
         if (data.triggerCount <= 10 || data.triggerCount % 5 === 0) {

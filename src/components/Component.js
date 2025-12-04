@@ -198,6 +198,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     removed () {}
 
     async update () {
+      const _renderStart = performance.now();
       try {
         // Clear old child promises to prevent memory leak
         this.#childrenRendered = [];
@@ -232,7 +233,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
         // Track render for DevTools
         if (window.__VEDA_DEVTOOLS_HOOK__) {
-          window.__VEDA_DEVTOOLS_HOOK__.trackComponentRender(this);
+          window.__VEDA_DEVTOOLS_HOOK__.trackComponentRender(this, _renderStart);
         }
 
         const post = this.post(fragment);

@@ -1485,12 +1485,15 @@
     }
 
     .performance-content {
-      padding: var(--space-md);
+      padding: 0;
     }
 
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      padding-bottom: var(--space-md);
+      margin-bottom: var(--space-md);
+      border-bottom: 1px solid var(--border);
       gap: var(--space-md);
       margin-bottom: var(--space-lg);
     }
@@ -1559,6 +1562,35 @@
     .perf-item-time {
       font-size: 11px;
       color: var(--accent-purple);
+    }
+
+    .profiling-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-md);
+      margin-top: var(--space-sm);
+    }
+
+    .profiling-stat {
+      text-align: center;
+      padding: var(--space-sm);
+      background: var(--surface-elevated);
+      border-radius: 4px;
+    }
+
+    .profiling-stat-value {
+      display: block;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--accent-cyan);
+    }
+
+    .profiling-stat-label {
+      display: block;
+      font-size: 10px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-top: 4px;
     }
 
     .profiling-result {
@@ -1746,6 +1778,11 @@
 
     .sub-updates {
       color: var(--accent-yellow);
+    }
+
+    .sub-time {
+      color: var(--accent-purple);
+      margin-left: var(--space-sm);
     }
 
     .sub-empty {
