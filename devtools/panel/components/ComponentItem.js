@@ -1,5 +1,5 @@
 /**
- * Component Item - Shows component with expandable state
+ * Component Item - Shows component in tree with expandable children
  */
 
 import { Component, html, Loop, If } from '../../../src/index.js';
@@ -9,105 +9,95 @@ export default class ComponentItem extends Component(HTMLElement) {
 
   constructor() {
     super();
-    this.state.expanded = false;
+    this.state.childrenExpanded = true;
+    this.state.data = null;
+    this.state.allComponents = [];
+    this.state.depth = 0;
+    this.state.selectedId = null;
+    this.state.onSelect = null;
   }
 
-  toggleExpand() {
-    this.state.expanded = !this.state.expanded;
+  toggleChildren(e) {
+    e.stopPropagation();
+    this.state.childrenExpanded = !this.state.childrenExpanded;
   }
 
-  get hasState() {
-    return this.state.data?.state && Object.keys(this.state.data.state).length > 0;
-  }
-
-  get stateEntries() {
-    if (!this.state.data?.state) return [];
-    return Object.entries(this.state.data.state).map(([key, value]) => ({
-      id: key,
-      key,
-      formattedValue: this.formatValueAsString(value)
-    }));
-  }
-
-  formatValueAsString(value) {
-    if (value === null) return 'null';
-    if (value === undefined) return 'undefined';
-    if (typeof value === 'boolean') return String(value);
-    if (typeof value === 'number') return String(value);
-    if (typeof value === 'string') return `"${value.length > 50 ? value.slice(0, 50) + '...' : value}"`;
-    if (Array.isArray(value)) return `Array(${value.length})`;
-    if (typeof value === 'object') {
-      if (value._type === 'Model') return value.id;
-      return `{${Object.keys(value).length} props}`;
+  handleSelect() {
+    if (this.state.onSelect && this.state.data) {
+      this.state.onSelect(this.state.data.id);
     }
-    return String(value);
   }
 
-  get expandIcon() {
-    return this.state.expanded ? '▼' : '▶';
+  get children() {
+    if (!this.state.data || !this.state.allComponents) return [];
+    const childIds = this.state.data.childIds || [];
+    return this.state.allComponents.filter(c => childIds.includes(c.id));
   }
 
-  get itemClass() {
-    return this.state.expanded ? 'item expanded' : 'item';
+  get hasChildren() {
+    return this.children.length > 0;
   }
 
-  formatTime(timestamp) {
-    if (!timestamp) return '-';
-    return new Date(timestamp).toLocaleTimeString('en-US', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
+  get toggleIcon() {
+    if (!this.hasChildren) return '·';
+    return this.state.childrenExpanded ? '▼' : '▶';
+  }
+
+  get isSelected() {
+    return this.state.data && this.state.data.id === this.state.selectedId;
+  }
+
+  get nodeClass() {
+    let cls = 'tree-node';
+    if (this.isSelected) cls += ' selected';
+    return cls;
+  }
+
+  get headerClass() {
+    let cls = 'tree-node-header';
+    if (this.isSelected) cls += ' selected';
+    return cls;
+  }
+
+  get indentStyle() {
+    const indent = (this.state.depth || 0) * 16;
+    return `padding-left: ${indent}px`;
+  }
+
+  get childDepth() {
+    return (this.state.depth || 0) + 1;
   }
 
   render() {
     if (!this.state.data) return '';
 
     return html`
-      <div class="{this.itemClass}">
-        <div class="item-header" onclick="{toggleExpand}">
-          <span class="expand-icon">{this.expandIcon}</span>
-          <span class="item-tag">&lt;{this.state.data.tagName}&gt;</span>
+      <div class="{this.nodeClass}">
+        <div class="{this.headerClass}" style="{this.indentStyle}" onclick="{handleSelect}">
+          <span class="tree-toggle" onclick="{toggleChildren}">{this.toggleIcon}</span>
+          <span class="tree-tag">&lt;{this.state.data.tagName}&gt;</span>
           <${If} condition="{this.state.data.modelId}">
-            <span class="item-model-id" title="Bound model">{this.state.data.modelId}</span>
+            <span class="tree-model-id">{this.state.data.modelId}</span>
           </${If}>
-          <span class="item-id">#{this.state.data.id}</span>
+          <span class="tree-id">#{this.state.data.id}</span>
         </div>
 
-        <${If} condition="{this.state.expanded}">
-          <div class="item-details">
-            <${If} condition="{this.hasState}">
-              <div class="detail-section">
-                <div class="detail-title">State</div>
-                <div class="properties-list">
-                  <${Loop} items="{this.stateEntries}" key="id" as="entry">
-                    <div class="property-row">
-                      <span class="property-key">{entry.key}:</span>
-                      <span class="property-value">{entry.formattedValue}</span>
-                    </div>
-                  </${Loop}>
-                </div>
-              </div>
-            </${If}>
-
-            <div class="detail-section">
-              <div class="detail-title">Info</div>
-              <div class="properties-list">
-                <div class="property-row">
-                  <span class="property-key">created:</span>
-                  <span class="property-value value-number">${this.formatTime(this.state.data?.createdAt)}</span>
-                </div>
-                <div class="property-row">
-                  <span class="property-key">renders:</span>
-                  <span class="property-value value-number">{this.state.data.renderCount}</span>
-                </div>
-              </div>
+        <${If} condition="{this.hasChildren}">
+          <${If} condition="{this.state.childrenExpanded}">
+            <div class="tree-children">
+              <${Loop} items="{this.children}" key="id" as="child">
+                <component-item
+                  :data="{child}"
+                  :all-components="{this.state.allComponents}"
+                  :depth="{this.childDepth}"
+                  :selected-id="{this.state.selectedId}"
+                  :on-select="{this.state.onSelect}">
+                </component-item>
+              </${Loop}>
             </div>
-          </div>
+          </${If}>
         </${If}>
       </div>
     `;
   }
 }
-

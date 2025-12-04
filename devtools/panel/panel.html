@@ -538,6 +538,249 @@
     .value-object { color: var(--value-object); }
     .value-unknown { color: var(--text-muted); }
 
+    /* ========================================================================
+       Component Tree Styles
+       ======================================================================== */
+    .component-tree {
+      gap: 0;
+    }
+
+    component-item {
+      display: block;
+    }
+
+    .tree-node {
+      /* Container for a single tree node */
+    }
+
+    .tree-node-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: 3px var(--space-sm);
+      cursor: default;
+      user-select: none;
+      border-radius: var(--radius-sm);
+    }
+
+    .tree-node-header:hover {
+      background: var(--bg-hover);
+    }
+
+    .tree-toggle {
+      color: var(--text-muted);
+      font-size: 10px;
+      width: 14px;
+      text-align: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .tree-toggle:hover {
+      color: var(--text-primary);
+    }
+
+    .tree-tag {
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-sm);
+    }
+
+    .tree-model-id {
+      color: var(--accent-purple);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-xs);
+      opacity: 0.8;
+    }
+
+    .tree-id {
+      color: var(--text-muted);
+      font-size: var(--font-size-xs);
+      margin-left: auto;
+    }
+
+    .tree-details-btn {
+      color: var(--text-muted);
+      font-size: var(--font-size-sm);
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      flex-shrink: 0;
+    }
+
+    .tree-details-btn:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .tree-node.details-open > .tree-node-header {
+      background: var(--bg-tertiary);
+    }
+
+    .tree-node-details {
+      background: var(--bg-secondary);
+      border-left: 2px solid var(--accent-blue);
+      margin-left: 7px;
+      padding: var(--space-sm) var(--space-md);
+      margin-bottom: var(--space-xs);
+    }
+
+    .tree-children {
+      /* Children container - no extra styles needed, indentation is inline */
+    }
+
+    .tree-node-header.selected {
+      background: var(--bg-selected);
+    }
+
+    .tree-node-header.selected:hover {
+      background: var(--bg-selected);
+    }
+
+    /* ========================================================================
+       Split Panel Layout
+       ======================================================================== */
+    .split-panel {
+      display: flex;
+      height: 100%;
+      gap: 0;
+    }
+
+    .split-left {
+      flex: 1;
+      min-width: 200px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding-right: var(--space-md);
+    }
+
+    .split-left .panel-header {
+      padding: 0 0 var(--space-sm) 0;
+    }
+
+    .split-left .items-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .split-resizer {
+      width: 5px;
+      background: var(--border-color);
+      cursor: col-resize;
+      flex-shrink: 0;
+      transition: background var(--transition-fast);
+    }
+
+    .split-resizer:hover,
+    .split-resizer:active {
+      background: var(--accent-blue);
+    }
+
+    .split-right {
+      width: 320px;
+      min-width: 200px;
+      max-width: 60%;
+      background: var(--bg-secondary);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .split-right .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ========================================================================
+       Details Panel
+       ======================================================================== */
+    .details-panel {
+      padding: var(--space-lg);
+    }
+
+    .details-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding-bottom: var(--space-lg);
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: var(--space-lg);
+    }
+
+    .details-tag {
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-lg);
+      font-weight: 500;
+    }
+
+    .details-id {
+      color: var(--text-muted);
+      font-size: var(--font-size-sm);
+      margin-left: auto;
+    }
+
+    .details-section {
+      margin-bottom: var(--space-md);
+    }
+
+    .details-section:last-child {
+      margin-bottom: var(--space-md);
+    }
+
+    .details-section-title {
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: var(--space-xs);
+    }
+
+    .details-model-link {
+      color: var(--accent-purple) !important;
+      font-family: var(--font-mono);
+      font-size: var(--font-size-sm);
+      cursor: pointer;
+    }
+
+    .details-model-link:hover {
+      text-decoration: underline;
+    }
+
+    .details-properties {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .details-property {
+      display: flex;
+      gap: var(--space-md);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-sm);
+      line-height: 1.4;
+    }
+
+    .details-prop-key {
+      color: var(--value-object);
+      min-width: 80px;
+      flex-shrink: 0;
+    }
+
+    .details-prop-value {
+      color: var(--text-primary);
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
     .value-uri.clickable {
       cursor: pointer;
       text-decoration: underline;

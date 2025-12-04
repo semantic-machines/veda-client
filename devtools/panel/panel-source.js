@@ -28,7 +28,7 @@ class DevToolsPanel extends Component(HTMLElement) {
     this.state.filterComponents = '';
     this.state.filterModels = '';
     this.state.filterEffects = '';
-    this.state.selectedItemId = null;
+    this.state.selectedComponentId = null;
 
     this.port = null;
   }
@@ -60,6 +60,42 @@ class DevToolsPanel extends Component(HTMLElement) {
 
     // Keyboard shortcuts
     document.addEventListener('keydown', this.handleKeydown.bind(this));
+
+    // Setup resizer after render
+    setTimeout(() => this.setupResizer(), 0);
+  }
+
+  setupResizer() {
+    const resizer = this.querySelector('.split-resizer');
+    const rightPanel = this.querySelector('.split-right');
+    if (!resizer || !rightPanel) return;
+
+    let isResizing = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    resizer.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startWidth = rightPanel.offsetWidth;
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      const diff = startX - e.clientX;
+      const newWidth = Math.max(200, Math.min(600, startWidth + diff));
+      rightPanel.style.width = newWidth + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isResizing) {
+        isResizing = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    });
   }
 
   disconnectedCallback() {
@@ -364,6 +400,10 @@ class DevToolsPanel extends Component(HTMLElement) {
     }
   }
 
+  selectComponent = (id) => {
+    this.state.selectedComponentId = id;
+  }
+
   handleFilterComponentsInput(e) {
     this.state.filterComponents = e.target.value;
   }
@@ -404,6 +444,23 @@ class DevToolsPanel extends Component(HTMLElement) {
       c.tagName.toLowerCase().includes(filter) ||
       (c.modelId && c.modelId.toLowerCase().includes(filter))
     );
+  }
+
+  // Returns only root components (those without parent)
+  get rootComponents() {
+    const filter = this.state.filterComponents.toLowerCase();
+    let components = this.state.components;
+
+    // If filtering, show flat list
+    if (filter) {
+      return components.filter(c =>
+        c.tagName.toLowerCase().includes(filter) ||
+        (c.modelId && c.modelId.toLowerCase().includes(filter))
+      );
+    }
+
+    // Otherwise, show only roots for tree view
+    return components.filter(c => c.parentId === null);
   }
 
   get filteredModels() {
@@ -511,6 +568,103 @@ class DevToolsPanel extends Component(HTMLElement) {
 
   get hotEffectsCount() {
     return this.state.effects.filter(e => e.triggerCount > 10).length;
+  }
+
+  // Selected component - returns empty object if none selected to avoid null errors
+  get selectedComponent() {
+    if (!this.state.selectedComponentId) return null;
+    return this.state.components.find(c => c.id === this.state.selectedComponentId) || null;
+  }
+
+  // Safe accessor that never returns null (for template bindings)
+  get selectedComponentSafe() {
+    return this.selectedComponent || {
+      id: 0,
+      tagName: '',
+      modelId: null,
+      parentId: null,
+      childIds: [],
+      state: {},
+      createdAt: null,
+      renderCount: 0
+    };
+  }
+
+  get hasSelectedComponent() {
+    return this.selectedComponent !== null;
+  }
+
+  get noSelectedComponent() {
+    return this.selectedComponent === null;
+  }
+
+  get selectedComponentStateEntries() {
+    const comp = this.selectedComponent;
+    if (!comp?.state) return [];
+    return Object.entries(comp.state).map(([key, value]) => ({
+      id: key,
+      key,
+      formattedValue: this.formatValue(value)
+    }));
+  }
+
+  get selectedComponentHasState() {
+    return this.selectedComponentStateEntries.length > 0;
+  }
+
+  get selectedComponentCreatedAt() {
+    const comp = this.selectedComponent;
+    return comp ? this.formatTime(comp.createdAt) : '-';
+  }
+
+  get selectedComponentChildCount() {
+    const comp = this.selectedComponent;
+    return comp?.childIds?.length || 0;
+  }
+
+  get selectedComponentTagName() {
+    return this.selectedComponentSafe.tagName;
+  }
+
+  get selectedComponentId() {
+    return this.selectedComponentSafe.id;
+  }
+
+  get selectedComponentModelId() {
+    return this.selectedComponentSafe.modelId;
+  }
+
+  get selectedComponentParentId() {
+    return this.selectedComponentSafe.parentId;
+  }
+
+  get selectedComponentRenderCount() {
+    return this.selectedComponentSafe.renderCount;
+  }
+
+  formatValue(value) {
+    if (value === null) return 'null';
+    if (value === undefined) return 'undefined';
+    if (typeof value === 'boolean') return String(value);
+    if (typeof value === 'number') return String(value);
+    if (typeof value === 'string') return `"${value.length > 100 ? value.slice(0, 100) + '...' : value}"`;
+    if (Array.isArray(value)) return `Array(${value.length})`;
+    if (typeof value === 'object') {
+      if (value._type === 'Model') return `Model(${value.id})`;
+      return JSON.stringify(value, null, 2);
+    }
+    return String(value);
+  }
+
+  getValueClass(value) {
+    if (value === null) return 'value-null';
+    if (value === undefined) return 'value-undefined';
+    if (typeof value === 'boolean') return 'value-boolean';
+    if (typeof value === 'number') return 'value-number';
+    if (typeof value === 'string') return 'value-string';
+    if (Array.isArray(value)) return 'value-array';
+    if (typeof value === 'object') return 'value-object';
+    return 'value-unknown';
   }
 
   // ===========================================================================
@@ -629,30 +783,110 @@ class DevToolsPanel extends Component(HTMLElement) {
 
   renderComponents() {
     return html`
-      <div class="panel-header">
-        <h2 class="panel-title">Components</h2>
-        <span class="panel-count">{this.filteredComponents.length} of {this.state.components.length}</span>
-      </div>
-      <input type="text"
-             class="filter-input"
-             placeholder="Filter by tag name or model ID..."
-             value="{this.state.filterComponents}"
-             oninput="{handleFilterComponentsInput}">
-
-      <div class="items-list">
-        <${If} condition="{this.hasFilteredComponents}">
-          <${Loop} items="{this.filteredComponents}" key="id" as="item">
-            <component-item :data="{item}"></component-item>
-          </${Loop}>
-        </${If}>
-
-        <${If} condition="{this.noFilteredComponents}">
-          <div class="empty-state">
-            <div class="empty-icon">◆</div>
-            <div class="empty-text">No components found</div>
-            <div class="empty-hint">Components will appear here when your app renders Veda components</div>
+      <div class="split-panel">
+        <div class="split-left">
+          <div class="panel-header">
+            <h2 class="panel-title">Components</h2>
+            <span class="panel-count">{this.state.components.length}</span>
           </div>
-        </${If}>
+          <input type="text"
+                 class="filter-input"
+                 placeholder="Filter..."
+                 value="{this.state.filterComponents}"
+                 oninput="{handleFilterComponentsInput}">
+
+          <div class="items-list component-tree">
+            <${If} condition="{this.hasFilteredComponents}">
+              <${Loop} items="{this.rootComponents}" key="id" as="item">
+                <component-item
+                  :data="{item}"
+                  :all-components="{this.state.components}"
+                  :depth="{0}"
+                  :selected-id="{this.state.selectedComponentId}"
+                  :on-select="{this.selectComponent}">
+                </component-item>
+              </${Loop}>
+            </${If}>
+
+            <${If} condition="{this.noFilteredComponents}">
+              <div class="empty-state">
+                <div class="empty-icon">◆</div>
+                <div class="empty-text">No components</div>
+              </div>
+            </${If}>
+          </div>
+        </div>
+
+        <div class="split-resizer"></div>
+
+        <div class="split-right">
+          <${If} condition="{this.hasSelectedComponent}">
+            ${this.renderComponentDetails()}
+          </${If}>
+
+          <${If} condition="{this.noSelectedComponent}">
+            <div class="empty-state">
+              <div class="empty-icon">←</div>
+              <div class="empty-text">Select a component</div>
+              <div class="empty-hint">Click on a component in the tree to see its details</div>
+            </div>
+          </${If}>
+        </div>
+      </div>
+    `;
+  }
+
+  renderComponentDetails() {
+    return html`
+      <div class="details-panel">
+        <div class="details-header">
+          <span class="details-tag">&lt;{this.selectedComponentTagName}&gt;</span>
+          <span class="details-id">#{this.selectedComponentId}</span>
+        </div>
+
+        <div class="details-section">
+          <div class="details-section-title">State</div>
+          <div class="details-properties">
+            <${If} condition="{this.selectedComponentModelId}">
+              <div class="details-property">
+                <span class="details-prop-key">model</span>
+                <span class="details-prop-value details-model-link">{this.selectedComponentModelId}</span>
+              </div>
+            </${If}>
+            <${Loop} items="{this.selectedComponentStateEntries}" key="id" as="entry">
+              <div class="details-property">
+                <span class="details-prop-key">{entry.key}</span>
+                <span class="details-prop-value">{entry.formattedValue}</span>
+              </div>
+            </${Loop}>
+          </div>
+        </div>
+
+        <div class="details-section">
+          <div class="details-section-title">Info</div>
+          <div class="details-properties">
+            <div class="details-property">
+              <span class="details-prop-key">Created</span>
+              <span class="details-prop-value">{this.selectedComponentCreatedAt}</span>
+            </div>
+            <div class="details-property">
+              <span class="details-prop-key">Renders</span>
+              <span class="details-prop-value">{this.selectedComponentRenderCount}</span>
+            </div>
+            <${If} condition="{this.selectedComponentParentId}">
+              <div class="details-property">
+                <span class="details-prop-key">Parent ID</span>
+                <span class="details-prop-value">#{this.selectedComponentParentId}</span>
+              </div>
+            </${If}>
+            <${If} condition="{this.selectedComponentChildCount}">
+              <div class="details-property">
+                <span class="details-prop-key">Children</span>
+                <span class="details-prop-value">{this.selectedComponentChildCount} components</span>
+              </div>
+            </${If}>
+          </div>
+        </div>
       </div>
     `;
   }
