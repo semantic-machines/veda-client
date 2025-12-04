@@ -112,12 +112,8 @@ export default class ComponentItem extends Component(HTMLElement) {
               <span class="tree-model-id">{this.state.data.modelId}</span>
             </${If}>
           </span>
-          <${If} condition="{this.hasRenders}">
-            <span class="tree-stats">
-              <span class="tree-renders">{this.renderCount}x</span>
-              <span class="tree-time">{this.avgTime}</span>
-            </span>
-          </${If}>
+          <span class="tree-renders">{this.renderCount}x</span>
+          <span class="tree-time">{this.avgTime}</span>
         </div>
 
         <${If} condition="{this.hasChildren}">

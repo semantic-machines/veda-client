@@ -142,12 +142,6 @@ export default class ComponentDetails extends Component(HTMLElement) {
               <span class="details-prop-key">Renders</span>
               <span class="details-prop-value">{this.renderCount}</span>
             </div>
-            <${If} condition="{this.hasParentId}">
-              <div class="details-property">
-                <span class="details-prop-key">Parent ID</span>
-                <span class="details-prop-value">##{this.parentId}</span>
-              </div>
-            </${If}>
             <${If} condition="{this.hasChildren}">
               <div class="details-property">
                 <span class="details-prop-key">Children</span>

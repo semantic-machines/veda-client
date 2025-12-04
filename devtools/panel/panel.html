@@ -613,7 +613,8 @@
     }
 
     .tree-node-header {
-      display: flex;
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
       align-items: center;
       gap: var(--space-sm);
       padding: 3px var(--space-sm);
@@ -626,8 +627,8 @@
       display: flex;
       align-items: center;
       gap: var(--space-sm);
-      flex: 1;
       min-width: 0;
+      overflow: hidden;
     }
 
     .tree-node-header:hover {
@@ -664,19 +665,18 @@
       max-width: 150px;
     }
 
-    .tree-stats {
-      display: flex;
-      gap: var(--space-sm);
-      font-size: var(--font-size-xs);
-      flex-shrink: 0;
-    }
-
     .tree-renders {
       color: var(--text-muted);
+      font-size: var(--font-size-xs);
+      text-align: right;
+      min-width: 30px;
     }
 
     .tree-time {
       color: var(--text-muted);
+      font-size: var(--font-size-xs);
+      text-align: right;
+      min-width: 50px;
     }
 
     .tree-details-btn {
