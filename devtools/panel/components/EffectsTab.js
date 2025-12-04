@@ -37,6 +37,14 @@ export default class EffectsTab extends Component(HTMLElement) {
     return this.hotEffectsCount > 0;
   }
 
+  get noEffects() {
+    return !this.hasEffects;
+  }
+
+  get noSelected() {
+    return !this.hasSelected;
+  }
+
   // Selected effect
   get selectedEffect() {
     if (!this.state.selectedId) return null;
@@ -117,7 +125,7 @@ export default class EffectsTab extends Component(HTMLElement) {
               </${Loop}>
             </${If}>
 
-            <${If} condition="{!this.hasEffects}">
+            <${If} condition="{this.noEffects}">
               <div class="empty-state">
                 <div class="empty-icon">⚡</div>
                 <div class="empty-text">No effects</div>
@@ -165,7 +173,7 @@ export default class EffectsTab extends Component(HTMLElement) {
             </div>
           </${If}>
 
-          <${If} condition="{!this.hasSelected}">
+          <${If} condition="{this.noSelected}">
             <div class="empty-state">
               <div class="empty-icon">←</div>
               <div class="empty-text">Select an effect</div>

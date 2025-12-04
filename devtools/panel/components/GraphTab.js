@@ -16,6 +16,10 @@ export default class GraphTab extends Component(HTMLElement) {
     return this.state.nodes.length > 0;
   }
 
+  get noNodes() {
+    return !this.hasNodes;
+  }
+
   render() {
     return html`
       <div class="panel-header">
@@ -28,7 +32,7 @@ export default class GraphTab extends Component(HTMLElement) {
           <graph-view :nodes="{this.state.nodes}" :edges="{this.state.edges}"></graph-view>
         </${If}>
 
-        <${If} condition="{!this.hasNodes}">
+        <${If} condition="{this.noNodes}">
           <div class="empty-state">
             <div class="empty-icon">◈</div>
             <div class="empty-text">No dependencies</div>

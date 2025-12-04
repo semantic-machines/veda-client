@@ -42,6 +42,14 @@ export default class ComponentsTab extends Component(HTMLElement) {
     return this.state.filter.length > 0;
   }
 
+  get noComponents() {
+    return !this.hasComponents;
+  }
+
+  get noSelected() {
+    return !this.hasSelected;
+  }
+
   // Selected component
   get selectedComponent() {
     if (!this.state.selectedId) return null;
@@ -145,7 +153,7 @@ export default class ComponentsTab extends Component(HTMLElement) {
               </${Loop}>
             </${If}>
 
-            <${If} condition="{!this.hasComponents}">
+            <${If} condition="{this.noComponents}">
               <div class="empty-state">
                 <div class="empty-icon">◆</div>
                 <div class="empty-text">No components</div>
@@ -210,7 +218,7 @@ export default class ComponentsTab extends Component(HTMLElement) {
             </div>
           </${If}>
 
-          <${If} condition="{!this.hasSelected}">
+          <${If} condition="{this.noSelected}">
             <div class="empty-state">
               <div class="empty-icon">←</div>
               <div class="empty-text">Select a component</div>

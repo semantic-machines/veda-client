@@ -22,8 +22,20 @@ export default class SubscriptionsTab extends Component(HTMLElement) {
     return this.state.history.length > 0;
   }
 
+  get noActive() {
+    return !this.hasActive;
+  }
+
+  get noHistory() {
+    return !this.hasHistory;
+  }
+
   get reversedHistory() {
-    return [...this.state.history].reverse().slice(0, 50);
+    return [...this.state.history].reverse().slice(0, 50).map((event, index) => ({
+      ...event,
+      _key: `${event.timestamp}-${index}`,
+      _formattedTime: formatRelativeTime(event.timestamp)
+    }));
   }
 
   get wsStatusClass() {
@@ -32,10 +44,6 @@ export default class SubscriptionsTab extends Component(HTMLElement) {
 
   get wsStatusText() {
     return this.state.wsConnected ? 'WebSocket Connected' : 'WebSocket Disconnected';
-  }
-
-  formatTime(timestamp) {
-    return formatRelativeTime(timestamp);
   }
 
   render() {
@@ -64,7 +72,7 @@ export default class SubscriptionsTab extends Component(HTMLElement) {
               </${Loop}>
             </div>
           </${If}>
-          <${If} condition="{!this.hasActive}">
+          <${If} condition="{this.noActive}">
             <div class="sub-empty">No active subscriptions</div>
           </${If}>
         </div>
@@ -73,16 +81,16 @@ export default class SubscriptionsTab extends Component(HTMLElement) {
           <h3 class="sub-section-title">History</h3>
           <${If} condition="{this.hasHistory}">
             <div class="sub-history">
-              <${Loop} items="{this.reversedHistory}" key="timestamp" as="event">
+              <${Loop} items="{this.reversedHistory}" key="_key" as="event">
                 <div class="history-item {event.type}">
                   <span class="history-type">{event.type}</span>
                   <span class="history-id">{event.id}</span>
-                  <span class="history-time">{this.formatTime(event.timestamp)}</span>
+                  <span class="history-time">{event._formattedTime}</span>
                 </div>
               </${Loop}>
             </div>
           </${If}>
-          <${If} condition="{!this.hasHistory}">
+          <${If} condition="{this.noHistory}">
             <div class="sub-empty">No subscription history</div>
           </${If}>
         </div>

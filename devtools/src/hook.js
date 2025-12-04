@@ -1310,6 +1310,39 @@
           hook.wsAddress = Subscription._address;
         }
 
+        // Sync existing subscriptions
+        if (Subscription._subscriptions && Subscription._subscriptions.size > 0) {
+          for (const [id, subscription] of Subscription._subscriptions.entries()) {
+            const updateCounter = subscription[1] || 0;
+            hook.trackSubscription(id, updateCounter);
+          }
+          console.log('[Veda DevTools] Synced', Subscription._subscriptions.size, 'existing subscriptions');
+        }
+
+        // Intercept _receive to track updates
+        const originalReceive = Subscription._receive;
+        if (originalReceive) {
+          Subscription._receive = function(event) {
+            const msg = event.data;
+            if (msg && msg !== '') {
+              const ids = (msg.indexOf('=') === 0 ? msg.substr(1) : msg).split(',');
+              for (const pairStr of ids) {
+                const pair = pairStr.split('=');
+                const [id, updateCounter] = pair;
+                if (id && Subscription._subscriptions.has(id)) {
+                  hook.trackSubscriptionUpdate(id, Number(updateCounter));
+                }
+              }
+            }
+            return originalReceive.call(Subscription, event);
+          };
+
+          // Re-assign onmessage to use new intercepted _receive
+          if (Subscription._socket) {
+            Subscription._socket.onmessage = Subscription._receive;
+          }
+        }
+
         // Monitor socket state changes
         const originalConnect = Subscription._connect?.bind(Subscription);
         if (originalConnect) {

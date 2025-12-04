@@ -97,3 +97,8 @@ export default class Subscription {
     return Subscription._subscriptions.size;
   }
 }
+
+// Expose for DevTools
+if (typeof window !== 'undefined') {
+  window.__VEDA_SUBSCRIPTION__ = Subscription;
+}

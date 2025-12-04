@@ -68,6 +68,14 @@ export default class ModelsTab extends Component(HTMLElement) {
     return this.state.filter.length > 0;
   }
 
+  get noModels() {
+    return !this.hasModels;
+  }
+
+  get noSelected() {
+    return !this.hasSelected;
+  }
+
   // Selected model
   get selectedModel() {
     if (!this.state.selectedId) return null;
@@ -157,7 +165,7 @@ export default class ModelsTab extends Component(HTMLElement) {
               </${Loop}>
             </${If}>
 
-            <${If} condition="{!this.hasModels}">
+            <${If} condition="{this.noModels}">
               <div class="empty-state">
                 <div class="empty-icon">◇</div>
                 <div class="empty-text">No models</div>
@@ -212,7 +220,7 @@ export default class ModelsTab extends Component(HTMLElement) {
             </div>
           </${If}>
 
-          <${If} condition="{!this.hasSelected}">
+          <${If} condition="{this.noSelected}">
             <div class="empty-state">
               <div class="empty-icon">←</div>
               <div class="empty-text">Select a model</div>

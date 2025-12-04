@@ -15,6 +15,10 @@ export default class TimelineTab extends Component(HTMLElement) {
     return this.state.timeline.length > 0;
   }
 
+  get noEvents() {
+    return !this.hasEvents;
+  }
+
   get reversedTimeline() {
     return [...this.state.timeline].reverse();
   }
@@ -33,7 +37,7 @@ export default class TimelineTab extends Component(HTMLElement) {
           </${Loop}>
         </${If}>
 
-        <${If} condition="{!this.hasEvents}">
+        <${If} condition="{this.noEvents}">
           <div class="empty-state">
             <div class="empty-icon">◷</div>
             <div class="empty-text">No events yet</div>
