@@ -325,7 +325,6 @@ class DevToolsPanel extends Component(HTMLElement) {
   switchTabToModels = () => this.switchTab('models');
   switchTabToEffects = () => this.switchTab('effects');
   switchTabToTimeline = () => this.switchTab('timeline');
-  switchTabToPerformance = () => this.switchTab('performance');
   switchTabToGraph = () => this.switchTab('graph');
   switchTabToSubscriptions = () => this.switchTab('subscriptions');
 
@@ -358,7 +357,6 @@ class DevToolsPanel extends Component(HTMLElement) {
   get isModelsTabActive() { return this.state.activeTab === 'models'; }
   get isEffectsTabActive() { return this.state.activeTab === 'effects'; }
   get isTimelineTabActive() { return this.state.activeTab === 'timeline'; }
-  get isPerformanceTabActive() { return this.state.activeTab === 'performance'; }
   get isGraphTabActive() { return this.state.activeTab === 'graph'; }
   get isSubscriptionsTabActive() { return this.state.activeTab === 'subscriptions'; }
 
@@ -366,7 +364,6 @@ class DevToolsPanel extends Component(HTMLElement) {
   get modelsTabClass() { return this.isModelsTabActive ? 'tab active' : 'tab'; }
   get effectsTabClass() { return this.isEffectsTabActive ? 'tab active' : 'tab'; }
   get timelineTabClass() { return this.isTimelineTabActive ? 'tab active' : 'tab'; }
-  get performanceTabClass() { return this.isPerformanceTabActive ? 'tab active' : 'tab'; }
   get graphTabClass() { return this.isGraphTabActive ? 'tab active' : 'tab'; }
   get subscriptionsTabClass() { return this.isSubscriptionsTabActive ? 'tab active' : 'tab'; }
 
@@ -435,10 +432,6 @@ class DevToolsPanel extends Component(HTMLElement) {
             <span class="tab-label">Timeline</span>
             <span class="tab-count">{this.state.timeline.length}</span>
           </div>
-          <div class="{this.performanceTabClass}" onclick="{switchTabToPerformance}">
-            <span class="tab-icon">⏱</span>
-            <span class="tab-label">Performance</span>
-          </div>
           <div class="{this.graphTabClass}" onclick="{switchTabToGraph}">
             <span class="tab-icon">◈</span>
             <span class="tab-label">Graph</span>
@@ -478,9 +471,6 @@ class DevToolsPanel extends Component(HTMLElement) {
           </${If}>
           <${If} condition="{this.isTimelineTabActive}">
             <timeline-tab :timeline="{this.state.timeline}"></timeline-tab>
-          </${If}>
-          <${If} condition="{this.isPerformanceTabActive}">
-            <performance-panel :components="{this.state.components}"></performance-panel>
           </${If}>
           <${If} condition="{this.isGraphTabActive}">
             <graph-tab :nodes="{this.state.graphNodes}" :edges="{this.state.graphEdges}"></graph-tab>

@@ -351,6 +351,20 @@
       font-size: var(--font-size-sm);
     }
 
+    .header-stats {
+      display: flex;
+      gap: var(--space-md);
+    }
+
+    .header-stat {
+      color: var(--text-muted);
+      font-size: var(--font-size-sm);
+    }
+
+    .panel-header .filter-wrapper + .header-stats {
+      margin-left: auto;
+    }
+
     /* Filter input */
     .filter-wrapper {
       position: relative;
@@ -591,10 +605,11 @@
 
     component-item {
       display: block;
+      width: 100%;
     }
 
     .tree-node {
-      /* Container for a single tree node */
+      width: 100%;
     }
 
     .tree-node-header {
@@ -605,6 +620,14 @@
       cursor: default;
       user-select: none;
       border-radius: var(--radius-sm);
+    }
+
+    .tree-content {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      flex: 1;
+      min-width: 0;
     }
 
     .tree-node-header:hover {
@@ -635,12 +658,25 @@
       font-family: var(--font-mono);
       font-size: var(--font-size-xs);
       opacity: 0.8;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 150px;
     }
 
-    .tree-id {
-      color: var(--text-muted);
+    .tree-stats {
+      display: flex;
+      gap: var(--space-sm);
       font-size: var(--font-size-xs);
-      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .tree-renders {
+      color: var(--text-muted);
+    }
+
+    .tree-time {
+      color: var(--text-muted);
     }
 
     .tree-details-btn {
@@ -674,7 +710,7 @@
     }
 
     .tree-children {
-      /* Children container - no extra styles needed, indentation is inline */
+      width: 100%;
     }
 
     .tree-node-header.selected {

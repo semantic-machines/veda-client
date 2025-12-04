@@ -2,7 +2,7 @@
  * Components Tab - tree view of all components
  */
 import { Component, html, Loop, If } from '../../../src/index.js';
-import { formatTime, formatValue } from '../utils/formatters.js';
+import { formatTime, formatValue, formatRenderTime } from '../utils/formatters.js';
 
 export default class ComponentsTab extends Component(HTMLElement) {
   static tag = 'components-tab';
@@ -48,6 +48,19 @@ export default class ComponentsTab extends Component(HTMLElement) {
 
   get noSelected() {
     return !this.hasSelected;
+  }
+
+  // Performance stats
+  get totalRenders() {
+    return this.state.components.reduce((sum, c) => sum + (c.renderCount || 0), 0);
+  }
+
+  get totalRenderTime() {
+    return this.state.components.reduce((sum, c) => sum + (c.totalRenderTime || 0), 0);
+  }
+
+  get formattedTotalTime() {
+    return formatRenderTime(this.totalRenderTime);
   }
 
   // Selected component
@@ -137,6 +150,10 @@ export default class ComponentsTab extends Component(HTMLElement) {
               <${If} condition="{this.hasFilter}">
                 <button class="filter-clear" onclick="{clearFilter}" title="Clear">×</button>
               </${If}>
+            </div>
+            <div class="header-stats">
+              <span class="header-stat">{this.totalRenders} renders</span>
+              <span class="header-stat">{this.formattedTotalTime}</span>
             </div>
           </div>
 

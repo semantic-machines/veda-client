@@ -32,8 +32,8 @@ export function formatDuration(ms) {
 
 export function formatRenderTime(time) {
   if (!time) return '0ms';
-  if (time < 1) return time.toFixed(3) + 'ms';
-  return time.toFixed(2) + 'ms';
+  if (time < 1) return parseFloat(time.toFixed(2)) + 'ms';
+  return parseFloat(time.toFixed(1)) + 'ms';
 }
 
 export function formatValue(value) {

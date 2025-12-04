@@ -3,6 +3,7 @@
  */
 
 import { Component, html, Loop, If } from '../../../src/index.js';
+import { formatRenderTime } from '../utils/formatters.js';
 
 export default class ComponentItem extends Component(HTMLElement) {
   static tag = 'component-item';
@@ -82,6 +83,18 @@ export default class ComponentItem extends Component(HTMLElement) {
     return (this.state.depth || 0) + 1;
   }
 
+  get renderCount() {
+    return this.state.data?.renderCount || 0;
+  }
+
+  get hasRenders() {
+    return this.renderCount > 0;
+  }
+
+  get avgTime() {
+    return formatRenderTime(this.state.data?.avgRenderTime || 0);
+  }
+
   render() {
     if (!this.state.data) return '';
 
@@ -93,11 +106,18 @@ export default class ComponentItem extends Component(HTMLElement) {
              onmouseenter="{handleMouseEnter}"
              onmouseleave="{handleMouseLeave}">
           <span class="tree-toggle" onclick="{toggleChildren}">{this.toggleIcon}</span>
-          <span class="tree-tag">&lt;{this.state.data.tagName}&gt;</span>
-          <${If} condition="{this.state.data.modelId}">
-            <span class="tree-model-id">{this.state.data.modelId}</span>
+          <span class="tree-content">
+            <span class="tree-tag">&lt;{this.state.data.tagName}&gt;</span>
+            <${If} condition="{this.state.data.modelId}">
+              <span class="tree-model-id">{this.state.data.modelId}</span>
+            </${If}>
+          </span>
+          <${If} condition="{this.hasRenders}">
+            <span class="tree-stats">
+              <span class="tree-renders">{this.renderCount}x</span>
+              <span class="tree-time">{this.avgTime}</span>
+            </span>
           </${If}>
-          <span class="tree-id">#{this.state.data.id}</span>
         </div>
 
         <${If} condition="{this.hasChildren}">
