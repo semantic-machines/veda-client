@@ -230,6 +230,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           : this;
         container.replaceChildren(fragment);
 
+        // Track render for DevTools
+        if (window.__VEDA_DEVTOOLS_HOOK__) {
+          window.__VEDA_DEVTOOLS_HOOK__.trackComponentRender(this);
+        }
+
         const post = this.post(fragment);
         if (post instanceof Promise) await post;
 
