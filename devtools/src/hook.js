@@ -55,17 +55,28 @@
       }
 
       const id = ++this.componentCounter;
+      const parentId = this.findParentComponentId(component);
       const data = {
         id,
         componentRef: new WeakRef(component),  // WeakRef allows GC
         tagName: component.tagName?.toLowerCase() || 'unknown',
         modelId: this.getComponentModelId(component),
+        parentId,
+        childIds: [],
         createdAt: Date.now(),
         renderCount: 0
       };
       this.components.set(id, data);
       this.componentToId.set(component, id);
       componentRegistry.register(component, id);  // Auto-cleanup on GC
+
+      // Register as child of parent
+      if (parentId) {
+        const parentData = this.components.get(parentId);
+        if (parentData && !parentData.childIds.includes(id)) {
+          parentData.childIds.push(id);
+        }
+      }
 
       this.addToTimeline('component:created', {
         id,
@@ -77,12 +88,25 @@
         id,
         tagName: data.tagName,
         modelId: data.modelId,
+        parentId,
         state: this.extractComponentState(component),
         createdAt: data.createdAt,
         renderCount: 0
       });
 
       return id;
+    },
+
+    findParentComponentId(component) {
+      let el = component.parentElement;
+      while (el) {
+        const parentId = this.componentToId.get(el);
+        if (parentId) {
+          return parentId;
+        }
+        el = el.parentElement;
+      }
+      return null;
     },
 
     getComponentModelId(component) {
@@ -103,6 +127,14 @@
 
       const data = this.components.get(id);
       const tagName = data?.tagName || 'unknown';
+
+      // Remove from parent's childIds
+      if (data?.parentId) {
+        const parentData = this.components.get(data.parentId);
+        if (parentData) {
+          parentData.childIds = parentData.childIds.filter(cid => cid !== id);
+        }
+      }
 
       this.components.delete(id);
       this.componentToId.delete(component);
@@ -399,21 +431,34 @@
     // ========================================================================
 
     getSnapshot() {
+      // First pass: collect valid components and update childIds
+      const validComponents = [];
+      const validIds = new Set();
+
+      for (const c of this.components.values()) {
+        const component = c.componentRef.deref();
+        if (component) {
+          validIds.add(c.id);
+          validComponents.push(c);
+        }
+      }
+
       return {
-        components: Array.from(this.components.values())
-          .map(c => {
+        components: validComponents.map(c => {
             const component = c.componentRef.deref();
-            if (!component) return null;  // Component was GC'd
+            // Filter childIds to only include valid (non-GC'd) components
+            const childIds = (c.childIds || []).filter(id => validIds.has(id));
             return {
               id: c.id,
               tagName: c.tagName,
               modelId: c.modelId,
+              parentId: validIds.has(c.parentId) ? c.parentId : null,
+              childIds,
               state: this.extractComponentState(component),
               renderCount: c.renderCount,
               createdAt: c.createdAt
             };
-          })
-          .filter(Boolean),  // Remove GC'd components
+          }),
         models: Array.from(this.models.values())
           .map(m => {
             const model = m.modelRef.deref();
@@ -456,21 +501,34 @@
       if (!component.state) return state;
 
       try {
-        for (const key in component.state) {
+        const stateObj = component.state;
+
+        // Use for...in to enumerate all properties including inherited
+        const keys = [];
+        for (const key in stateObj) {
+          if (Object.prototype.hasOwnProperty.call(stateObj, key)) {
+            keys.push(key);
+          }
+        }
+
+
+        for (const key of keys) {
           // Skip internal properties
           if (key.startsWith('_') || key.startsWith('#')) continue;
+          // Skip reactive internals
+          if (key === '__isReactive') continue;
           // Skip model (handled separately)
           if (key === 'model') continue;
 
           try {
-            const value = component.state[key];
+            const value = stateObj[key];
             state[key] = this.serializeValue(value);
           } catch (e) {
             state[key] = '[Error]';
           }
         }
       } catch (e) {
-        // Component state may not be enumerable
+        console.warn('[Veda DevTools] extractComponentState error:', e);
       }
 
       return state;
