@@ -62,6 +62,10 @@
       --radius-md: 4px;
       --radius-lg: 6px;
 
+      /* Surfaces (aliases for semantic naming) */
+      --surface-elevated: var(--bg-secondary);
+      --border: var(--border-color);
+
       /* Transitions */
       --transition-fast: 0.1s ease;
       --transition-normal: 0.2s ease;
@@ -294,8 +298,7 @@
 
     .keyboard-hints {
       display: flex;
-      flex-direction: column;
-      gap: var(--space-xs);
+      gap: var(--space-sm);
     }
 
     .hint {
@@ -456,135 +459,6 @@
       max-width: 250px;
     }
 
-    /* ========================================================================
-       Item Styles (Component, Model, Effect)
-       ======================================================================== */
-    .item {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      overflow: hidden;
-      transition: border-color var(--transition-fast);
-    }
-
-    .item:hover {
-      border-color: var(--border-light);
-    }
-
-    .item.expanded {
-      border-color: var(--accent-blue);
-    }
-
-    .item.item-hot {
-      border-color: var(--accent-red);
-      background: rgba(241, 76, 76, 0.05);
-    }
-
-    .item.item-warm {
-      border-color: var(--accent-orange);
-      background: rgba(206, 145, 120, 0.05);
-    }
-
-    .item-header {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      padding: var(--space-sm) var(--space-md);
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .item-header:hover {
-      background: var(--bg-hover);
-    }
-
-    .expand-icon {
-      color: var(--text-muted);
-      font-size: var(--font-size-xs);
-      width: 12px;
-    }
-
-    .item-tag {
-      color: var(--accent-cyan);
-      font-family: var(--font-mono);
-      font-size: var(--font-size-sm);
-    }
-
-    .item-model-id {
-      color: var(--accent-purple);
-      font-family: var(--font-mono);
-      font-size: var(--font-size-sm);
-    }
-
-    .item-type {
-      color: var(--text-muted);
-      font-size: var(--font-size-xs);
-      background: var(--bg-tertiary);
-      padding: 1px 6px;
-      border-radius: var(--radius-sm);
-    }
-
-    .item-id {
-      color: var(--text-muted);
-      font-size: var(--font-size-xs);
-      margin-left: auto;
-    }
-
-    .effect-icon {
-      color: var(--accent-yellow);
-    }
-
-    .hot-indicator {
-      margin-left: var(--space-xs);
-    }
-
-    /* Item details */
-    .item-details {
-      border-top: 1px solid var(--border-color);
-      padding: var(--space-md);
-      background: var(--bg-primary);
-    }
-
-    .detail-section {
-      margin-bottom: var(--space-md);
-    }
-
-    .detail-section:last-child {
-      margin-bottom: 0;
-    }
-
-    .detail-title {
-      font-size: var(--font-size-xs);
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: var(--space-xs);
-    }
-
-    .properties-list {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .property-row {
-      display: flex;
-      gap: var(--space-sm);
-      padding: 2px 0;
-      font-family: var(--font-mono);
-      font-size: var(--font-size-sm);
-    }
-
-    .property-key {
-      color: var(--value-object);
-      min-width: 100px;
-    }
-
-    .property-value {
-      color: var(--text-primary);
-      word-break: break-all;
-    }
-
     /* Value type colors */
     .value-string { color: var(--value-string); }
     .value-number { color: var(--value-number); }
@@ -595,6 +469,10 @@
     .value-array { color: var(--value-array); }
     .value-object { color: var(--value-object); }
     .value-unknown { color: var(--text-muted); }
+
+    .hot-indicator {
+      margin-left: var(--space-xs);
+    }
 
     /* ========================================================================
        Component Tree Styles
@@ -637,7 +515,7 @@
 
     .tree-toggle {
       color: var(--text-muted);
-      font-size: 10px;
+      font-size: var(--font-size-xs);
       width: 14px;
       text-align: center;
       cursor: pointer;
@@ -928,147 +806,6 @@
     }
 
     /* ========================================================================
-       Performance Panel Styles
-       ======================================================================== */
-    .performance-panel {
-      padding: var(--space-md);
-    }
-
-    .perf-stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: var(--space-md);
-      margin-bottom: var(--space-lg);
-    }
-
-    .perf-stat-card {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      padding: var(--space-md);
-      text-align: center;
-    }
-
-    .perf-stat-value {
-      font-size: 24px;
-      font-weight: 600;
-      color: var(--accent-cyan);
-      margin-bottom: var(--space-xs);
-    }
-
-    .perf-stat-label {
-      font-size: var(--font-size-xs);
-      color: var(--text-muted);
-      text-transform: uppercase;
-    }
-
-    .perf-section {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      padding: var(--space-md);
-      margin-bottom: var(--space-md);
-    }
-
-    .perf-section-title {
-      font-size: var(--font-size-md);
-      font-weight: 500;
-      color: var(--text-primary);
-      margin-bottom: var(--space-md);
-      padding-bottom: var(--space-sm);
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .perf-table {
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-    }
-
-    .perf-table-header,
-    .perf-table-row {
-      display: grid;
-      grid-template-columns: 1fr 80px 60px 80px;
-      gap: var(--space-sm);
-      padding: var(--space-xs) var(--space-sm);
-      font-size: var(--font-size-sm);
-    }
-
-    .perf-table-header {
-      background: var(--bg-tertiary);
-      color: var(--text-muted);
-      font-weight: 500;
-      border-radius: var(--radius-sm);
-    }
-
-    .perf-table-row {
-      background: var(--bg-primary);
-      border-radius: var(--radius-sm);
-    }
-
-    .perf-table-row:hover {
-      background: var(--bg-hover);
-    }
-
-    .perf-col-name {
-      color: var(--accent-cyan);
-      font-family: var(--font-mono);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .perf-col-num {
-      text-align: right;
-      color: var(--text-secondary);
-      font-family: var(--font-mono);
-    }
-
-    .perf-empty {
-      color: var(--text-muted);
-      font-size: var(--font-size-sm);
-      text-align: center;
-      padding: var(--space-lg);
-    }
-
-    .perf-profiling-result {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-xs);
-    }
-
-    .perf-result-row {
-      display: flex;
-      justify-content: space-between;
-      padding: var(--space-xs) 0;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .perf-result-row:last-child {
-      border-bottom: none;
-    }
-
-    .perf-result-label {
-      color: var(--text-secondary);
-    }
-
-    .perf-result-value {
-      color: var(--accent-cyan);
-      font-family: var(--font-mono);
-      font-weight: 500;
-    }
-
-    .btn-danger {
-      background: var(--accent-red);
-      color: white;
-      border: none;
-    }
-
-    .btn-danger:hover {
-      background: #d43c3c;
-    }
-
-    /* ========================================================================
        Graph Panel Styles
        ======================================================================== */
     .graph-panel {
@@ -1087,40 +824,6 @@
       overflow: hidden;
     }
 
-    .graph-legend {
-      display: flex;
-      gap: var(--space-lg);
-      padding: var(--space-sm) var(--space-md);
-      background: var(--bg-tertiary);
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .graph-legend-item {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xs);
-      font-size: var(--font-size-xs);
-      color: var(--text-secondary);
-    }
-
-    .graph-node-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: var(--radius-sm);
-    }
-
-    .graph-node-dot.component {
-      background: var(--accent-cyan);
-    }
-
-    .graph-node-dot.model {
-      background: var(--accent-purple);
-    }
-
-    .graph-node-dot.effect {
-      background: var(--accent-yellow);
-    }
-
     .graph-canvas-wrapper {
       flex: 1;
       position: relative;
@@ -1137,132 +840,6 @@
       width: 100%;
       height: 100%;
       display: block;
-    }
-
-    /* ========================================================================
-       Subscriptions Panel Styles
-       ======================================================================== */
-    .subscriptions-panel {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-md);
-    }
-
-    .sub-section {
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      padding: var(--space-md);
-    }
-
-    .sub-section-title {
-      font-size: var(--font-size-md);
-      font-weight: 500;
-      color: var(--text-primary);
-    }
-
-    .sub-table {
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-    }
-
-    .sub-table-header,
-    .sub-table-row {
-      display: grid;
-      grid-template-columns: 1fr 80px 100px 100px;
-      gap: var(--space-sm);
-      padding: var(--space-xs) var(--space-sm);
-      font-size: var(--font-size-sm);
-    }
-
-    .sub-table-header {
-      background: var(--bg-tertiary);
-      color: var(--text-muted);
-      font-weight: 500;
-      border-radius: var(--radius-sm);
-    }
-
-    .sub-table-row {
-      background: var(--bg-primary);
-      border-radius: var(--radius-sm);
-    }
-
-    .sub-table-row:hover {
-      background: var(--bg-hover);
-    }
-
-    .sub-col-id {
-      color: var(--accent-purple);
-      font-family: var(--font-mono);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .sub-col-num,
-    .sub-col-time {
-      text-align: right;
-      color: var(--text-secondary);
-      font-family: var(--font-mono);
-    }
-
-    .sub-empty {
-      color: var(--text-muted);
-      font-size: var(--font-size-sm);
-      text-align: center;
-      padding: var(--space-lg);
-    }
-
-    .sub-history {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-
-    .sub-history-item {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      padding: var(--space-xs) var(--space-sm);
-      font-size: var(--font-size-sm);
-      border-radius: var(--radius-sm);
-      background: var(--bg-primary);
-    }
-
-    .sub-history-item.subscribe {
-      border-left: 2px solid var(--accent-green);
-    }
-
-    .sub-history-item.unsubscribe {
-      border-left: 2px solid var(--accent-red);
-    }
-
-    .sub-history-time {
-      color: var(--text-muted);
-      font-family: var(--font-mono);
-      font-size: var(--font-size-xs);
-      min-width: 70px;
-    }
-
-    .sub-history-type {
-      font-size: var(--font-size-md);
-    }
-
-    .sub-history-id {
-      color: var(--accent-purple);
-      font-family: var(--font-mono);
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .sub-history-duration {
-      color: var(--text-muted);
-      font-size: var(--font-size-xs);
     }
 
     /* ========================================================================
@@ -1315,21 +892,6 @@
       background: var(--bg-tertiary);
       padding: 1px 6px;
       border-radius: var(--radius-sm);
-    }
-
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .status-dot.loaded {
-      background: var(--accent-green);
-    }
-
-    .status-dot.not-loaded {
-      background: var(--text-muted);
     }
 
     .value-uri.clickable {
@@ -1537,7 +1099,7 @@
     .stat-card {
       background: var(--surface-elevated);
       border: 1px solid var(--border);
-      border-radius: 6px;
+      border-radius: var(--radius-lg);
       padding: var(--space-md);
       text-align: center;
     }
@@ -1549,7 +1111,7 @@
     }
 
     .stat-card .stat-label {
-      font-size: 11px;
+      font-size: var(--font-size-sm);
       color: var(--text-muted);
       text-transform: uppercase;
       margin-top: var(--space-xs);
@@ -1560,7 +1122,7 @@
     }
 
     .perf-section-title {
-      font-size: 12px;
+      font-size: var(--font-size-md);
       font-weight: 600;
       color: var(--text-secondary);
       text-transform: uppercase;
@@ -1581,64 +1143,23 @@
       align-items: center;
       padding: var(--space-xs) var(--space-sm);
       background: var(--surface-elevated);
-      border-radius: 4px;
+      border-radius: var(--radius-md);
     }
 
     .perf-item-name {
       font-family: var(--font-mono);
-      font-size: 12px;
+      font-size: var(--font-size-md);
       color: var(--accent-cyan);
     }
 
     .perf-item-count {
-      font-size: 11px;
+      font-size: var(--font-size-sm);
       color: var(--accent-yellow);
     }
 
     .perf-item-time {
-      font-size: 11px;
+      font-size: var(--font-size-sm);
       color: var(--accent-purple);
-    }
-
-    .profiling-stats {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: var(--space-md);
-      margin-top: var(--space-sm);
-    }
-
-    .profiling-stat {
-      text-align: center;
-      padding: var(--space-sm);
-      background: var(--surface-elevated);
-      border-radius: 4px;
-    }
-
-    .profiling-stat-value {
-      display: block;
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--accent-cyan);
-    }
-
-    .profiling-stat-label {
-      display: block;
-      font-size: 10px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      margin-top: 4px;
-    }
-
-    .profiling-result {
-      background: var(--surface-elevated);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: var(--space-sm);
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: var(--text-secondary);
-      overflow-x: auto;
-      white-space: pre-wrap;
     }
 
     /* Inspect icon */
@@ -1667,7 +1188,7 @@
 
     .btn-small {
       padding: 2px 6px;
-      font-size: 10px;
+      font-size: var(--font-size-xs);
       min-width: auto;
     }
 
@@ -1686,7 +1207,7 @@
       display: flex;
       align-items: center;
       gap: var(--space-xs);
-      font-size: 11px;
+      font-size: var(--font-size-sm);
       color: var(--text-secondary);
     }
 
@@ -1719,8 +1240,8 @@
       align-items: center;
       gap: var(--space-xs);
       padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-sm);
       margin-left: auto;
     }
 
@@ -1771,7 +1292,7 @@
     }
 
     .sub-toggle {
-      font-size: 10px;
+      font-size: var(--font-size-xs);
       color: var(--text-muted);
     }
 
@@ -1798,17 +1319,17 @@
       align-items: center;
       padding: var(--space-xs) var(--space-sm);
       background: var(--surface-elevated);
-      border-radius: 4px;
+      border-radius: var(--radius-md);
     }
 
     .sub-id {
       font-family: var(--font-mono);
-      font-size: 12px;
+      font-size: var(--font-size-md);
       color: var(--accent-purple);
     }
 
     .sub-info {
-      font-size: 11px;
+      font-size: var(--font-size-sm);
       color: var(--text-secondary);
     }
 
@@ -1823,7 +1344,7 @@
 
     .sub-empty {
       color: var(--text-muted);
-      font-size: 12px;
+      font-size: var(--font-size-md);
       text-align: center;
       padding: var(--space-md);
     }
@@ -1842,14 +1363,14 @@
       gap: var(--space-sm);
       padding: var(--space-xs) var(--space-sm);
       background: var(--surface-elevated);
-      border-radius: 4px;
-      font-size: 11px;
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-sm);
     }
 
     .history-type {
       padding: 1px 6px;
-      border-radius: 3px;
-      font-size: 10px;
+      border-radius: var(--radius-sm);
+      font-size: var(--font-size-xs);
       font-weight: 600;
       text-transform: uppercase;
     }
@@ -1874,7 +1395,7 @@
 
     .history-time {
       color: var(--text-muted);
-      font-size: 10px;
+      font-size: var(--font-size-xs);
     }
 
     /* ========================================================================

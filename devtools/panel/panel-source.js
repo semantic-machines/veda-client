@@ -275,8 +275,8 @@ class DevToolsPanel extends Component(HTMLElement) {
     if (e.key === 'r') {
       this.handleRefresh();
     }
-    if (e.key >= '1' && e.key <= '7') {
-      const tabs = ['components', 'models', 'effects', 'timeline', 'performance', 'graph', 'subscriptions'];
+    if (e.key >= '1' && e.key <= '6') {
+      const tabs = ['components', 'models', 'effects', 'timeline', 'graph', 'subscriptions'];
       this.state.activeTab = tabs[parseInt(e.key) - 1];
     }
   }
@@ -445,8 +445,7 @@ class DevToolsPanel extends Component(HTMLElement) {
 
           <div class="sidebar-footer">
             <div class="keyboard-hints">
-              <span class="hint"><kbd>R</kbd> Refresh</span>
-              <span class="hint"><kbd>1-7</kbd> Tabs</span>
+              <span class="hint"><kbd>R</kbd> Refresh  <kbd>1-6</kbd> Tabs</span>
             </div>
           </div>
         </div>
