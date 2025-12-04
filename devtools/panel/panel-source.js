@@ -34,6 +34,18 @@ class DevToolsPanel extends Component(HTMLElement) {
     this.state.navigateToModelId = null;
 
     this.port = null;
+    this._snapshotDebounceTimer = null;
+  }
+
+  // Debounced snapshot request - groups rapid events into single request
+  requestSnapshotDebounced = () => {
+    if (this._snapshotDebounceTimer) {
+      clearTimeout(this._snapshotDebounceTimer);
+    }
+    this._snapshotDebounceTimer = setTimeout(() => {
+      this._snapshotDebounceTimer = null;
+      this.requestSnapshot();
+    }, 50);
   }
 
   // ===========================================================================
@@ -54,12 +66,12 @@ class DevToolsPanel extends Component(HTMLElement) {
       }
     }, 1000);
 
-    // Periodic refresh
+    // Fallback polling (every 30s) - ensures eventual consistency
     this._refreshInterval = setInterval(() => {
       if (this.state.connected && this.port) {
         this.requestSnapshot();
       }
-    }, 5000);
+    }, 30000);
 
     // Keyboard shortcuts
     document.addEventListener('keydown', this.handleKeydown.bind(this));
@@ -120,6 +132,9 @@ class DevToolsPanel extends Component(HTMLElement) {
       });
 
       this.state.connected = true;
+
+      // Request snapshot immediately after connection
+      this.requestSnapshot();
     } catch (error) {
       console.error('[Veda DevTools Panel] Connection error:', error);
       this.state.connected = false;
@@ -168,7 +183,10 @@ class DevToolsPanel extends Component(HTMLElement) {
       case 'effect:created':
       case 'effect:triggered':
       case 'effect:removed':
-        // These are handled via periodic snapshot refresh
+      case 'subscription:added':
+      case 'subscription:removed':
+        // Request debounced snapshot to get fresh data
+        this.requestSnapshotDebounced();
         break;
     }
   }
