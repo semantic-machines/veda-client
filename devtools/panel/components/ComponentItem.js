@@ -15,6 +15,8 @@ export default class ComponentItem extends Component(HTMLElement) {
     this.state.depth = 0;
     this.state.selectedId = null;
     this.state.onSelect = null;
+    this.state.onHover = null;
+    this.state.onLeave = null;
   }
 
   toggleChildren(e) {
@@ -25,6 +27,18 @@ export default class ComponentItem extends Component(HTMLElement) {
   handleSelect() {
     if (this.state.onSelect && this.state.data) {
       this.state.onSelect(this.state.data.id);
+    }
+  }
+
+  handleMouseEnter = () => {
+    if (this.state.onHover && this.state.data) {
+      this.state.onHover(this.state.data.id);
+    }
+  }
+
+  handleMouseLeave = () => {
+    if (this.state.onLeave) {
+      this.state.onLeave();
     }
   }
 
@@ -73,7 +87,11 @@ export default class ComponentItem extends Component(HTMLElement) {
 
     return html`
       <div class="{this.nodeClass}">
-        <div class="{this.headerClass}" style="{this.indentStyle}" onclick="{handleSelect}">
+        <div class="{this.headerClass}"
+             style="{this.indentStyle}"
+             onclick="{handleSelect}"
+             onmouseenter="{handleMouseEnter}"
+             onmouseleave="{handleMouseLeave}">
           <span class="tree-toggle" onclick="{toggleChildren}">{this.toggleIcon}</span>
           <span class="tree-tag">&lt;{this.state.data.tagName}&gt;</span>
           <${If} condition="{this.state.data.modelId}">
@@ -91,7 +109,9 @@ export default class ComponentItem extends Component(HTMLElement) {
                   :all-components="{this.state.allComponents}"
                   :depth="{this.childDepth}"
                   :selected-id="{this.state.selectedId}"
-                  :on-select="{this.state.onSelect}">
+                  :on-select="{this.state.onSelect}"
+                  :on-hover="{this.state.onHover}"
+                  :on-leave="{this.state.onLeave}">
                 </component-item>
               </${Loop}>
             </div>

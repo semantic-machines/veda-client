@@ -15,7 +15,9 @@ chrome.runtime.onConnect.addListener(function(port) {
 
   port.onDisconnect.addListener(function() {
     console.log('[Veda DevTools] Panel disconnected');
-    if (tabId && connections[tabId]) {
+    // Hide highlight when panel closes
+    if (tabId) {
+      chrome.tabs.sendMessage(tabId, { type: 'hide-highlight' }).catch(() => {});
       delete connections[tabId];
     }
   });
@@ -48,6 +50,76 @@ chrome.runtime.onConnect.addListener(function(port) {
           port.postMessage(response);
         }
       });
+    }
+
+    // Handle highlight element request
+    if (message.type === 'highlight-element') {
+      const requestTabId = message.tabId;
+      if (requestTabId) {
+        chrome.tabs.sendMessage(requestTabId, {
+          type: 'highlight-element',
+          componentId: message.componentId
+        });
+      }
+    }
+
+    // Handle hide highlight request
+    if (message.type === 'hide-highlight') {
+      const requestTabId = message.tabId;
+      if (requestTabId) {
+        chrome.tabs.sendMessage(requestTabId, { type: 'hide-highlight' });
+      }
+    }
+
+    // Handle inspect element request
+    if (message.type === 'inspect-element') {
+      const requestTabId = message.tabId;
+      if (requestTabId) {
+        chrome.tabs.sendMessage(requestTabId, {
+          type: 'inspect-element',
+          componentId: message.componentId
+        });
+      }
+    }
+
+    // Handle scroll to element request
+    if (message.type === 'scroll-to-element') {
+      const requestTabId = message.tabId;
+      if (requestTabId) {
+        chrome.tabs.sendMessage(requestTabId, {
+          type: 'scroll-to-element',
+          componentId: message.componentId
+        });
+      }
+    }
+
+    // Handle state editing
+    if (message.type === 'set-component-state') {
+      const requestTabId = message.tabId;
+      if (requestTabId) {
+        chrome.tabs.sendMessage(requestTabId, {
+          type: 'set-component-state',
+          componentId: message.componentId,
+          key: message.key,
+          value: message.value
+        });
+      }
+    }
+
+    // Handle profiling start
+    if (message.type === 'start-profiling') {
+      const requestTabId = message.tabId;
+      if (requestTabId) {
+        chrome.tabs.sendMessage(requestTabId, { type: 'start-profiling' });
+      }
+    }
+
+    // Handle profiling stop
+    if (message.type === 'stop-profiling') {
+      const requestTabId = message.tabId;
+      if (requestTabId) {
+        chrome.tabs.sendMessage(requestTabId, { type: 'stop-profiling' });
+      }
     }
   });
 });

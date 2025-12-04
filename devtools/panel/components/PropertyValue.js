@@ -11,14 +11,8 @@ export default class PropertyValue extends Component(HTMLElement) {
     e.preventDefault();
     e.stopPropagation();
     const modelId = node.dataset.uri;
-    if (modelId) {
-      let parent = this.parentElement;
-      while (parent && parent.tagName !== 'DEVTOOLS-PANEL') {
-        parent = parent.parentElement;
-      }
-      if (parent && parent.navigateToModel) {
-        parent.navigateToModel(modelId);
-      }
+    if (modelId && this.state.onNavigate) {
+      this.state.onNavigate(modelId);
     }
   }
 

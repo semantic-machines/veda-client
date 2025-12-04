@@ -170,15 +170,303 @@
       });
     },
 
-    trackComponentRender(component) {
+    trackComponentRender(component, startTime) {
       const id = this.componentToId.get(component);
       if (!id) return;
 
       const data = this.components.get(id);
       if (data) {
         data.renderCount++;
+
+        // Track render time
+        const renderTime = startTime ? (performance.now() - startTime) : 0;
+        if (!data.renderTimes) {
+          data.renderTimes = [];
+          data.totalRenderTime = 0;
+          data.maxRenderTime = 0;
+          data.avgRenderTime = 0;
+        }
+
+        data.renderTimes.push(renderTime);
+        data.totalRenderTime += renderTime;
+        data.maxRenderTime = Math.max(data.maxRenderTime, renderTime);
+
+        // Keep only last 100 render times
+        if (data.renderTimes.length > 100) {
+          const removed = data.renderTimes.shift();
+          data.totalRenderTime -= removed;
+        }
+
+        data.avgRenderTime = data.totalRenderTime / data.renderTimes.length;
+        data.lastRenderTime = renderTime;
+
+        // Track if this is a "hot" component (frequent renders)
+        if (!data.renderWindow) {
+          data.renderWindow = [];
+        }
+        data.renderWindow.push(Date.now());
+
+        // Keep only renders in last 5 seconds
+        const cutoff = Date.now() - 5000;
+        data.renderWindow = data.renderWindow.filter(t => t > cutoff);
+        data.rendersPerSecond = data.renderWindow.length / 5;
       }
     },
+
+    // Get performance stats for all components
+    getPerformanceStats() {
+      const stats = [];
+      for (const [id, data] of this.components.entries()) {
+        const component = data.componentRef.deref();
+        if (!component) continue;
+
+        stats.push({
+          id,
+          tagName: data.tagName,
+          renderCount: data.renderCount || 0,
+          totalRenderTime: data.totalRenderTime || 0,
+          avgRenderTime: data.avgRenderTime || 0,
+          maxRenderTime: data.maxRenderTime || 0,
+          lastRenderTime: data.lastRenderTime || 0,
+          rendersPerSecond: data.rendersPerSecond || 0
+        });
+      }
+
+      // Sort by total render time (slowest first)
+      return stats.sort((a, b) => b.totalRenderTime - a.totalRenderTime);
+    },
+
+    // Profiling support
+    profiling: false,
+    profileData: [],
+    profileStartTime: 0,
+
+    startProfiling() {
+      this.profiling = true;
+      this.profileData = [];
+      this.profileStartTime = performance.now();
+      console.log('[Veda DevTools] Profiling started');
+    },
+
+    stopProfiling() {
+      this.profiling = false;
+      const duration = performance.now() - this.profileStartTime;
+      console.log('[Veda DevTools] Profiling stopped, duration:', duration, 'ms');
+      return {
+        duration,
+        events: this.profileData,
+        summary: this.getProfilingSummary()
+      };
+    },
+
+    recordProfileEvent(type, data) {
+      if (!this.profiling) return;
+      this.profileData.push({
+        type,
+        data,
+        timestamp: performance.now() - this.profileStartTime
+      });
+    },
+
+    getProfilingSummary() {
+      const summary = {
+        renders: 0,
+        totalRenderTime: 0,
+        effectTriggers: 0,
+        modelUpdates: 0,
+        componentsByRenders: {}
+      };
+
+      for (const event of this.profileData) {
+        if (event.type === 'render') {
+          summary.renders++;
+          summary.totalRenderTime += event.data.time || 0;
+          const tag = event.data.tagName || 'unknown';
+          summary.componentsByRenders[tag] = (summary.componentsByRenders[tag] || 0) + 1;
+        } else if (event.type === 'effect') {
+          summary.effectTriggers++;
+        } else if (event.type === 'model-update') {
+          summary.modelUpdates++;
+        }
+      }
+
+      return summary;
+    },
+
+    // ========================================================================
+    // Dependency Graph
+    // ========================================================================
+
+    getDependencyGraph() {
+      const nodes = [];
+      const edges = [];
+      const nodeMap = new Map();
+
+      // Add component nodes
+      for (const [id, data] of this.components.entries()) {
+        const component = data.componentRef.deref();
+        if (!component) continue;
+
+        const nodeId = `component-${id}`;
+        nodes.push({
+          id: nodeId,
+          type: 'component',
+          label: data.tagName,
+          data: {
+            componentId: id,
+            renderCount: data.renderCount || 0
+          }
+        });
+        nodeMap.set(nodeId, true);
+
+        // Add edge to parent
+        if (data.parentId) {
+          const parentNodeId = `component-${data.parentId}`;
+          edges.push({
+            source: parentNodeId,
+            target: nodeId,
+            type: 'parent-child'
+          });
+        }
+
+        // Add edge to model if present
+        if (data.modelId) {
+          const modelNodeId = `model-${data.modelId}`;
+          if (!nodeMap.has(modelNodeId)) {
+            const modelData = this.findModelByModelId(data.modelId);
+            nodes.push({
+              id: modelNodeId,
+              type: 'model',
+              label: this.getShortModelId(data.modelId),
+              data: {
+                modelId: data.modelId,
+                fullId: data.modelId,
+                updateCount: modelData?.updateCount || 0
+              }
+            });
+            nodeMap.set(modelNodeId, true);
+          }
+          edges.push({
+            source: nodeId,
+            target: modelNodeId,
+            type: 'uses-model'
+          });
+        }
+      }
+
+      // Add effect nodes
+      for (const [id, data] of this.effects.entries()) {
+        const effect = data.effectRef.deref();
+        if (!effect) continue;
+
+        const nodeId = `effect-${id}`;
+        nodes.push({
+          id: nodeId,
+          type: 'effect',
+          label: `Effect #${id}`,
+          data: {
+            effectId: id,
+            triggerCount: data.triggerCount || 0
+          }
+        });
+      }
+
+      return { nodes, edges };
+    },
+
+    findModelByModelId(modelId) {
+      for (const data of this.models.values()) {
+        if (data.modelId === modelId) {
+          return data;
+        }
+      }
+      return null;
+    },
+
+    getShortModelId(modelId) {
+      if (!modelId) return 'unknown';
+      // Get last part after last / or :
+      const parts = modelId.split(/[/:]/);
+      return parts[parts.length - 1] || modelId;
+    },
+
+    // ========================================================================
+    // Subscription Tracking
+    // ========================================================================
+
+    subscriptions: new Map(),
+    subscriptionHistory: [],
+    maxSubscriptionHistory: 200,
+
+    trackSubscription(id, updateCounter) {
+      const now = Date.now();
+      if (!this.subscriptions.has(id)) {
+        this.subscriptions.set(id, {
+          id,
+          subscribedAt: now,
+          updateCounter,
+          updateCount: 0,
+          lastUpdate: null
+        });
+
+        this.subscriptionHistory.push({
+          type: 'subscribe',
+          id,
+          timestamp: now,
+          updateCounter
+        });
+
+        // Keep history limited
+        if (this.subscriptionHistory.length > this.maxSubscriptionHistory) {
+          this.subscriptionHistory.shift();
+        }
+
+        this.emit('subscription:added', { id, updateCounter, timestamp: now });
+      }
+    },
+
+    trackUnsubscription(id) {
+      const now = Date.now();
+      if (this.subscriptions.has(id)) {
+        const data = this.subscriptions.get(id);
+        this.subscriptions.delete(id);
+
+        this.subscriptionHistory.push({
+          type: 'unsubscribe',
+          id,
+          timestamp: now,
+          duration: now - data.subscribedAt
+        });
+
+        if (this.subscriptionHistory.length > this.maxSubscriptionHistory) {
+          this.subscriptionHistory.shift();
+        }
+
+        this.emit('subscription:removed', { id, timestamp: now });
+      }
+    },
+
+    trackSubscriptionUpdate(id, updateCounter) {
+      const data = this.subscriptions.get(id);
+      if (data) {
+        data.updateCount++;
+        data.lastUpdate = Date.now();
+        data.updateCounter = updateCounter;
+      }
+    },
+
+    getSubscriptionStats() {
+      return {
+        active: Array.from(this.subscriptions.values()),
+        history: this.subscriptionHistory.slice(-100),
+        totalSubscriptions: this.subscriptions.size,
+        wsConnected: this.wsConnected || false
+      };
+    },
+
+    // WebSocket state
+    wsConnected: false,
+    wsAddress: null,
 
     // ========================================================================
     // Model Tracking
@@ -456,7 +744,13 @@
               childIds,
               state: this.extractComponentState(component),
               renderCount: c.renderCount,
-              createdAt: c.createdAt
+              createdAt: c.createdAt,
+              // Performance data
+              avgRenderTime: c.avgRenderTime || 0,
+              maxRenderTime: c.maxRenderTime || 0,
+              lastRenderTime: c.lastRenderTime || 0,
+              totalRenderTime: c.totalRenderTime || 0,
+              rendersPerSecond: c.rendersPerSecond || 0
             };
           }),
         models: Array.from(this.models.values())
@@ -487,7 +781,16 @@
             };
           })
           .filter(Boolean),  // Remove GC'd effects
-        timeline: this.timeline.slice(-50)
+        timeline: this.timeline.slice(-50),
+        // Performance summary
+        performance: {
+          stats: this.getPerformanceStats(),
+          profiling: this.profiling
+        },
+        // Dependency graph
+        graph: this.getDependencyGraph(),
+        // Subscription stats
+        subscriptions: this.getSubscriptionStats()
       };
     },
 
@@ -670,6 +973,197 @@
     }
   };
 
+  // ========================================================================
+  // Element Inspection & Highlighting
+  // ========================================================================
+
+  // Overlay element for highlighting
+  let highlightOverlay = null;
+  let highlightTimeout = null;
+  let highlightedComponent = null;
+  let scrollHandler = null;
+  let mutationObserver = null;
+
+  function createHighlightOverlay() {
+    if (highlightOverlay) return highlightOverlay;
+
+    highlightOverlay = document.createElement('div');
+    highlightOverlay.id = '__veda_devtools_highlight__';
+    highlightOverlay.style.cssText = `
+      position: fixed;
+      pointer-events: none;
+      z-index: 2147483647;
+      border: 2px solid #0e639c;
+      background: rgba(14, 99, 156, 0.1);
+      display: none;
+    `;
+
+    // Add label for component name
+    const label = document.createElement('div');
+    label.className = '__veda_devtools_label__';
+    label.style.cssText = `
+      position: absolute;
+      top: -24px;
+      left: -2px;
+      background: #0e639c;
+      color: white;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 2px 2px 0 0;
+      white-space: nowrap;
+    `;
+    highlightOverlay.appendChild(label);
+
+    document.body.appendChild(highlightOverlay);
+    return highlightOverlay;
+  }
+
+  function updateHighlightPosition() {
+    if (!highlightedComponent || !highlightOverlay) return;
+
+    // Check if component is still in DOM
+    if (!document.body.contains(highlightedComponent)) {
+      hook.hideHighlight();
+      return;
+    }
+
+    const rect = highlightedComponent.getBoundingClientRect();
+    highlightOverlay.style.top = rect.top + 'px';
+    highlightOverlay.style.left = rect.left + 'px';
+    highlightOverlay.style.width = rect.width + 'px';
+    highlightOverlay.style.height = rect.height + 'px';
+  }
+
+  hook.highlightElement = function(componentId) {
+    const data = this.components.get(componentId);
+    if (!data) return false;
+
+    const component = data.componentRef.deref();
+    if (!component) return false;
+
+    highlightedComponent = component;
+    const overlay = createHighlightOverlay();
+    const label = overlay.querySelector('.__veda_devtools_label__');
+
+    updateHighlightPosition();
+    overlay.style.display = 'block';
+    label.textContent = `<${data.tagName}>`;
+
+    // Add scroll listener to update position
+    if (!scrollHandler) {
+      scrollHandler = () => updateHighlightPosition();
+      window.addEventListener('scroll', scrollHandler, true);
+      window.addEventListener('resize', scrollHandler);
+    }
+
+    // Watch for component removal from DOM
+    if (mutationObserver) {
+      mutationObserver.disconnect();
+    }
+    mutationObserver = new MutationObserver(() => {
+      if (highlightedComponent && !document.body.contains(highlightedComponent)) {
+        hook.hideHighlight();
+      }
+    });
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
+
+    if (highlightTimeout) {
+      clearTimeout(highlightTimeout);
+    }
+
+    return true;
+  };
+
+  hook.hideHighlight = function() {
+    if (highlightOverlay) {
+      highlightOverlay.style.display = 'none';
+    }
+    highlightedComponent = null;
+    if (highlightTimeout) {
+      clearTimeout(highlightTimeout);
+      highlightTimeout = null;
+    }
+    if (mutationObserver) {
+      mutationObserver.disconnect();
+      mutationObserver = null;
+    }
+  };
+
+  hook.inspectElement = function(componentId) {
+    const data = this.components.get(componentId);
+    if (!data) return false;
+
+    const component = data.componentRef.deref();
+    if (!component) return false;
+
+    // Set $v to the component for console access
+    window.$v = component;
+
+    // Also set $v0, $v1, etc. for history
+    if (!window.__veda_inspect_history__) {
+      window.__veda_inspect_history__ = [];
+    }
+
+    // Shift history
+    const history = window.__veda_inspect_history__;
+    history.unshift(component);
+    if (history.length > 5) history.pop();
+
+    // Update $v0, $v1, etc.
+    history.forEach((el, i) => {
+      window['$v' + i] = el;
+    });
+
+    console.log(
+      '%c[Veda DevTools]%c Selected component stored in %c$v%c',
+      'color: #0e639c; font-weight: bold;',
+      'color: inherit;',
+      'color: #4ec9b0; font-weight: bold;',
+      'color: inherit;',
+      component
+    );
+
+    return true;
+  };
+
+  hook.scrollToElement = function(componentId) {
+    const data = this.components.get(componentId);
+    if (!data) return false;
+
+    const component = data.componentRef.deref();
+    if (!component) return false;
+
+    component.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return true;
+  };
+
+  hook.getComponentElement = function(componentId) {
+    const data = this.components.get(componentId);
+    if (!data) return null;
+    return data.componentRef.deref() || null;
+  };
+
+  // ========================================================================
+  // State Editing
+  // ========================================================================
+
+  hook.setComponentState = function(componentId, key, value) {
+    const data = this.components.get(componentId);
+    if (!data) return false;
+
+    const component = data.componentRef.deref();
+    if (!component || !component.state) return false;
+
+    try {
+      component.state[key] = value;
+      return true;
+    } catch (e) {
+      console.warn('[Veda DevTools] Failed to set state:', e);
+      return false;
+    }
+  };
+
   // Make hook globally available
   window.__VEDA_DEVTOOLS_HOOK__ = hook;
 
@@ -685,6 +1179,82 @@
         data: hook.getSnapshot()
       }, '*');
     }
+
+    // Handle highlight request
+    if (event.data.type === 'highlight-element') {
+      const result = hook.highlightElement(event.data.componentId);
+      window.postMessage({
+        source: 'veda-devtools-hook',
+        type: 'highlight-result',
+        success: result
+      }, '*');
+    }
+
+    // Handle hide highlight request
+    if (event.data.type === 'hide-highlight') {
+      hook.hideHighlight();
+    }
+
+    // Handle inspect request
+    if (event.data.type === 'inspect-element') {
+      const result = hook.inspectElement(event.data.componentId);
+      window.postMessage({
+        source: 'veda-devtools-hook',
+        type: 'inspect-result',
+        success: result
+      }, '*');
+    }
+
+    // Handle scroll to element request
+    if (event.data.type === 'scroll-to-element') {
+      const result = hook.scrollToElement(event.data.componentId);
+      window.postMessage({
+        source: 'veda-devtools-hook',
+        type: 'scroll-result',
+        success: result
+      }, '*');
+    }
+
+    // Handle state editing
+    if (event.data.type === 'set-component-state') {
+      const result = hook.setComponentState(
+        event.data.componentId,
+        event.data.key,
+        event.data.value
+      );
+      window.postMessage({
+        source: 'veda-devtools-hook',
+        type: 'set-state-result',
+        success: result
+      }, '*');
+    }
+
+    // Handle profiling commands
+    if (event.data.type === 'start-profiling') {
+      hook.startProfiling();
+      window.postMessage({
+        source: 'veda-devtools-hook',
+        type: 'profiling-started'
+      }, '*');
+    }
+
+    if (event.data.type === 'stop-profiling') {
+      const result = hook.stopProfiling();
+      window.postMessage({
+        source: 'veda-devtools-hook',
+        type: 'profiling-result',
+        data: result
+      }, '*');
+    }
+
+    // Get performance stats
+    if (event.data.type === 'get-performance') {
+      window.postMessage({
+        source: 'veda-devtools-hook',
+        type: 'performance-stats',
+        data: hook.getPerformanceStats()
+      }, '*');
+    }
   });
 
   // Notify that hook is ready
@@ -693,4 +1263,79 @@
     event: 'hook:ready',
     data: {}
   }, '*');
+
+  // ========================================================================
+  // Intercept Subscription class to track subscriptions
+  // ========================================================================
+
+  function interceptSubscription() {
+    // Wait for Subscription class to be available
+    const checkInterval = setInterval(() => {
+      // Look for Subscription class in various places
+      let Subscription = null;
+
+      // Check if it's exported from veda-client
+      if (window.Subscription) {
+        Subscription = window.Subscription;
+      }
+
+      // Check in any loaded modules
+      if (!Subscription && window.__VEDA_SUBSCRIPTION__) {
+        Subscription = window.__VEDA_SUBSCRIPTION__;
+      }
+
+      if (Subscription && Subscription.subscribe && !Subscription._devtoolsIntercepted) {
+        Subscription._devtoolsIntercepted = true;
+
+        // Store original methods
+        const originalSubscribe = Subscription.subscribe.bind(Subscription);
+        const originalUnsubscribe = Subscription.unsubscribe.bind(Subscription);
+
+        // Intercept subscribe
+        Subscription.subscribe = function(ref, subscription) {
+          const [id, updateCounter] = subscription;
+          hook.trackSubscription(id, updateCounter);
+          return originalSubscribe(ref, subscription);
+        };
+
+        // Intercept unsubscribe
+        Subscription.unsubscribe = function(id) {
+          hook.trackUnsubscription(id);
+          return originalUnsubscribe(id);
+        };
+
+        // Track WebSocket state
+        if (Subscription._socket) {
+          hook.wsConnected = Subscription._socket.readyState === 1;
+          hook.wsAddress = Subscription._address;
+        }
+
+        // Monitor socket state changes
+        const originalConnect = Subscription._connect?.bind(Subscription);
+        if (originalConnect) {
+          Subscription._connect = async function(event) {
+            const result = await originalConnect(event);
+            setTimeout(() => {
+              hook.wsConnected = Subscription._socket?.readyState === 1;
+              hook.wsAddress = Subscription._address;
+              hook.emit('ws:state-changed', {
+                connected: hook.wsConnected,
+                address: hook.wsAddress
+              });
+            }, 100);
+            return result;
+          };
+        }
+
+        console.log('[Veda DevTools] Subscription tracking enabled');
+        clearInterval(checkInterval);
+      }
+    }, 500);
+
+    // Stop checking after 30 seconds
+    setTimeout(() => clearInterval(checkInterval), 30000);
+  }
+
+  // Start intercepting
+  interceptSubscription();
 })();
