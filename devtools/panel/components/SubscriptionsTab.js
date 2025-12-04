@@ -12,6 +12,7 @@ export default class SubscriptionsTab extends Component(HTMLElement) {
     this.state.activeSubscriptions = [];
     this.state.history = [];
     this.state.wsConnected = false;
+    this.state.historyExpanded = false;
   }
 
   get hasActive() {
@@ -24,10 +25,6 @@ export default class SubscriptionsTab extends Component(HTMLElement) {
 
   get noActive() {
     return !this.hasActive;
-  }
-
-  get noHistory() {
-    return !this.hasHistory;
   }
 
   get reversedHistory() {
@@ -46,6 +43,18 @@ export default class SubscriptionsTab extends Component(HTMLElement) {
     return this.state.wsConnected ? 'WebSocket Connected' : 'WebSocket Disconnected';
   }
 
+  get historyToggleIcon() {
+    return this.state.historyExpanded ? '▼' : '▶';
+  }
+
+  get historyCount() {
+    return this.state.history.length;
+  }
+
+  toggleHistory = () => {
+    this.state.historyExpanded = !this.state.historyExpanded;
+  }
+
   render() {
     return html`
       <div class="panel-header">
@@ -58,27 +67,29 @@ export default class SubscriptionsTab extends Component(HTMLElement) {
       </div>
 
       <div class="subscriptions-content">
-        <div class="sub-section">
-          <h3 class="sub-section-title">Active Subscriptions</h3>
-          <${If} condition="{this.hasActive}">
-            <div class="sub-list">
-              <${Loop} items="{this.state.activeSubscriptions}" key="id" as="sub">
-                <div class="sub-item">
-                  <span class="sub-id">{sub.id}</span>
-                  <span class="sub-info">
-                    <span class="sub-updates">{sub.updateCount} updates</span>
-                  </span>
-                </div>
-              </${Loop}>
-            </div>
-          </${If}>
-          <${If} condition="{this.noActive}">
-            <div class="sub-empty">No active subscriptions</div>
-          </${If}>
+        <${If} condition="{this.hasActive}">
+          <div class="sub-list">
+            <${Loop} items="{this.state.activeSubscriptions}" key="id" as="sub">
+              <div class="sub-item">
+                <span class="sub-id">{sub.id}</span>
+                <span class="sub-info">
+                  <span class="sub-updates">{sub.updateCount} updates</span>
+                </span>
+              </div>
+            </${Loop}>
+          </div>
+        </${If}>
+        <${If} condition="{this.noActive}">
+          <div class="sub-empty">No active subscriptions</div>
+        </${If}>
+
+        <div class="sub-section-header" onclick="{toggleHistory}">
+          <span class="sub-toggle">{this.historyToggleIcon}</span>
+          <span class="sub-section-title">History</span>
+          <span class="sub-section-count">{this.historyCount}</span>
         </div>
 
-        <div class="sub-section">
-          <h3 class="sub-section-title">History</h3>
+        <${If} condition="{this.state.historyExpanded}">
           <${If} condition="{this.hasHistory}">
             <div class="sub-history">
               <${Loop} items="{this.reversedHistory}" key="_key" as="event">
@@ -90,12 +101,8 @@ export default class SubscriptionsTab extends Component(HTMLElement) {
               </${Loop}>
             </div>
           </${If}>
-          <${If} condition="{this.noHistory}">
-            <div class="sub-empty">No subscription history</div>
-          </${If}>
-        </div>
+        </${If}>
       </div>
     `;
   }
 }
-

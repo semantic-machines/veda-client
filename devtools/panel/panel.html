@@ -1123,9 +1123,6 @@
       font-size: var(--font-size-md);
       font-weight: 500;
       color: var(--text-primary);
-      margin-bottom: var(--space-md);
-      padding-bottom: var(--space-sm);
-      border-bottom: 1px solid var(--border-color);
     }
 
     .sub-table {
@@ -1689,9 +1686,26 @@
     .subscriptions-content {
       display: flex;
       flex-direction: column;
-      gap: var(--space-md);
-      padding: var(--space-md);
+      gap: var(--space-sm);
       overflow-y: auto;
+    }
+
+    .sub-section-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .sub-section-header:hover {
+      color: var(--text-primary);
+    }
+
+    .sub-toggle {
+      font-size: 10px;
+      color: var(--text-muted);
+      width: 12px;
     }
 
     .sub-section-title {
@@ -1699,7 +1713,11 @@
       font-weight: 600;
       color: var(--text-muted);
       text-transform: uppercase;
-      margin-bottom: var(--space-sm);
+    }
+
+    .sub-section-count {
+      font-size: 10px;
+      color: var(--text-muted);
     }
 
     .sub-list {
