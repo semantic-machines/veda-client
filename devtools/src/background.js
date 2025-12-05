@@ -118,7 +118,7 @@ chrome.runtime.onConnect.addListener(function(port) {
 
     // Route message to appropriate handler
     const handled = router.handle(message, { tabId, port });
-    
+
     if (!handled) {
       console.warn('[Veda DevTools] Unhandled message type:', message.type);
     }
