@@ -1,20 +1,23 @@
 /**
- * Inspector Module
+ * Inspector
  * Handles element highlighting and inspection in the page
  */
 
-export function createInspector(components) {
-  let highlightOverlay = null;
-  let highlightedComponent = null;
-  let scrollHandler = null;
-  let mutationObserver = null;
+export class Inspector {
+  constructor(components) {
+    this.components = components;
+    this.highlightOverlay = null;
+    this.highlightedComponent = null;
+    this.scrollHandler = null;
+    this.mutationObserver = null;
+  }
 
-  function createHighlightOverlay() {
-    if (highlightOverlay) return highlightOverlay;
+  createHighlightOverlay() {
+    if (this.highlightOverlay) return this.highlightOverlay;
 
-    highlightOverlay = document.createElement('div');
-    highlightOverlay.id = '__veda_devtools_highlight__';
-    highlightOverlay.style.cssText = `
+    this.highlightOverlay = document.createElement('div');
+    this.highlightOverlay.id = '__veda_devtools_highlight__';
+    this.highlightOverlay.style.cssText = `
       position: fixed;
       pointer-events: none;
       z-index: 2147483647;
@@ -37,74 +40,74 @@ export function createInspector(components) {
       border-radius: 2px 2px 0 0;
       white-space: nowrap;
     `;
-    highlightOverlay.appendChild(label);
+    this.highlightOverlay.appendChild(label);
 
-    document.body.appendChild(highlightOverlay);
-    return highlightOverlay;
+    document.body.appendChild(this.highlightOverlay);
+    return this.highlightOverlay;
   }
 
-  function updateHighlightPosition() {
-    if (!highlightedComponent || !highlightOverlay) return;
+  updateHighlightPosition() {
+    if (!this.highlightedComponent || !this.highlightOverlay) return;
 
-    if (!document.body.contains(highlightedComponent)) {
-      hideHighlight();
+    if (!document.body.contains(this.highlightedComponent)) {
+      this.hideHighlight();
       return;
     }
 
-    const rect = highlightedComponent.getBoundingClientRect();
-    highlightOverlay.style.top = rect.top + 'px';
-    highlightOverlay.style.left = rect.left + 'px';
-    highlightOverlay.style.width = rect.width + 'px';
-    highlightOverlay.style.height = rect.height + 'px';
+    const rect = this.highlightedComponent.getBoundingClientRect();
+    this.highlightOverlay.style.top = rect.top + 'px';
+    this.highlightOverlay.style.left = rect.left + 'px';
+    this.highlightOverlay.style.width = rect.width + 'px';
+    this.highlightOverlay.style.height = rect.height + 'px';
   }
 
-  function highlightElement(componentId) {
-    const data = components.get(componentId);
+  highlightElement(componentId) {
+    const data = this.components.get(componentId);
     if (!data) return false;
 
     const component = data.componentRef.deref();
     if (!component) return false;
 
-    highlightedComponent = component;
-    const overlay = createHighlightOverlay();
+    this.highlightedComponent = component;
+    const overlay = this.createHighlightOverlay();
     const label = overlay.querySelector('.__veda_devtools_label__');
 
-    updateHighlightPosition();
+    this.updateHighlightPosition();
     overlay.style.display = 'block';
     label.textContent = `<${data.tagName}>`;
 
-    if (!scrollHandler) {
-      scrollHandler = () => updateHighlightPosition();
-      window.addEventListener('scroll', scrollHandler, true);
-      window.addEventListener('resize', scrollHandler);
+    if (!this.scrollHandler) {
+      this.scrollHandler = () => this.updateHighlightPosition();
+      window.addEventListener('scroll', this.scrollHandler, true);
+      window.addEventListener('resize', this.scrollHandler);
     }
 
-    if (mutationObserver) {
-      mutationObserver.disconnect();
+    if (this.mutationObserver) {
+      this.mutationObserver.disconnect();
     }
-    mutationObserver = new MutationObserver(() => {
-      if (highlightedComponent && !document.body.contains(highlightedComponent)) {
-        hideHighlight();
+    this.mutationObserver = new MutationObserver(() => {
+      if (this.highlightedComponent && !document.body.contains(this.highlightedComponent)) {
+        this.hideHighlight();
       }
     });
-    mutationObserver.observe(document.body, { childList: true, subtree: true });
+    this.mutationObserver.observe(document.body, { childList: true, subtree: true });
 
     return true;
   }
 
-  function hideHighlight() {
-    if (highlightOverlay) {
-      highlightOverlay.style.display = 'none';
+  hideHighlight() {
+    if (this.highlightOverlay) {
+      this.highlightOverlay.style.display = 'none';
     }
-    highlightedComponent = null;
-    if (mutationObserver) {
-      mutationObserver.disconnect();
-      mutationObserver = null;
+    this.highlightedComponent = null;
+    if (this.mutationObserver) {
+      this.mutationObserver.disconnect();
+      this.mutationObserver = null;
     }
   }
 
-  function inspectElement(componentId) {
-    const data = components.get(componentId);
+  inspectElement(componentId) {
+    const data = this.components.get(componentId);
     if (!data) return false;
 
     const component = data.componentRef.deref();
@@ -135,8 +138,8 @@ export function createInspector(components) {
     return true;
   }
 
-  function scrollToElement(componentId) {
-    const data = components.get(componentId);
+  scrollToElement(componentId) {
+    const data = this.components.get(componentId);
     if (!data) return false;
 
     const component = data.componentRef.deref();
@@ -146,8 +149,8 @@ export function createInspector(components) {
     return true;
   }
 
-  function setComponentState(componentId, key, value) {
-    const data = components.get(componentId);
+  setComponentState(componentId, key, value) {
+    const data = this.components.get(componentId);
     if (!data) return false;
 
     const component = data.componentRef.deref();
@@ -161,13 +164,4 @@ export function createInspector(components) {
       return false;
     }
   }
-
-  return {
-    highlightElement,
-    hideHighlight,
-    inspectElement,
-    scrollToElement,
-    setComponentState
-  };
 }
-

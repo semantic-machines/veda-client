@@ -2,7 +2,7 @@
 
 /**
  * Build script for Veda Client DevTools
- * Bundles Veda Client code using esbuild
+ * Bundles both hook.js and panel.js using esbuild
  */
 
 import esbuild from 'esbuild';
@@ -18,6 +18,19 @@ const DEVTOOLS_DIR = path.join(ROOT_DIR, 'devtools');
 console.log('🔨 Building Veda Client DevTools...\n');
 
 try {
+  // Build hook.js (injected into page)
+  await esbuild.build({
+    entryPoints: [path.join(DEVTOOLS_DIR, 'src/hook-entry.js')],
+    bundle: true,
+    format: 'iife',
+    outfile: path.join(DEVTOOLS_DIR, 'src/hook.js'),
+    platform: 'browser',
+    target: 'es2020',
+    sourcemap: false,  // No sourcemap for injected code
+    minify: false,
+    logLevel: 'warning'
+  });
+
   // Bundle panel.js with all dependencies
   await esbuild.build({
     entryPoints: [path.join(DEVTOOLS_DIR, 'panel/panel-source.js')],
@@ -38,5 +51,3 @@ try {
   console.error('✗ Build failed:', error);
   process.exit(1);
 }
-
-

@@ -1,128 +1,97 @@
 /**
- * Veda Client DevTools Hook
+ * Veda Client DevTools Hook - Entry Point
  * Injected into page to track reactive state and components
- * 
- * This is the new modular version - modules are embedded via build process
  */
+
+import { EventEmitter } from './hook/EventEmitter.js';
+import { Timeline } from './hook/Timeline.js';
+import { Serializer } from './hook/Serializer.js';
+import { Profiler } from './hook/Profiler.js';
+import { ComponentTracker } from './hook/ComponentTracker.js';
+import { ModelTracker } from './hook/ModelTracker.js';
+import { EffectTracker } from './hook/EffectTracker.js';
+import { SubscriptionTracker } from './hook/SubscriptionTracker.js';
+import { Inspector } from './hook/Inspector.js';
 
 (function() {
   if (window.__VEDA_DEVTOOLS_HOOK__) return;
 
-  // === Module: EventEmitter ===
-  ${EventEmitter}
+  // Create core modules
+  const emitter = new EventEmitter();
+  const timeline = new Timeline(100);
+  const serializer = new Serializer();
+  const profiler = new Profiler();
 
-  // === Module: Timeline ===
-  ${Timeline}
-
-  // === Module: Serializer ===
-  ${Serializer}
-
-  // === Module: Profiler ===
-  ${Profiler}
-
-  // === Module: ComponentTracker ===
-  ${ComponentTracker}
-
-  // === Module: ModelTracker ===
-  ${ModelTracker}
-
-  // === Module: EffectTracker ===
-  ${EffectTracker}
-
-  // === Module: SubscriptionTracker ===
-  ${SubscriptionTracker}
-
-  // === Module: Inspector ===
-  ${Inspector}
-
-  // === Main Hook ===
-
-  // Create event emitter
-  const emitter = createEventEmitter();
-  
-  // Create timeline
-  const timeline = createTimeline(100);
-  
-  // Create serializer
-  const serializer = createSerializer();
-  
-  // Create profiler
-  const profiler = createProfiler();
-  
-  // Create component tracker
-  const componentTracker = createComponentTracker(
-    emitter.emit,
-    timeline.add,
-    serializer.extractComponentState
+  // Create trackers
+  const componentTracker = new ComponentTracker(
+    emitter.emit.bind(emitter),
+    timeline.add.bind(timeline),
+    serializer.extractComponentState.bind(serializer)
   );
-  
-  // Create model tracker
-  const modelTracker = createModelTracker(
-    emitter.emit,
-    timeline.add,
-    serializer.serializeModelProperties,
-    serializer.getModelType
+
+  const modelTracker = new ModelTracker(
+    emitter.emit.bind(emitter),
+    timeline.add.bind(timeline),
+    serializer.serializeModelProperties.bind(serializer),
+    serializer.getModelType.bind(serializer)
   );
-  
-  // Create effect tracker
-  const effectTracker = createEffectTracker(
-    emitter.emit,
-    timeline.add,
+
+  const effectTracker = new EffectTracker(
+    emitter.emit.bind(emitter),
+    timeline.add.bind(timeline),
     componentTracker.componentToId
   );
-  
-  // Create subscription tracker
-  const subscriptionTracker = createSubscriptionTracker(emitter.emit);
-  
-  // Create inspector
-  const inspector = createInspector(componentTracker.components);
+
+  const subscriptionTracker = new SubscriptionTracker(emitter.emit.bind(emitter));
+
+  const inspector = new Inspector(componentTracker.components);
 
   // Create main hook object
   const hook = {
     // Component tracking
-    trackComponent: componentTracker.track.bind(componentTracker),
-    untrackComponent: componentTracker.untrack.bind(componentTracker),
-    trackComponentStateChange: componentTracker.trackStateChange.bind(componentTracker),
+    trackComponent: (comp) => componentTracker.track(comp),
+    untrackComponent: (comp) => componentTracker.untrack(comp),
+    trackComponentStateChange: (comp) => componentTracker.trackStateChange(comp),
     trackComponentRender: (comp, startTime) => 
       componentTracker.trackRender(comp, startTime, profiler.record.bind(profiler)),
     
     // Model tracking
-    trackModel: modelTracker.track.bind(modelTracker),
+    trackModel: (model) => modelTracker.track(model),
     trackModelUpdate: (model) => 
       modelTracker.trackUpdate(model, profiler.record.bind(profiler)),
     
     // Effect tracking
-    trackEffect: effectTracker.track.bind(effectTracker),
-    trackEffectDependency: effectTracker.trackDependency.bind(effectTracker),
+    trackEffect: (effect) => effectTracker.track(effect),
+    trackEffectDependency: (effect, target, key) => effectTracker.trackDependency(effect, target, key),
     trackEffectTrigger: (effect) => 
       effectTracker.trackTrigger(effect, profiler.record.bind(profiler)),
-    untrackEffect: effectTracker.untrack.bind(effectTracker),
+    untrackEffect: (effect) => effectTracker.untrack(effect),
     
     // Subscription tracking
-    trackSubscription: subscriptionTracker.track.bind(subscriptionTracker),
-    trackUnsubscription: subscriptionTracker.trackUnsubscription.bind(subscriptionTracker),
-    trackSubscriptionUpdate: subscriptionTracker.trackUpdate.bind(subscriptionTracker),
+    trackSubscription: (id, updateCounter) => subscriptionTracker.track(id, updateCounter),
+    trackUnsubscription: (id) => subscriptionTracker.trackUnsubscription(id),
+    trackSubscriptionUpdate: (id, updateCounter) => subscriptionTracker.trackUpdate(id, updateCounter),
     
     // Timeline
-    addToTimeline: timeline.add.bind(timeline),
+    addToTimeline: (event, data) => timeline.add(event, data),
     
     // Event emitter
-    on: emitter.on.bind(emitter),
-    off: emitter.off.bind(emitter),
-    emit: emitter.emit.bind(emitter),
+    on: (event, cb) => emitter.on(event, cb),
+    off: (event, cb) => emitter.off(event, cb),
+    emit: (event, data) => emitter.emit(event, data),
     
     // Profiling
     get profiling() { return profiler.profiling; },
-    startProfiling: profiler.start.bind(profiler),
-    stopProfiling: profiler.stop.bind(profiler),
-    getPerformanceStats: componentTracker.getPerformanceStats.bind(componentTracker),
+    startProfiling: () => profiler.start(),
+    stopProfiling: () => profiler.stop(),
+    getPerformanceStats: () => componentTracker.getPerformanceStats(),
     
     // Inspection
-    highlightElement: inspector.highlightElement.bind(inspector),
-    hideHighlight: inspector.hideHighlight.bind(inspector),
-    inspectElement: inspector.inspectElement.bind(inspector),
-    scrollToElement: inspector.scrollToElement.bind(inspector),
-    setComponentState: inspector.setComponentState.bind(inspector),
+    highlightElement: (id) => inspector.highlightElement(id),
+    hideHighlight: () => inspector.hideHighlight(),
+    inspectElement: (id) => inspector.inspectElement(id),
+    scrollToElement: (id) => inspector.scrollToElement(id),
+    setComponentState: (id, key, value) => inspector.setComponentState(id, key, value),
     
     // WebSocket state
     wsConnected: false,
@@ -208,8 +177,7 @@
   // Make hook globally available
   window.__VEDA_DEVTOOLS_HOOK__ = hook;
 
-  // === Message Handler ===
-  
+  // Message handler
   window.addEventListener('message', function(event) {
     if (event.source !== window) return;
     if (event.data.source !== 'veda-devtools-request') return;
@@ -297,8 +265,7 @@
     data: {}
   }, '*');
 
-  // === Subscription Interceptor ===
-  
+  // Subscription interceptor
   function interceptSubscription() {
     const checkInterval = setInterval(() => {
       let Subscription = null;

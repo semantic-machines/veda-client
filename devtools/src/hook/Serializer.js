@@ -1,10 +1,10 @@
 /**
- * Serializer Module
+ * Serializer
  * Serializes values for DevTools display
  */
 
-export function createSerializer() {
-  function serializeValue(value, depth = 0) {
+export class Serializer {
+  serializeValue(value, depth = 0) {
     if (depth > 3) return '[Deep Object]';
     if (value === null) return null;
     if (value === undefined) return undefined;
@@ -26,9 +26,9 @@ export function createSerializer() {
     if (Array.isArray(value)) {
       if (value.length === 0) return [];
       if (value.length <= 5) {
-        return value.map(item => serializeValue(item, depth + 1));
+        return value.map(item => this.serializeValue(item, depth + 1));
       }
-      return value.slice(0, 5).map(item => serializeValue(item, depth + 1))
+      return value.slice(0, 5).map(item => this.serializeValue(item, depth + 1))
         .concat([`... +${value.length - 5} more`]);
     }
 
@@ -42,7 +42,7 @@ export function createSerializer() {
         break;
       }
       try {
-        result[key] = serializeValue(value[key], depth + 1);
+        result[key] = this.serializeValue(value[key], depth + 1);
       } catch (e) {
         result[key] = '[Error]';
       }
@@ -50,7 +50,7 @@ export function createSerializer() {
     return result;
   }
 
-  function extractComponentState(component) {
+  extractComponentState(component) {
     const state = {};
 
     if (!component.state) return state;
@@ -72,7 +72,7 @@ export function createSerializer() {
 
         try {
           const value = stateObj[key];
-          state[key] = serializeValue(value);
+          state[key] = this.serializeValue(value);
         } catch (e) {
           state[key] = '[Error]';
         }
@@ -84,7 +84,7 @@ export function createSerializer() {
     return state;
   }
 
-  function getModelType(model) {
+  getModelType(model) {
     try {
       const type = model['rdf:type'] || model['@type'];
       if (!type) return 'No type';
@@ -108,7 +108,7 @@ export function createSerializer() {
     }
   }
 
-  function serializeModelProperties(model) {
+  serializeModelProperties(model) {
     const props = {};
 
     if (!model) return props;
@@ -131,13 +131,13 @@ export function createSerializer() {
                     return v.data;
                   }
                 }
-                return serializeValue(v);
+                return this.serializeValue(v);
               });
               if (value.length > 10) {
                 props[key].push(`... +${value.length - 10} more`);
               }
             } else {
-              props[key] = serializeValue(value);
+              props[key] = this.serializeValue(value);
             }
           } catch (e) {
             props[key] = '[Error]';
@@ -150,12 +150,4 @@ export function createSerializer() {
 
     return props;
   }
-
-  return {
-    serializeValue,
-    extractComponentState,
-    getModelType,
-    serializeModelProperties
-  };
 }
-

@@ -1,46 +1,43 @@
 /**
- * Profiler Module
+ * Profiler
  * Handles performance profiling
  */
 
-export function createProfiler() {
-  let profiling = false;
-  const profileData = [];
-  let profileStartTime = 0;
+export class Profiler {
+  constructor() {
+    this.profiling = false;
+    this.profileData = [];
+    this.profileStartTime = 0;
+  }
 
-  return {
-    get profiling() { return profiling; },
-    get profileData() { return profileData; },
+  start() {
+    this.profiling = true;
+    this.profileData = [];
+    this.profileStartTime = performance.now();
+    console.log('[Veda DevTools] Profiling started');
+  }
 
-    start() {
-      profiling = true;
-      profileData.length = 0;
-      profileStartTime = performance.now();
-      console.log('[Veda DevTools] Profiling started');
-    },
+  stop() {
+    this.profiling = false;
+    const duration = performance.now() - this.profileStartTime;
+    console.log('[Veda DevTools] Profiling stopped, duration:', duration, 'ms');
+    return {
+      duration,
+      events: this.profileData.slice(),
+      summary: this.getSummary()
+    };
+  }
 
-    stop() {
-      profiling = false;
-      const duration = performance.now() - profileStartTime;
-      console.log('[Veda DevTools] Profiling stopped, duration:', duration, 'ms');
-      return {
-        duration,
-        events: profileData.slice(),
-        summary: getSummary()
-      };
-    },
+  record(type, data) {
+    if (!this.profiling) return;
+    this.profileData.push({
+      type,
+      data,
+      timestamp: performance.now() - this.profileStartTime
+    });
+  }
 
-    record(type, data) {
-      if (!profiling) return;
-      profileData.push({
-        type,
-        data,
-        timestamp: performance.now() - profileStartTime
-      });
-    }
-  };
-
-  function getSummary() {
+  getSummary() {
     const summary = {
       renders: 0,
       totalRenderTime: 0,
@@ -49,7 +46,7 @@ export function createProfiler() {
       componentsByRenders: {}
     };
 
-    for (const event of profileData) {
+    for (const event of this.profileData) {
       if (event.type === 'render') {
         summary.renders++;
         summary.totalRenderTime += event.data.time || 0;
@@ -65,4 +62,3 @@ export function createProfiler() {
     return summary;
   }
 }
-

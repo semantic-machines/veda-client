@@ -1,47 +1,46 @@
 /**
- * Event Emitter Module
+ * Event Emitter
  * Simple event emitter for hook events
  */
 
-export function createEventEmitter() {
-  const listeners = {};
+export class EventEmitter {
+  constructor() {
+    this.listeners = {};
+  }
 
-  return {
-    on(event, callback) {
-      if (!listeners[event]) {
-        listeners[event] = [];
-      }
-      listeners[event].push(callback);
-    },
-
-    off(event, callback) {
-      if (!listeners[event]) return;
-      if (!callback) {
-        delete listeners[event];
-      } else {
-        listeners[event] = listeners[event].filter(cb => cb !== callback);
-      }
-    },
-
-    emit(event, data) {
-      const eventListeners = listeners[event];
-      if (eventListeners) {
-        eventListeners.forEach(cb => {
-          try {
-            cb(data);
-          } catch (e) {
-            console.warn('[Veda DevTools] Listener error:', e);
-          }
-        });
-      }
-
-      // Send to DevTools panel via postMessage
-      window.postMessage({
-        source: 'veda-devtools-hook',
-        event,
-        data
-      }, '*');
+  on(event, callback) {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
     }
-  };
-}
+    this.listeners[event].push(callback);
+  }
 
+  off(event, callback) {
+    if (!this.listeners[event]) return;
+    if (!callback) {
+      delete this.listeners[event];
+    } else {
+      this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
+    }
+  }
+
+  emit(event, data) {
+    const eventListeners = this.listeners[event];
+    if (eventListeners) {
+      eventListeners.forEach(cb => {
+        try {
+          cb(data);
+        } catch (e) {
+          console.warn('[Veda DevTools] Listener error:', e);
+        }
+      });
+    }
+
+    // Send to DevTools panel via postMessage
+    window.postMessage({
+      source: 'veda-devtools-hook',
+      event,
+      data
+    }, '*');
+  }
+}

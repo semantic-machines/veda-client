@@ -1,36 +1,34 @@
 /**
- * Timeline Module
+ * Timeline
  * Tracks timeline of events
  */
 
-export function createTimeline(maxEvents = 100) {
-  const timeline = [];
+export class Timeline {
+  constructor(maxEvents = 100) {
+    this.timeline = [];
+    this.maxEvents = maxEvents;
+  }
 
-  return {
-    timeline,
+  add(event, data) {
+    const entry = {
+      id: Date.now() + Math.random(),
+      event,
+      data,
+      timestamp: Date.now()
+    };
 
-    add(event, data) {
-      const entry = {
-        id: Date.now() + Math.random(),
-        event,
-        data,
-        timestamp: Date.now()
-      };
+    this.timeline.push(entry);
 
-      timeline.push(entry);
-
-      if (timeline.length > maxEvents) {
-        timeline.shift();
-      }
-    },
-
-    get(limit = 50) {
-      return timeline.slice(-limit);
-    },
-
-    clear() {
-      timeline.length = 0;
+    if (this.timeline.length > this.maxEvents) {
+      this.timeline.shift();
     }
-  };
-}
+  }
 
+  get(limit = 50) {
+    return this.timeline.slice(-limit);
+  }
+
+  clear() {
+    this.timeline.length = 0;
+  }
+}

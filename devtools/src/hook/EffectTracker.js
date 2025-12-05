@@ -1,20 +1,26 @@
 /**
- * Effect Tracker Module
+ * Effect Tracker
  * Tracks reactive effects and their dependencies
  */
 
-export function createEffectTracker(emit, addToTimeline, componentToId) {
-  const effects = new Map();
-  const effectToId = new WeakMap();
-  let effectCounter = 0;
+export class EffectTracker {
+  constructor(emit, addToTimeline, componentToId) {
+    this.emit = emit;
+    this.addToTimeline = addToTimeline;
+    this.componentToId = componentToId;
+    
+    this.effects = new Map();
+    this.effectToId = new WeakMap();
+    this.effectCounter = 0;
 
-  const registry = new FinalizationRegistry((id) => {
-    effects.delete(id);
-    addToTimeline('effect:removed', { id });
-    emit('effect:removed', { id });
-  });
+    this.registry = new FinalizationRegistry((id) => {
+      this.effects.delete(id);
+      this.addToTimeline('effect:removed', { id });
+      this.emit('effect:removed', { id });
+    });
+  }
 
-  function getEffectInfo(effect) {
+  getEffectInfo(effect) {
     try {
       if (effect.options?.name && effect.options.name.length > 2) {
         return effect.options.name;
@@ -46,141 +52,135 @@ export function createEffectTracker(emit, addToTimeline, componentToId) {
     return null;
   }
 
-  return {
-    effects,
-    effectToId,
+  track(effect) {
+    const existingId = this.effectToId.get(effect);
+    if (existingId) return existingId;
 
-    track(effect) {
-      const existingId = effectToId.get(effect);
-      if (existingId) return existingId;
+    const id = ++this.effectCounter;
+    const effectName = this.getEffectInfo(effect);
 
-      const id = ++effectCounter;
-      const effectName = getEffectInfo(effect);
-
-      let componentTag = null;
-      let componentId = null;
-      const comp = effect.options?.component;
-      if (comp) {
-        if (comp.tagName) {
-          componentTag = comp.tagName.toLowerCase();
-        } else if (comp.constructor?.name && comp.constructor.name !== 'Object') {
-          componentTag = comp.constructor.name;
-        }
-        componentId = componentToId.get(comp) || null;
+    let componentTag = null;
+    let componentId = null;
+    const comp = effect.options?.component;
+    if (comp) {
+      if (comp.tagName) {
+        componentTag = comp.tagName.toLowerCase();
+      } else if (comp.constructor?.name && comp.constructor.name !== 'Object') {
+        componentTag = comp.constructor.name;
       }
+      componentId = this.componentToId.get(comp) || null;
+    }
 
-      const data = {
-        id,
-        effectRef: new WeakRef(effect),
-        triggerCount: 0,
-        lastTriggered: null,
-        createdAt: Date.now(),
-        name: effectName,
-        componentTag,
-        componentId,
-        dependencies: [],
-        isComputed: effect.options?.computed || false,
-        isLazy: effect.options?.lazy || false
-      };
+    const data = {
+      id,
+      effectRef: new WeakRef(effect),
+      triggerCount: 0,
+      lastTriggered: null,
+      createdAt: Date.now(),
+      name: effectName,
+      componentTag,
+      componentId,
+      dependencies: [],
+      isComputed: effect.options?.computed || false,
+      isLazy: effect.options?.lazy || false
+    };
 
-      effects.set(id, data);
-      effectToId.set(effect, id);
-      registry.register(effect, id);
+    this.effects.set(id, data);
+    this.effectToId.set(effect, id);
+    this.registry.register(effect, id);
 
-      addToTimeline('effect:created', { id });
+    this.addToTimeline('effect:created', { id });
 
-      emit('effect:created', {
-        id,
-        createdAt: data.createdAt,
-        triggerCount: 0,
-        name: data.name,
-        componentTag: data.componentTag
-      });
+    this.emit('effect:created', {
+      id,
+      createdAt: data.createdAt,
+      triggerCount: 0,
+      name: data.name,
+      componentTag: data.componentTag
+    });
 
-      return id;
-    },
+    return id;
+  }
 
-    trackDependency(effect, target, key) {
-      try {
-        const effectId = effectToId.get(effect);
-        if (!effectId) return;
+  trackDependency(effect, target, key) {
+    try {
+      const effectId = this.effectToId.get(effect);
+      if (!effectId) return;
 
-        const data = effects.get(effectId);
-        if (!data) return;
-
-        const keyStr = String(key);
-
-        // Filter out noise
-        if (keyStr === 'constructor' ||
-            keyStr === 'length' ||
-            keyStr === '__isReactive' ||
-            keyStr === 'then' ||
-            keyStr === 'toJSON' ||
-            /^\d+$/.test(keyStr) ||
-            typeof key === 'symbol') {
-          return;
-        }
-
-        let targetId = '';
-        try {
-          if (target && typeof target.id === 'string') {
-            targetId = target.id;
-          }
-        } catch (e) {
-          // Ignore
-        }
-
-        const depKey = `${targetId}:${keyStr}`;
-        if (!data.dependencies.some(d => d.key === depKey)) {
-          data.dependencies.push({
-            key: depKey,
-            targetId,
-            property: keyStr
-          });
-        }
-      } catch (e) {
-        // Silently fail
-      }
-    },
-
-    trackTrigger(effect, recordProfileEvent) {
-      const id = effectToId.get(effect);
-      if (!id) return;
-
-      const data = effects.get(id);
+      const data = this.effects.get(effectId);
       if (!data) return;
 
-      data.triggerCount++;
-      data.lastTriggered = Date.now();
+      const keyStr = String(key);
 
-      recordProfileEvent('effect', { id, triggerCount: data.triggerCount });
-
-      if (data.triggerCount <= 10 || data.triggerCount % 5 === 0) {
-        emit('effect:triggered', {
-          id,
-          triggerCount: data.triggerCount,
-          lastTriggered: data.lastTriggered
-        });
+      // Filter out noise
+      if (keyStr === 'constructor' ||
+          keyStr === 'length' ||
+          keyStr === '__isReactive' ||
+          keyStr === 'then' ||
+          keyStr === 'toJSON' ||
+          /^\d+$/.test(keyStr) ||
+          typeof key === 'symbol') {
+        return;
       }
 
-      if (data.triggerCount <= 3 || data.triggerCount % 10 === 0) {
-        addToTimeline('effect:triggered', {
-          id,
-          triggerCount: data.triggerCount
+      let targetId = '';
+      try {
+        if (target && typeof target.id === 'string') {
+          targetId = target.id;
+        }
+      } catch (e) {
+        // Ignore
+      }
+
+      const depKey = `${targetId}:${keyStr}`;
+      if (!data.dependencies.some(d => d.key === depKey)) {
+        data.dependencies.push({
+          key: depKey,
+          targetId,
+          property: keyStr
         });
       }
-    },
-
-    untrack(effect) {
-      const id = effectToId.get(effect);
-      if (!id) return;
-
-      effects.delete(id);
-      effectToId.delete(effect);
-
-      addToTimeline('effect:removed', { id });
-      emit('effect:removed', { id });
+    } catch (e) {
+      // Silently fail
     }
-  };
-}
+  }
 
+  trackTrigger(effect, recordProfileEvent) {
+    const id = this.effectToId.get(effect);
+    if (!id) return;
+
+    const data = this.effects.get(id);
+    if (!data) return;
+
+    data.triggerCount++;
+    data.lastTriggered = Date.now();
+
+    recordProfileEvent('effect', { id, triggerCount: data.triggerCount });
+
+    if (data.triggerCount <= 10 || data.triggerCount % 5 === 0) {
+      this.emit('effect:triggered', {
+        id,
+        triggerCount: data.triggerCount,
+        lastTriggered: data.lastTriggered
+      });
+    }
+
+    if (data.triggerCount <= 3 || data.triggerCount % 10 === 0) {
+      this.addToTimeline('effect:triggered', {
+        id,
+        triggerCount: data.triggerCount
+      });
+    }
+  }
+
+  untrack(effect) {
+    const id = this.effectToId.get(effect);
+    if (!id) return;
+
+    this.effects.delete(id);
+    this.effectToId.delete(effect);
+
+    this.addToTimeline('effect:removed', { id });
+    this.emit('effect:removed', { id });
+  }
+}
