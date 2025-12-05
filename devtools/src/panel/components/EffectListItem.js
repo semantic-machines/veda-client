@@ -2,7 +2,7 @@
  * Effect List Item - Renders either component group header or effect item
  */
 
-import { Component, html, If } from '../../../src/index.js';
+import { Component, html, If } from '../../../../src/index.js';
 
 export default class EffectListItem extends Component(HTMLElement) {
   static tag = 'effect-list-item';

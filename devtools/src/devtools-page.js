@@ -5,7 +5,7 @@
 chrome.devtools.panels.create(
   'Veda',
   '', // icon path (empty for now)
-  'panel/panel.html',
+  'panel.html',
   function(panel) {
     console.log('[Veda DevTools] Panel created');
   }

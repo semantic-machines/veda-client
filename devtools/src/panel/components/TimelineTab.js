@@ -1,7 +1,7 @@
 /**
  * Timeline Tab - real-time event log
  */
-import { Component, html, Loop, If } from '../../../src/index.js';
+import { Component, html, Loop, If } from '../../../../src/index.js';
 
 export default class TimelineTab extends Component(HTMLElement) {
   static tag = 'timeline-tab';

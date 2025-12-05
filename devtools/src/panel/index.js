@@ -2,10 +2,10 @@
  * Veda Client DevTools Panel - Built with Veda Client itself!
  */
 
-import { Component, html, If } from '../../src/index.js';
+import { Component, html, If } from '../../../src/index.js';
 import { registerComponents } from './components/index.js';
-import { DEVTOOLS_CONFIG } from '../config.js';
-import { debounce } from '../utils/common.js';
+import { DEVTOOLS_CONFIG } from '../../config.js';
+import { debounce } from '../../utils/common.js';
 
 // Register child components
 registerComponents();

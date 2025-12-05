@@ -2,7 +2,7 @@
  * Property Value - Displays value with clickable links
  */
 
-import { Component, html, Loop, If } from '../../../src/index.js';
+import { Component, html, Loop, If } from '../../../../src/index.js';
 
 export default class PropertyValue extends Component(HTMLElement) {
   static tag = 'property-value';

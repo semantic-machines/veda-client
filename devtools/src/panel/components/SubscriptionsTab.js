@@ -1,7 +1,7 @@
 /**
  * Subscriptions Tab - WebSocket subscription monitoring
  */
-import { Component, html, Loop, If } from '../../../src/index.js';
+import { Component, html, Loop, If } from '../../../../src/index.js';
 import { formatRelativeTime } from '../utils/formatters.js';
 
 export default class SubscriptionsTab extends Component(HTMLElement) {

@@ -1,7 +1,7 @@
 /**
  * Effects Tab - list of all effects
  */
-import { Component, html, Loop, If } from '../../../src/index.js';
+import { Component, html, Loop, If } from '../../../../src/index.js';
 import { formatTime } from '../utils/formatters.js';
 
 export default class EffectsTab extends Component(HTMLElement) {

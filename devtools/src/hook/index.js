@@ -3,15 +3,15 @@
  * Injected into page to track reactive state and components
  */
 
-import { EventEmitter } from './hook/EventEmitter.js';
-import { Timeline } from './hook/Timeline.js';
-import { Serializer } from './hook/Serializer.js';
-import { Profiler } from './hook/Profiler.js';
-import { ComponentTracker } from './hook/ComponentTracker.js';
-import { ModelTracker } from './hook/ModelTracker.js';
-import { EffectTracker } from './hook/EffectTracker.js';
-import { SubscriptionTracker } from './hook/SubscriptionTracker.js';
-import { Inspector } from './hook/Inspector.js';
+import { EventEmitter } from './modules/EventEmitter.js';
+import { Timeline } from './modules/Timeline.js';
+import { Serializer } from './modules/Serializer.js';
+import { Profiler } from './modules/Profiler.js';
+import { ComponentTracker } from './modules/ComponentTracker.js';
+import { ModelTracker } from './modules/ModelTracker.js';
+import { EffectTracker } from './modules/EffectTracker.js';
+import { SubscriptionTracker } from './modules/SubscriptionTracker.js';
+import { Inspector } from './modules/Inspector.js';
 
 (function() {
   if (window.__VEDA_DEVTOOLS_HOOK__) return;
@@ -52,51 +52,51 @@ import { Inspector } from './hook/Inspector.js';
     trackComponent: (comp) => componentTracker.track(comp),
     untrackComponent: (comp) => componentTracker.untrack(comp),
     trackComponentStateChange: (comp) => componentTracker.trackStateChange(comp),
-    trackComponentRender: (comp, startTime) => 
+    trackComponentRender: (comp, startTime) =>
       componentTracker.trackRender(comp, startTime, profiler.record.bind(profiler)),
-    
+
     // Model tracking
     trackModel: (model) => modelTracker.track(model),
-    trackModelUpdate: (model) => 
+    trackModelUpdate: (model) =>
       modelTracker.trackUpdate(model, profiler.record.bind(profiler)),
-    
+
     // Effect tracking
     trackEffect: (effect) => effectTracker.track(effect),
     trackEffectDependency: (effect, target, key) => effectTracker.trackDependency(effect, target, key),
-    trackEffectTrigger: (effect) => 
+    trackEffectTrigger: (effect) =>
       effectTracker.trackTrigger(effect, profiler.record.bind(profiler)),
     untrackEffect: (effect) => effectTracker.untrack(effect),
-    
+
     // Subscription tracking
     trackSubscription: (id, updateCounter) => subscriptionTracker.track(id, updateCounter),
     trackUnsubscription: (id) => subscriptionTracker.trackUnsubscription(id),
     trackSubscriptionUpdate: (id, updateCounter) => subscriptionTracker.trackUpdate(id, updateCounter),
-    
+
     // Timeline
     addToTimeline: (event, data) => timeline.add(event, data),
-    
+
     // Event emitter
     on: (event, cb) => emitter.on(event, cb),
     off: (event, cb) => emitter.off(event, cb),
     emit: (event, data) => emitter.emit(event, data),
-    
+
     // Profiling
     get profiling() { return profiler.profiling; },
     startProfiling: () => profiler.start(),
     stopProfiling: () => profiler.stop(),
     getPerformanceStats: () => componentTracker.getPerformanceStats(),
-    
+
     // Inspection
     highlightElement: (id) => inspector.highlightElement(id),
     hideHighlight: () => inspector.hideHighlight(),
     inspectElement: (id) => inspector.inspectElement(id),
     scrollToElement: (id) => inspector.scrollToElement(id),
     setComponentState: (id, key, value) => inspector.setComponentState(id, key, value),
-    
+
     // WebSocket state
     wsConnected: false,
     wsAddress: null,
-    
+
     // Snapshot
     getSnapshot() {
       const validComponents = [];

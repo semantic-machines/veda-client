@@ -1,7 +1,7 @@
 /**
  * Components Tab - tree view of all components
  */
-import { Component, html, Loop, If } from '../../../src/index.js';
+import { Component, html, Loop, If } from '../../../../src/index.js';
 import { formatTime, formatValue, formatRenderTime } from '../utils/formatters.js';
 
 export default class ComponentsTab extends Component(HTMLElement) {

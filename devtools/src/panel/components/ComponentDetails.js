@@ -1,7 +1,7 @@
 /**
  * Component details panel
  */
-import { Component, html, Loop, If } from '../../../src/index.js';
+import { Component, html, Loop, If } from '../../../../src/index.js';
 import { formatTime, formatValue } from '../utils/formatters.js';
 
 export default class ComponentDetails extends Component(HTMLElement) {

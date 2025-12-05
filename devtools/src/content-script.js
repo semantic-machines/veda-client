@@ -4,7 +4,7 @@
 
 // Inject hook script into page context
 const script = document.createElement('script');
-script.src = chrome.runtime.getURL('src/hook.js');
+script.src = chrome.runtime.getURL('hook.js');
 script.onload = function() {
   this.remove();
 };

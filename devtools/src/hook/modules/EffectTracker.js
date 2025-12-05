@@ -8,7 +8,7 @@ export class EffectTracker {
     this.emit = emit;
     this.addToTimeline = addToTimeline;
     this.componentToId = componentToId;
-    
+
     this.effects = new Map();
     this.effectToId = new WeakMap();
     this.effectCounter = 0;

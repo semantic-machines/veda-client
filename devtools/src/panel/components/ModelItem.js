@@ -2,7 +2,7 @@
  * Model Item - Shows model in list with selection support
  */
 
-import { Component, html, If } from '../../../src/index.js';
+import { Component, html, If } from '../../../../src/index.js';
 
 export default class ModelItem extends Component(HTMLElement) {
   static tag = 'model-item';

@@ -2,5 +2,6 @@
 **/node_modules
 **/coverage
 dist
+devtools/dist
 package-lock.json
 pnpm-lock.yaml

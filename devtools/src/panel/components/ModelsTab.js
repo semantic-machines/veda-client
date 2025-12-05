@@ -1,7 +1,7 @@
 /**
  * Models Tab - list of all model instances
  */
-import { Component, html, Loop, If } from '../../../src/index.js';
+import { Component, html, Loop, If } from '../../../../src/index.js';
 import { formatTime, formatValueWithLinks } from '../utils/formatters.js';
 
 export default class ModelsTab extends Component(HTMLElement) {

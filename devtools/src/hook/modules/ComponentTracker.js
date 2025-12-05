@@ -8,7 +8,7 @@ export class ComponentTracker {
     this.emit = emit;
     this.addToTimeline = addToTimeline;
     this.extractState = extractState;
-    
+
     this.components = new Map();
     this.componentToId = new WeakMap();
     this.componentCounter = 0;

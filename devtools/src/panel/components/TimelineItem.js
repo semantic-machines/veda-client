@@ -2,7 +2,7 @@
  * Timeline Item - Shows event in timeline
  */
 
-import { Component, html } from '../../../src/index.js';
+import { Component, html } from '../../../../src/index.js';
 
 export default class TimelineItem extends Component(HTMLElement) {
   static tag = 'timeline-item';

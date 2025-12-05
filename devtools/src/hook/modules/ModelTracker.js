@@ -9,7 +9,7 @@ export class ModelTracker {
     this.addToTimeline = addToTimeline;
     this.serializeProperties = serializeProperties;
     this.getModelType = getModelType;
-    
+
     this.models = new Map();
     this.modelToId = new WeakMap();
     this.modelCounter = 0;

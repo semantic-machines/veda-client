@@ -2,7 +2,7 @@
  * Component Item - Shows component in tree with expandable children
  */
 
-import { Component, html, Loop, If } from '../../../src/index.js';
+import { Component, html, Loop, If } from '../../../../src/index.js';
 import { formatRenderTime } from '../utils/formatters.js';
 
 export default class ComponentItem extends Component(HTMLElement) {
