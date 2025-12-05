@@ -38,11 +38,11 @@ class DevToolsPanel extends Component(HTMLElement) {
     this._refreshInterval = null;
     this._retryTimeout = null;
     this._cleanupHandlers = [];
-    
+
     // Pre-bind methods
     this.handleKeydown = this.handleKeydown.bind(this);
     this.handleBeforeUnload = this.handleBeforeUnload.bind(this);
-    
+
     // Create debounced snapshot request
     this.requestSnapshotDebounced = debounce(() => {
       this.requestSnapshot();
@@ -76,7 +76,7 @@ class DevToolsPanel extends Component(HTMLElement) {
     // Hide highlight when DevTools panel closes (pre-bound in constructor)
     window.addEventListener('beforeunload', this.handleBeforeUnload);
     window.addEventListener('pagehide', this.handleBeforeUnload);
-    
+
     // Track cleanup handlers
     this._cleanupHandlers.push(
       () => document.removeEventListener('keydown', this.handleKeydown),
@@ -133,19 +133,19 @@ class DevToolsPanel extends Component(HTMLElement) {
     this.cleanup();
     super.disconnectedCallback?.();
   }
-  
+
   cleanup() {
     // Clear all timers
     if (this._retryTimeout) {
       clearTimeout(this._retryTimeout);
       this._retryTimeout = null;
     }
-    
+
     if (this._snapshotDebounceTimer) {
       clearTimeout(this._snapshotDebounceTimer);
       this._snapshotDebounceTimer = null;
     }
-    
+
     // Run all cleanup handlers
     this._cleanupHandlers.forEach(handler => {
       try {
@@ -155,7 +155,7 @@ class DevToolsPanel extends Component(HTMLElement) {
       }
     });
     this._cleanupHandlers = [];
-    
+
     // Hide highlight
     if (this.port) {
       try {
