@@ -95,6 +95,18 @@ export default class ComponentItem extends Component(HTMLElement) {
     return formatRenderTime(this.state.data?.avgRenderTime || 0);
   }
 
+  get componentTag() {
+    return this.state.data?.tagName || 'unknown';
+  }
+
+  get componentModelId() {
+    return this.state.data?.modelId || '';
+  }
+
+  get hasModelId() {
+    return Boolean(this.componentModelId);
+  }
+
   render() {
     if (!this.state.data) return '';
 
@@ -107,9 +119,9 @@ export default class ComponentItem extends Component(HTMLElement) {
              onmouseleave="{handleMouseLeave}">
           <span class="tree-toggle" onclick="{toggleChildren}">{this.toggleIcon}</span>
           <span class="tree-content">
-            <span class="tree-tag">&lt;{this.state.data.tagName}&gt;</span>
-            <${If} condition="{this.state.data.modelId}">
-              <span class="tree-model-id">{this.state.data.modelId}</span>
+            <span class="tree-tag">&lt;{this.componentTag}&gt;</span>
+            <${If} condition="{this.hasModelId}">
+              <span class="tree-model-id">{this.componentModelId}</span>
             </${If}>
           </span>
           <span class="tree-renders">{this.renderCount}x</span>

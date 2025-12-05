@@ -45,13 +45,17 @@ export default class ModelItem extends Component(HTMLElement) {
     return '';
   }
 
+  get modelId() {
+    return this.state.data?.modelId || '';
+  }
+
   render() {
     if (!this.state.data) return '';
 
     return html`
       <div class="{this.itemClass}" onclick="{handleSelect}">
         <span class="{this.statusClass}"></span>
-        <span class="list-item-title">{this.state.data.modelId}</span>
+        <span class="list-item-title">{this.modelId}</span>
         <${If} condition="{this.typeLabel}">
           <span class="list-item-type">{this.typeLabel}</span>
         </${If}>

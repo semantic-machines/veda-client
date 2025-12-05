@@ -16,6 +16,7 @@ export default class TodoFooter extends Component(HTMLElement) {
   get filterAllClass() { return this.state.filter === 'all' ? 'selected' : ''; }
   get filterActiveClass() { return this.state.filter === 'active' ? 'selected' : ''; }
   get filterCompletedClass() { return this.state.filter === 'completed' ? 'selected' : ''; }
+  get itemPlural() { return this.state.activeCount === 1 ? 'item' : 'items'; }
   get hideCompletedButton() {
     return this.state.completedCount === 0;
   }
@@ -27,7 +28,7 @@ export default class TodoFooter extends Component(HTMLElement) {
   render() {
     return html`
       <footer class="footer">
-        <span class="todo-count"><strong>{this.state.activeCount}</strong> {this.state.activeCount === 1 ? 'item' : 'items'} left</span>
+        <span class="todo-count"><strong>{this.state.activeCount}</strong> {this.itemPlural} left</span>
         <ul class="filters">
           <li><a class="{this.filterAllClass}" href="#/">All</a></li>
           <li><a class="{this.filterActiveClass}" href="#/active">Active</a></li>

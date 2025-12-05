@@ -10,9 +10,8 @@ export default class ComponentDetails extends Component(HTMLElement) {
   constructor() {
     super();
     this.state.component = null;
+    this.state.effects = [];  // All effects for counting
     this.state.onNavigateToModel = null;
-    this.state.onInspect = null;
-    this.state.onConsoleV = null;
   }
 
   get hasComponent() {
@@ -73,21 +72,19 @@ export default class ComponentDetails extends Component(HTMLElement) {
     return this.childCount > 0;
   }
 
+  get effectCount() {
+    const compId = this.componentId;
+    if (!compId || !this.state.effects) return 0;
+    return this.state.effects.filter(e => e.componentId === compId).length;
+  }
+
+  get hasEffects() {
+    return this.effectCount > 0;
+  }
+
   handleNavigateToModel = () => {
     if (this.state.onNavigateToModel && this.modelId) {
       this.state.onNavigateToModel(this.modelId);
-    }
-  }
-
-  handleInspect = () => {
-    if (this.state.onInspect) {
-      this.state.onInspect(this.state.component);
-    }
-  }
-
-  handleConsoleV = () => {
-    if (this.state.onConsoleV) {
-      this.state.onConsoleV(this.state.component);
     }
   }
 
@@ -106,11 +103,7 @@ export default class ComponentDetails extends Component(HTMLElement) {
       <div class="details-panel">
         <div class="details-header">
           <span class="details-tag">&lt;{this.tagName_}&gt;</span>
-          <span class="details-id">##{this.componentId}</span>
-          <div class="details-actions">
-            <button class="btn btn-small" onclick="{handleInspect}" title="Highlight in page">Inspect</button>
-            <button class="btn btn-small" onclick="{handleConsoleV}" title="Store as $v in console">$v</button>
-          </div>
+          <span class="details-id">#{this.componentId}</span>
         </div>
 
         <div class="details-section">
@@ -142,10 +135,16 @@ export default class ComponentDetails extends Component(HTMLElement) {
               <span class="details-prop-key">Renders</span>
               <span class="details-prop-value">{this.renderCount}</span>
             </div>
+            <${If} condition="{this.hasEffects}">
+              <div class="details-property">
+                <span class="details-prop-key">Effects</span>
+                <span class="details-prop-value">{this.effectCount}</span>
+              </div>
+            </${If}>
             <${If} condition="{this.hasChildren}">
               <div class="details-property">
                 <span class="details-prop-key">Children</span>
-                <span class="details-prop-value">{this.childCount} components</span>
+                <span class="details-prop-value">{this.childCount}</span>
               </div>
             </${If}>
           </div>

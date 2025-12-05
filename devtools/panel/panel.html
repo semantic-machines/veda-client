@@ -477,6 +477,100 @@
       margin-left: var(--space-xs);
     }
 
+    /* Effect specific */
+    .effect-type {
+      font-size: var(--font-size-xs);
+      color: var(--accent-cyan);
+      background: rgba(78, 201, 176, 0.15);
+      padding: 1px 4px;
+      border-radius: var(--radius-sm);
+    }
+
+    .effect-deps {
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+    }
+
+    .deps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .dep-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: var(--space-xs) 0;
+      font-family: var(--font-mono);
+      font-size: var(--font-size-sm);
+    }
+
+    .dep-type {
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+      background: var(--bg-tertiary);
+      padding: 1px 4px;
+      border-radius: var(--radius-sm);
+      min-width: 40px;
+      text-align: center;
+    }
+
+    .dep-target {
+      color: var(--accent-purple);
+    }
+
+    .dep-prop {
+      color: var(--value-object);
+    }
+
+    /* Effect Groups */
+    .effect-group {
+      margin-bottom: var(--space-sm);
+    }
+
+    .effect-group-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-xs) var(--space-sm);
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-sm);
+      margin-bottom: 2px;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .effect-group-tag {
+      font-family: var(--font-mono);
+      font-size: var(--font-size-sm);
+      color: var(--accent-blue);
+    }
+
+    .effect-group-count {
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+      margin-left: auto;
+    }
+
+    /* Standalone header in effects list (not clickable) */
+    .standalone-header {
+      cursor: default !important;
+      opacity: 0.7;
+    }
+
+    .standalone-header .tree-tag {
+      font-style: italic;
+    }
+
+    /* Effect items indented under component headers */
+    .effect-list-effect {
+      margin-left: var(--space-lg);
+      padding-left: var(--space-sm);
+      border-left: 1px solid var(--border-color);
+    }
+
     /* ========================================================================
        Component Tree Styles
        ======================================================================== */
@@ -499,7 +593,7 @@
       align-items: center;
       gap: var(--space-sm);
       padding: 3px var(--space-sm);
-      cursor: default;
+      cursor: pointer;
       user-select: none;
       border-radius: var(--radius-sm);
     }
@@ -754,102 +848,10 @@
       overflow-y: auto;
     }
 
-    /* Details Actions */
-    .details-actions {
-      display: flex;
-      gap: var(--space-sm);
-      margin-bottom: var(--space-lg);
-      padding-bottom: var(--space-md);
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .btn-action {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-xs);
-      padding: var(--space-xs) var(--space-sm);
-      background: var(--bg-tertiary);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-sm);
-      color: var(--text-primary);
-      cursor: pointer;
-      font-size: var(--font-size-sm);
-      font-family: var(--font-family);
-      transition: all var(--transition-fast);
-    }
-
-    .btn-action:hover {
-      background: var(--accent-blue);
-      border-color: var(--accent-blue);
-      color: white;
-    }
-
-    .btn-action .icon {
-      font-size: var(--font-size-md);
-    }
-
-    /* Editable state values */
-    .details-prop-value.editable {
-      cursor: pointer;
-      padding: 1px 4px;
-      margin: -1px -4px;
-      border-radius: var(--radius-sm);
-      transition: background var(--transition-fast);
-    }
-
-    .details-prop-value.editable:hover {
-      background: var(--bg-tertiary);
-    }
-
-    .section-hint {
-      font-size: var(--font-size-xs);
-      color: var(--text-muted);
-      font-weight: normal;
-      margin-left: var(--space-sm);
-    }
-
     /* ========================================================================
-       Graph Panel Styles
+       List Item Styles (for Models)
        ======================================================================== */
-    .graph-panel {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .graph-container {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background: var(--bg-secondary);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      overflow: hidden;
-    }
-
-    .graph-canvas-wrapper {
-      flex: 1;
-      position: relative;
-      min-height: 400px;
-    }
-
-    graph-view {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
-
-    .graph-canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
-    /* ========================================================================
-       List Item Styles (for Models, Effects)
-       ======================================================================== */
-    model-item,
-    effect-item {
+    model-item {
       display: block;
     }
 
@@ -1073,163 +1075,6 @@
 
     ::-webkit-scrollbar-thumb:hover {
       background: var(--border-light);
-    }
-
-    /* ========================================================================
-       Performance Panel
-       ======================================================================== */
-    performance-panel {
-      display: block;
-      height: 100%;
-      overflow-y: auto;
-    }
-
-    .performance-content {
-      padding: 0;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      padding-bottom: var(--space-md);
-      margin-bottom: var(--space-md);
-      border-bottom: 1px solid var(--border);
-      gap: var(--space-md);
-      margin-bottom: var(--space-lg);
-    }
-
-    .stat-card {
-      background: var(--surface-elevated);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: var(--space-md);
-      text-align: center;
-    }
-
-    .stat-card .stat-value {
-      font-size: var(--font-size-stat);
-      font-weight: 600;
-      color: var(--accent-cyan);
-    }
-
-    .stat-card .stat-label {
-      font-size: var(--font-size-sm);
-      color: var(--text-muted);
-      text-transform: uppercase;
-      margin-top: var(--space-xs);
-    }
-
-    .perf-section {
-      margin-bottom: var(--space-lg);
-    }
-
-    .perf-section-title {
-      font-size: var(--font-size-sm);
-      font-weight: 600;
-      color: var(--text-secondary);
-      text-transform: uppercase;
-      margin-bottom: var(--space-sm);
-    }
-
-    .perf-list {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .perf-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: var(--space-xs) var(--space-sm);
-      background: var(--surface-elevated);
-      border-radius: var(--radius-md);
-    }
-
-    .perf-item-name {
-      font-family: var(--font-mono);
-      font-size: var(--font-size-md);
-      color: var(--accent-cyan);
-    }
-
-    .perf-item-count {
-      font-size: var(--font-size-xs);
-      color: var(--accent-yellow);
-    }
-
-    .perf-item-time {
-      font-size: var(--font-size-sm);
-      color: var(--accent-purple);
-    }
-
-    /* Inspect icon */
-    .inspect-icon {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: var(--font-size-icon);
-      cursor: pointer;
-      padding: 0 4px;
-      opacity: 0.6;
-      transition: opacity 0.15s, color 0.15s;
-    }
-
-    .inspect-icon:hover {
-      opacity: 1;
-      color: var(--accent-blue);
-    }
-
-    /* Details actions */
-    .details-actions {
-      display: flex;
-      gap: var(--space-xs);
-      margin-left: auto;
-    }
-
-    .btn-small {
-      padding: 2px 6px;
-      font-size: var(--font-size-xs);
-      min-width: auto;
-    }
-
-    /* ========================================================================
-       Graph Legend
-       ======================================================================== */
-    .graph-legend {
-      display: flex;
-      gap: var(--space-md);
-      padding: var(--space-sm);
-      background: var(--surface-elevated);
-      border-top: 1px solid var(--border);
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xs);
-      font-size: var(--font-size-sm);
-      color: var(--text-secondary);
-    }
-
-    .legend-color {
-      width: 12px;
-      height: 12px;
-      border-radius: 2px;
-    }
-
-    .legend-color.component {
-      background: #094771;
-      border: 1px solid #4ec9b0;
-    }
-
-    .legend-color.model {
-      background: #4a2545;
-      border: 1px solid #c586c0;
-    }
-
-    .legend-color.effect {
-      background: #4a4500;
-      border: 1px solid #dcdcaa;
     }
 
     /* ========================================================================

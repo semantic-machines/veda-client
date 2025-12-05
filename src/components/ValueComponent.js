@@ -7,12 +7,13 @@ export default function ValueComponent (Class = HTMLElement) {
     #valueNodes = new Map();
 
   added () {
+    this._vedaParentContext = this._findParentComponent();
     this.prop = this.getAttribute('property') ?? this.getAttribute('rel');
 
     if (!this.#propEffect) {
       this.#propEffect = effect(() => {
         this.render();
-      });
+      }, { component: this._vedaParentContext });
     }
   }
 

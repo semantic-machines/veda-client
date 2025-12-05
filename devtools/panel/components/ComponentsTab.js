@@ -10,10 +10,13 @@ export default class ComponentsTab extends Component(HTMLElement) {
   constructor() {
     super();
     this.state.components = [];
+    this.state.effects = [];  // For counting effects per component
     this.state.selectedId = null;
     this.state.filter = '';
     this.state.onNavigateToModel = null;
     this.state.onInspect = null;
+    this.state.onHover = null;
+    this.state.onLeave = null;
   }
 
   // Filtering
@@ -97,6 +100,16 @@ export default class ComponentsTab extends Component(HTMLElement) {
     return this.selectedComponent?.childIds?.length || 0;
   }
 
+  get selectedEffectCount() {
+    const selectedId = this.state.selectedId;
+    if (!selectedId || !this.state.effects) return 0;
+    return this.state.effects.filter(e => e.componentId === selectedId).length;
+  }
+
+  get hasSelectedEffects() {
+    return this.selectedEffectCount > 0;
+  }
+
   get selectedCreatedAt() {
     return formatTime(this.selectedComponent?.createdAt);
   }
@@ -165,7 +178,9 @@ export default class ComponentsTab extends Component(HTMLElement) {
                   :all-components="{this.state.components}"
                   :depth="{0}"
                   :selected-id="{this.state.selectedId}"
-                  :on-select="{this.selectComponent}">
+                  :on-select="{this.selectComponent}"
+                  :on-hover="{this.state.onHover}"
+                  :on-leave="{this.state.onLeave}">
                 </component-item>
               </${Loop}>
             </${If}>
@@ -218,16 +233,16 @@ export default class ComponentsTab extends Component(HTMLElement) {
                     <span class="details-prop-key">Renders</span>
                     <span class="details-prop-value">{this.selectedRenderCount}</span>
                   </div>
-                  <${If} condition="{this.selectedParentId}">
+                  <${If} condition="{this.hasSelectedEffects}">
                     <div class="details-property">
-                      <span class="details-prop-key">Parent ID</span>
-                      <span class="details-prop-value">#{this.selectedParentId}</span>
+                      <span class="details-prop-key">Effects</span>
+                      <span class="details-prop-value">{this.selectedEffectCount}</span>
                     </div>
                   </${If}>
                   <${If} condition="{this.selectedChildCount}">
                     <div class="details-property">
                       <span class="details-prop-key">Children</span>
-                      <span class="details-prop-value">{this.selectedChildCount} components</span>
+                      <span class="details-prop-value">{this.selectedChildCount}</span>
                     </div>
                   </${If}>
                 </div>

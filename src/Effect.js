@@ -110,13 +110,13 @@ export function effect(fn, options = {}) {
   effectFn.deps = [];
   effectFn.options = options;
 
-  if (!options.lazy) {
-    effectFn();
-  }
-
-  // DevTools integration
+  // DevTools integration: register BEFORE first run to capture dependencies
   if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
     window.__VEDA_DEVTOOLS_HOOK__.trackEffect(effectFn);
+  }
+
+  if (!options.lazy) {
+    effectFn();
   }
 
   return () => {
@@ -153,6 +153,11 @@ export function track(target, key) {
   if (!dep.has(activeEffect)) {
     dep.add(activeEffect);
     activeEffect.deps.push(dep);
+
+    // DevTools: track dependency info
+    if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
+      window.__VEDA_DEVTOOLS_HOOK__.trackEffectDependency(activeEffect, target, key);
+    }
   }
 }
 

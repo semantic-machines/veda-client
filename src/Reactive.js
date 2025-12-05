@@ -158,6 +158,7 @@ export function computed(getter) {
   }, {
     lazy: false,
     computed: true,
+    name: getter.name || 'computed',
     scheduler: () => {
       if (!dirty) {
         dirty = true;

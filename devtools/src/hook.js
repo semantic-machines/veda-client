@@ -304,83 +304,6 @@
     // Dependency Graph
     // ========================================================================
 
-    getDependencyGraph() {
-      const nodes = [];
-      const edges = [];
-      const nodeMap = new Map();
-
-      // Add component nodes
-      for (const [id, data] of this.components.entries()) {
-        const component = data.componentRef.deref();
-        if (!component) continue;
-
-        const nodeId = `component-${id}`;
-        nodes.push({
-          id: nodeId,
-          type: 'component',
-          label: data.tagName,
-          data: {
-            componentId: id,
-            renderCount: data.renderCount || 0
-          }
-        });
-        nodeMap.set(nodeId, true);
-
-        // Add edge to parent
-        if (data.parentId) {
-          const parentNodeId = `component-${data.parentId}`;
-          edges.push({
-            source: parentNodeId,
-            target: nodeId,
-            type: 'parent-child'
-          });
-        }
-
-        // Add edge to model if present
-        if (data.modelId) {
-          const modelNodeId = `model-${data.modelId}`;
-          if (!nodeMap.has(modelNodeId)) {
-            const modelData = this.findModelByModelId(data.modelId);
-            nodes.push({
-              id: modelNodeId,
-              type: 'model',
-              label: this.getShortModelId(data.modelId),
-              data: {
-                modelId: data.modelId,
-                fullId: data.modelId,
-                updateCount: modelData?.updateCount || 0
-              }
-            });
-            nodeMap.set(modelNodeId, true);
-          }
-          edges.push({
-            source: nodeId,
-            target: modelNodeId,
-            type: 'uses-model'
-          });
-        }
-      }
-
-      // Add effect nodes
-      for (const [id, data] of this.effects.entries()) {
-        const effect = data.effectRef.deref();
-        if (!effect) continue;
-
-        const nodeId = `effect-${id}`;
-        nodes.push({
-          id: nodeId,
-          type: 'effect',
-          label: `Effect #${id}`,
-          data: {
-            effectId: id,
-            triggerCount: data.triggerCount || 0
-          }
-        });
-      }
-
-      return { nodes, edges };
-    },
-
     findModelByModelId(modelId) {
       for (const data of this.models.values()) {
         if (data.modelId === modelId) {
@@ -575,6 +498,19 @@
     // Effect Tracking
     // ========================================================================
 
+    // Current component context for effect creation
+    currentComponentTag: null,
+
+    setCurrentComponent(component) {
+      if (component && component.tagName) {
+        this.currentComponentTag = component.tagName.toLowerCase();
+      }
+    },
+
+    clearCurrentComponent() {
+      this.currentComponentTag = null;
+    },
+
     trackEffect(effect) {
       // Check if already tracked
       const existingId = this.effectToId.get(effect);
@@ -583,13 +519,35 @@
       }
 
       const id = ++this.effectCounter;
+      const effectName = this.getEffectInfo(effect);
+
+      // Get component info from options.component or current context
+      let componentTag = this.currentComponentTag;
+      let componentId = null;
+      const comp = effect.options?.component;
+      if (comp) {
+        // Try tagName first (for HTMLElement), then constructor name
+        if (comp.tagName) {
+          componentTag = comp.tagName.toLowerCase();
+        } else if (comp.constructor?.name && comp.constructor.name !== 'Object') {
+          componentTag = comp.constructor.name;
+        }
+        // Get component ID from DevTools tracking
+        componentId = this.componentToId.get(comp) || null;
+      }
+
       const data = {
         id,
         effectRef: new WeakRef(effect),  // WeakRef allows GC
         triggerCount: 0,
         lastTriggered: null,
         createdAt: Date.now(),
-        source: this.getEffectSource(effect)
+        name: effectName,
+        componentTag,  // Component tag name
+        componentId,   // Component instance ID
+        dependencies: [],  // Track dependencies
+        isComputed: effect.options?.computed || false,
+        isLazy: effect.options?.lazy || false
       };
       this.effects.set(id, data);
       this.effectToId.set(effect, id);
@@ -601,10 +559,56 @@
         id,
         createdAt: data.createdAt,
         triggerCount: 0,
-        source: data.source
+        name: data.name,
+        componentTag: data.componentTag
       });
 
       return id;
+    },
+
+    trackEffectDependency(effect, target, key) {
+      try {
+        const effectId = this.effectToId.get(effect);
+        if (!effectId) return;
+
+        const data = this.effects.get(effectId);
+        if (!data) return;
+
+        const keyStr = String(key);
+
+        // Filter out noise: internal props, array indices, symbols
+        if (keyStr === 'constructor' ||
+            keyStr === 'length' ||
+            keyStr === '__isReactive' ||
+            keyStr === 'then' ||
+            keyStr === 'toJSON' ||
+            /^\d+$/.test(keyStr) ||  // array indices
+            typeof key === 'symbol') {
+          return;
+        }
+
+        // Get readable target identifier (only for models)
+        let targetId = '';
+        try {
+          if (target && typeof target.id === 'string') {
+            targetId = target.id;
+          }
+        } catch (e) {
+          // Ignore
+        }
+
+        // Avoid duplicates
+        const depKey = `${targetId}:${keyStr}`;
+        if (!data.dependencies.some(d => d.key === depKey)) {
+          data.dependencies.push({
+            key: depKey,
+            targetId,
+            property: keyStr
+          });
+        }
+      } catch (e) {
+        // Silently fail to avoid breaking app
+      }
     },
 
     trackEffectTrigger(effect) {
@@ -649,16 +653,41 @@
       this.emit('effect:removed', { id });
     },
 
-    getEffectSource(effect) {
+    getEffectInfo(effect) {
+      // Try to get meaningful name/description for effect
       try {
-        if (effect.toString) {
-          const str = effect.toString();
-          // Extract first 100 chars of function body
-          const match = str.match(/\{([\s\S]*)\}/);
-          if (match) {
-            return match[1].trim().slice(0, 100);
-          }
+        // Check options.name first (explicitly set name)
+        if (effect.options?.name && effect.options.name.length > 2) {
+          return effect.options.name;
         }
+
+        // Check if effect has a name property (for named effects)
+        // Skip short names (minified) like "e", "t", etc.
+        if (effect.name && effect.name !== 'effectFn' && effect.name.length > 2) {
+          return effect.name;
+        }
+
+        // Try to get function name from toString
+        const str = effect.toString();
+
+        // Check for arrow function with property access pattern: () => this.xxx
+        const arrowMatch = str.match(/\(\)\s*=>\s*this\.(\w+)/);
+        if (arrowMatch && arrowMatch[1].length > 2) {
+          return `computed: ${arrowMatch[1]}`;
+        }
+
+        // Check for getter pattern
+        const getterMatch = str.match(/get\s+(\w+)\s*\(\)/);
+        if (getterMatch && getterMatch[1].length > 2) {
+          return `getter: ${getterMatch[1]}`;
+        }
+
+        // Try to extract function name (skip minified short names)
+        const funcMatch = str.match(/function\s+(\w+)/);
+        if (funcMatch && funcMatch[1] !== 'anonymous' && funcMatch[1].length > 2) {
+          return funcMatch[1];
+        }
+
       } catch (e) {
         // Ignore
       }
@@ -790,7 +819,13 @@
               triggerCount: e.triggerCount,
               lastTriggered: e.lastTriggered,
               createdAt: e.createdAt,
-              source: e.source
+              name: e.name,
+              componentTag: e.componentTag,
+              componentId: e.componentId,
+              dependencies: e.dependencies || [],
+              depsCount: (e.dependencies || []).length,
+              isComputed: e.isComputed || false,
+              isLazy: e.isLazy || false
             };
           })
           .filter(Boolean),  // Remove GC'd effects
@@ -800,8 +835,6 @@
           stats: this.getPerformanceStats(),
           profiling: this.profiling
         },
-        // Dependency graph
-        graph: this.getDependencyGraph(),
         // Subscription stats
         subscriptions: this.getSubscriptionStats()
       };
@@ -1133,8 +1166,7 @@
       'color: #0e639c; font-weight: bold;',
       'color: inherit;',
       'color: #4ec9b0; font-weight: bold;',
-      'color: inherit;',
-      component
+      'color: inherit;'
     );
 
     return true;

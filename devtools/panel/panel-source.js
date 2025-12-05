@@ -26,8 +26,6 @@ class DevToolsPanel extends Component(HTMLElement) {
     this.state.models = [];
     this.state.effects = [];
     this.state.timeline = [];
-    this.state.graphNodes = [];
-    this.state.graphEdges = [];
     this.state.activeSubscriptions = [];
     this.state.subscriptionHistory = [];
     this.state.wsConnected = false;
@@ -242,11 +240,6 @@ class DevToolsPanel extends Component(HTMLElement) {
     this.state.effects = data.effects || [];
     this.state.timeline = data.timeline || [];
 
-    if (data.graph) {
-      this.state.graphNodes = data.graph.nodes || [];
-      this.state.graphEdges = data.graph.edges || [];
-    }
-
     if (data.subscriptions) {
       this.state.activeSubscriptions = data.subscriptions.active || [];
       this.state.subscriptionHistory = data.subscriptions.history || [];
@@ -275,8 +268,8 @@ class DevToolsPanel extends Component(HTMLElement) {
     if (e.key === 'r') {
       this.handleRefresh();
     }
-    if (e.key >= '1' && e.key <= '6') {
-      const tabs = ['components', 'models', 'effects', 'timeline', 'graph', 'subscriptions'];
+    if (e.key >= '1' && e.key <= '5') {
+      const tabs = ['components', 'models', 'effects', 'timeline', 'subscriptions'];
       this.state.activeTab = tabs[parseInt(e.key) - 1];
     }
   }
@@ -290,8 +283,6 @@ class DevToolsPanel extends Component(HTMLElement) {
     this.state.models = [];
     this.state.effects = [];
     this.state.timeline = [];
-    this.state.graphNodes = [];
-    this.state.graphEdges = [];
     this.state.activeSubscriptions = [];
     this.state.subscriptionHistory = [];
   }
@@ -325,7 +316,6 @@ class DevToolsPanel extends Component(HTMLElement) {
   switchTabToModels = () => this.switchTab('models');
   switchTabToEffects = () => this.switchTab('effects');
   switchTabToTimeline = () => this.switchTab('timeline');
-  switchTabToGraph = () => this.switchTab('graph');
   switchTabToSubscriptions = () => this.switchTab('subscriptions');
 
   navigateToModel = (modelId) => {
@@ -333,14 +323,28 @@ class DevToolsPanel extends Component(HTMLElement) {
     this.state.navigateToModelId = modelId;
   }
 
-  handleInspectComponent = (componentId) => {
+  // Highlight on hover
+  handleHighlightComponent = (componentId) => {
     if (!this.port) return;
-    // Highlight element in page
     this.port.postMessage({
       type: 'highlight-element',
       tabId: chrome.devtools.inspectedWindow.tabId,
       componentId
     });
+  }
+
+  // Hide highlight on mouse leave
+  handleHideHighlight = () => {
+    if (!this.port) return;
+    this.port.postMessage({
+      type: 'hide-highlight',
+      tabId: chrome.devtools.inspectedWindow.tabId
+    });
+  }
+
+  // Set $v on click (highlight already shown by hover)
+  handleInspectComponent = (componentId) => {
+    if (!this.port) return;
     // Store as $v in console
     this.port.postMessage({
       type: 'inspect-element',
@@ -357,14 +361,12 @@ class DevToolsPanel extends Component(HTMLElement) {
   get isModelsTabActive() { return this.state.activeTab === 'models'; }
   get isEffectsTabActive() { return this.state.activeTab === 'effects'; }
   get isTimelineTabActive() { return this.state.activeTab === 'timeline'; }
-  get isGraphTabActive() { return this.state.activeTab === 'graph'; }
   get isSubscriptionsTabActive() { return this.state.activeTab === 'subscriptions'; }
 
   get componentsTabClass() { return this.isComponentsTabActive ? 'tab active' : 'tab'; }
   get modelsTabClass() { return this.isModelsTabActive ? 'tab active' : 'tab'; }
   get effectsTabClass() { return this.isEffectsTabActive ? 'tab active' : 'tab'; }
   get timelineTabClass() { return this.isTimelineTabActive ? 'tab active' : 'tab'; }
-  get graphTabClass() { return this.isGraphTabActive ? 'tab active' : 'tab'; }
   get subscriptionsTabClass() { return this.isSubscriptionsTabActive ? 'tab active' : 'tab'; }
 
   get statusClass() { return this.state.connected ? 'status connected' : 'status disconnected'; }
@@ -432,11 +434,6 @@ class DevToolsPanel extends Component(HTMLElement) {
             <span class="tab-label">Timeline</span>
             <span class="tab-count">{this.state.timeline.length}</span>
           </div>
-          <div class="{this.graphTabClass}" onclick="{switchTabToGraph}">
-            <span class="tab-icon">◈</span>
-            <span class="tab-label">Graph</span>
-            <span class="tab-count">{this.state.graphNodes.length}</span>
-          </div>
           <div class="{this.subscriptionsTabClass}" onclick="{switchTabToSubscriptions}">
             <span class="tab-icon">⇌</span>
             <span class="tab-label">Subscriptions</span>
@@ -445,7 +442,7 @@ class DevToolsPanel extends Component(HTMLElement) {
 
           <div class="sidebar-footer">
             <div class="keyboard-hints">
-              <span class="hint"><kbd>R</kbd> Refresh  <kbd>1-6</kbd> Tabs</span>
+              <span class="hint"><kbd>R</kbd> Refresh  <kbd>1-5</kbd> Tabs</span>
             </div>
           </div>
         </div>
@@ -454,8 +451,11 @@ class DevToolsPanel extends Component(HTMLElement) {
           <${If} condition="{this.isComponentsTabActive}">
             <components-tab
               :components="{this.state.components}"
+              :effects="{this.state.effects}"
               :on-navigate-to-model="{this.navigateToModel}"
-              :on-inspect="{this.handleInspectComponent}">
+              :on-inspect="{this.handleInspectComponent}"
+              :on-hover="{this.handleHighlightComponent}"
+              :on-leave="{this.handleHideHighlight}">
             </components-tab>
           </${If}>
           <${If} condition="{this.isModelsTabActive}">
@@ -466,13 +466,16 @@ class DevToolsPanel extends Component(HTMLElement) {
             </models-tab>
           </${If}>
           <${If} condition="{this.isEffectsTabActive}">
-            <effects-tab :effects="{this.state.effects}"></effects-tab>
+            <effects-tab
+              :effects="{this.state.effects}"
+              :components="{this.state.components}"
+              :on-inspect="{this.handleInspectComponent}"
+              :on-hover="{this.handleHighlightComponent}"
+              :on-leave="{this.handleHideHighlight}">
+            </effects-tab>
           </${If}>
           <${If} condition="{this.isTimelineTabActive}">
             <timeline-tab :timeline="{this.state.timeline}"></timeline-tab>
-          </${If}>
-          <${If} condition="{this.isGraphTabActive}">
-            <graph-tab :nodes="{this.state.graphNodes}" :edges="{this.state.graphEdges}"></graph-tab>
           </${If}>
           <${If} condition="{this.isSubscriptionsTabActive}">
             <subscriptions-tab

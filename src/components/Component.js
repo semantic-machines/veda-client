@@ -232,7 +232,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         container.replaceChildren(fragment);
 
         // Track render for DevTools
-        if (window.__VEDA_DEVTOOLS_HOOK__) {
+        if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
           window.__VEDA_DEVTOOLS_HOOK__.trackComponentRender(this, _renderStart);
         }
 
@@ -339,7 +339,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             const cleanup = effect(() => {
               const value = ExpressionParser.evaluate(part.code, evalContext);
               node.nodeValue = value != null ? String(value) : '';
-            });
+            }, { component: this });
 
             this.#renderEffects.push(cleanup);
             return node;
@@ -588,7 +588,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
           const target = node.state || node;
           target[propName] = value;
-        });
+        }, { component: this });
         this.#renderEffects.push(cleanup);
       } else {
         const value = expression.replace(/\{([^}]+)\}/g, (_, code) =>
@@ -614,7 +614,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           if (node.getAttribute(attrName) !== value) {
             node.setAttribute(attrName, value);
           }
-        });
+        }, { component: this });
         this.#renderEffects.push(cleanup);
       } else {
         const value = template.replace(/\{([^}]+)\}/g, (_, code) =>
@@ -681,7 +681,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         const cleanup = effect(() => {
           const { value, hasNull } = this.#evaluateTemplate(template, evalContext);
           this.#setAttributeOrProperty(node, attrName, value, hasNull);
-        });
+        }, { component: this });
         this.#renderEffects.push(cleanup);
       } else {
         const { value, hasNull } = this.#evaluateTemplate(template, this);
@@ -737,7 +737,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
      * Helper: create an effect
      */
     effect(fn) {
-      const cleanup = effect(fn);
+      const cleanup = effect(fn, { component: this });
       this.#effects.push(cleanup);
       return cleanup;
     }
@@ -781,7 +781,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           callback(newValue, oldValue);
           oldValue = newValue;
         }
-      });
+      }, { ...options, component: this });
 
       this.#effects.push(cleanup);
       return cleanup;

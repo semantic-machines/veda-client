@@ -52,7 +52,7 @@ export default function LoopComponent(Class = HTMLElement) {
       this.#loopEffect = effect(() => {
         const items = this.#evaluateItems(itemsExpr);
         this.#reconcile(items);
-      });
+      }, { component: this._vedaParentContext });
     }
 
     disconnectedCallback() {
