@@ -75,8 +75,8 @@ const filesToCopy = [
   { from: 'src/content-script.js', to: 'content-script.js' },
   { from: 'src/devtools-page.js', to: 'devtools.js' },
   { from: 'src/panel/panel.html', to: 'panel.html' },
-  { from: 'devtools.html', to: 'devtools.html' },
-  { from: 'manifest.json', to: 'manifest.json' }
+  { from: 'src/devtools.html', to: 'devtools.html' },
+  { from: 'src/manifest.json', to: 'manifest.json' }
 ];
 
 for (const file of filesToCopy) {
