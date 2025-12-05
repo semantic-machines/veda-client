@@ -4,6 +4,8 @@
 
 import { Component, html, If } from '../../src/index.js';
 import { registerComponents } from './components/index.js';
+import { DEVTOOLS_CONFIG } from '../config.js';
+import { debounce } from '../utils/common.js';
 
 // Register child components
 registerComponents();
@@ -33,17 +35,11 @@ class DevToolsPanel extends Component(HTMLElement) {
 
     this.port = null;
     this._snapshotDebounceTimer = null;
-  }
-
-  // Debounced snapshot request - groups rapid events into single request
-  requestSnapshotDebounced = () => {
-    if (this._snapshotDebounceTimer) {
-      clearTimeout(this._snapshotDebounceTimer);
-    }
-    this._snapshotDebounceTimer = setTimeout(() => {
-      this._snapshotDebounceTimer = null;
+    
+    // Create debounced snapshot request
+    this.requestSnapshotDebounced = debounce(() => {
       this.requestSnapshot();
-    }, 50);
+    }, DEVTOOLS_CONFIG.SNAPSHOT_DEBOUNCE_MS);
   }
 
   // ===========================================================================
@@ -169,7 +165,7 @@ class DevToolsPanel extends Component(HTMLElement) {
         console.warn('[Veda DevTools Panel] Port disconnected, reconnecting...');
         this.state.connected = false;
         this.port = null;
-        setTimeout(() => this.connectToBackground(), 1000);
+        setTimeout(() => this.connectToBackground(), DEVTOOLS_CONFIG.RECONNECT_DELAY_MS);
       });
 
       this.state.connected = true;
@@ -179,7 +175,7 @@ class DevToolsPanel extends Component(HTMLElement) {
     } catch (error) {
       console.error('[Veda DevTools Panel] Connection error:', error);
       this.state.connected = false;
-      setTimeout(() => this.connectToBackground(), 2000);
+      setTimeout(() => this.connectToBackground(), DEVTOOLS_CONFIG.RECONNECT_DELAY_ERROR_MS);
     }
   }
 

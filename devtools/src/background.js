@@ -2,10 +2,95 @@
  * Background service worker for DevTools extension
  */
 
+import { MessageRouter } from './MessageRouter.js';
+
 // Store connections to devtools panels
 const connections = {};
 
-// Listen for connections from DevTools panels
+// Create message router
+const router = new MessageRouter();
+
+// ============================================================================
+// Message Handlers
+// ============================================================================
+
+router.register('get-snapshot', (message, { tabId, port }) => {
+  if (!tabId) {
+    console.warn('[Veda DevTools] No tabId in get-snapshot message');
+    return;
+  }
+
+  chrome.tabs.sendMessage(tabId, { type: 'get-snapshot' }, function(response) {
+    if (chrome.runtime.lastError) {
+      console.warn('[Veda DevTools] Error getting snapshot:', chrome.runtime.lastError.message);
+      port.postMessage({ event: 'snapshot', data: null });
+    } else if (response) {
+      console.log('[Veda DevTools] Got snapshot response, forwarding to panel');
+      port.postMessage(response);
+    }
+  });
+});
+
+router.register('highlight-element', (message, { tabId }) => {
+  if (tabId) {
+    chrome.tabs.sendMessage(tabId, {
+      type: 'highlight-element',
+      componentId: message.componentId
+    });
+  }
+});
+
+router.register('hide-highlight', (message, { tabId }) => {
+  if (tabId) {
+    chrome.tabs.sendMessage(tabId, { type: 'hide-highlight' });
+  }
+});
+
+router.register('inspect-element', (message, { tabId }) => {
+  if (tabId) {
+    chrome.tabs.sendMessage(tabId, {
+      type: 'inspect-element',
+      componentId: message.componentId
+    });
+  }
+});
+
+router.register('scroll-to-element', (message, { tabId }) => {
+  if (tabId) {
+    chrome.tabs.sendMessage(tabId, {
+      type: 'scroll-to-element',
+      componentId: message.componentId
+    });
+  }
+});
+
+router.register('start-profiling', (message, { tabId }) => {
+  if (tabId) {
+    chrome.tabs.sendMessage(tabId, { type: 'start-profiling' });
+  }
+});
+
+router.register('stop-profiling', (message, { tabId }) => {
+  if (tabId) {
+    chrome.tabs.sendMessage(tabId, { type: 'stop-profiling' });
+  }
+});
+
+router.register('set-component-state', (message, { tabId }) => {
+  if (tabId) {
+    chrome.tabs.sendMessage(tabId, {
+      type: 'set-component-state',
+      componentId: message.componentId,
+      key: message.key,
+      value: message.value
+    });
+  }
+});
+
+// ============================================================================
+// Connection Handling
+// ============================================================================
+
 chrome.runtime.onConnect.addListener(function(port) {
   if (port.name !== 'devtools') return;
 
@@ -31,115 +116,19 @@ chrome.runtime.onConnect.addListener(function(port) {
       return;
     }
 
-    // Handle messages from DevTools panel
-    if (message.type === 'get-snapshot') {
-      const requestTabId = message.tabId;
-      if (!requestTabId) {
-        console.warn('[Veda DevTools] No tabId in message');
-        return;
-      }
-
-      // Request snapshot from content script
-      chrome.tabs.sendMessage(requestTabId, { type: 'get-snapshot' }, function(response) {
-        if (chrome.runtime.lastError) {
-          console.warn('[Veda DevTools] Error getting snapshot:', chrome.runtime.lastError.message);
-          port.postMessage({ event: 'snapshot', data: null });
-        } else if (response) {
-          // Response already has correct structure with event and data fields
-          console.log('[Veda DevTools] Got snapshot response, forwarding to panel');
-          port.postMessage(response);
-        }
-      });
-    }
-
-    // Handle highlight element request
-    if (message.type === 'highlight-element') {
-      const requestTabId = message.tabId;
-      if (requestTabId) {
-        chrome.tabs.sendMessage(requestTabId, {
-          type: 'highlight-element',
-          componentId: message.componentId
-        });
-      }
-    }
-
-    // Handle hide highlight request
-    if (message.type === 'hide-highlight') {
-      const requestTabId = message.tabId;
-      if (requestTabId) {
-        chrome.tabs.sendMessage(requestTabId, { type: 'hide-highlight' });
-      }
-    }
-
-    // Handle inspect element request
-    if (message.type === 'inspect-element') {
-      const requestTabId = message.tabId;
-      if (requestTabId) {
-        chrome.tabs.sendMessage(requestTabId, {
-          type: 'inspect-element',
-          componentId: message.componentId
-        });
-      }
-    }
-
-    // Handle scroll to element request
-    if (message.type === 'scroll-to-element') {
-      const requestTabId = message.tabId;
-      if (requestTabId) {
-        chrome.tabs.sendMessage(requestTabId, {
-          type: 'scroll-to-element',
-          componentId: message.componentId
-        });
-      }
-    }
-
-    // Handle profiling commands
-    if (message.type === 'start-profiling') {
-      const requestTabId = message.tabId;
-      if (requestTabId) {
-        chrome.tabs.sendMessage(requestTabId, { type: 'start-profiling' });
-      }
-    }
-
-    if (message.type === 'stop-profiling') {
-      const requestTabId = message.tabId;
-      if (requestTabId) {
-        chrome.tabs.sendMessage(requestTabId, { type: 'stop-profiling' });
-      }
-    }
-
-    // Handle state editing
-    if (message.type === 'set-component-state') {
-      const requestTabId = message.tabId;
-      if (requestTabId) {
-        chrome.tabs.sendMessage(requestTabId, {
-          type: 'set-component-state',
-          componentId: message.componentId,
-          key: message.key,
-          value: message.value
-        });
-      }
-    }
-
-    // Handle profiling start
-    if (message.type === 'start-profiling') {
-      const requestTabId = message.tabId;
-      if (requestTabId) {
-        chrome.tabs.sendMessage(requestTabId, { type: 'start-profiling' });
-      }
-    }
-
-    // Handle profiling stop
-    if (message.type === 'stop-profiling') {
-      const requestTabId = message.tabId;
-      if (requestTabId) {
-        chrome.tabs.sendMessage(requestTabId, { type: 'stop-profiling' });
-      }
+    // Route message to appropriate handler
+    const handled = router.handle(message, { tabId, port });
+    
+    if (!handled) {
+      console.warn('[Veda DevTools] Unhandled message type:', message.type);
     }
   });
 });
 
-// Listen for messages from content scripts
+// ============================================================================
+// Content Script Messages
+// ============================================================================
+
 chrome.runtime.onMessage.addListener(function(message, sender) {
   console.log('[Veda DevTools] Message from content script:', JSON.stringify(message));
 
@@ -165,4 +154,3 @@ chrome.runtime.onMessage.addListener(function(message, sender) {
 });
 
 console.log('[Veda DevTools] Background script loaded');
-

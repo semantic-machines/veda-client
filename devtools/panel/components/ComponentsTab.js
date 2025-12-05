@@ -49,10 +49,6 @@ export default class ComponentsTab extends Component(HTMLElement) {
     return !this.hasComponents;
   }
 
-  get noSelected() {
-    return !this.hasSelected;
-  }
-
   // Performance stats
   get totalRenders() {
     return this.state.components.reduce((sum, c) => sum + (c.renderCount || 0), 0);
@@ -76,52 +72,8 @@ export default class ComponentsTab extends Component(HTMLElement) {
     return this.selectedComponent !== null;
   }
 
-  get selectedTagName() {
-    return this.selectedComponent?.tagName || '';
-  }
-
-  get selectedComponentId() {
-    return this.selectedComponent?.id || 0;
-  }
-
-  get selectedModelId() {
-    return this.selectedComponent?.modelId || null;
-  }
-
-  get selectedParentId() {
-    return this.selectedComponent?.parentId || null;
-  }
-
-  get selectedRenderCount() {
-    return this.selectedComponent?.renderCount || 0;
-  }
-
-  get selectedChildCount() {
-    return this.selectedComponent?.childIds?.length || 0;
-  }
-
-  get selectedEffectCount() {
-    const selectedId = this.state.selectedId;
-    if (!selectedId || !this.state.effects) return 0;
-    return this.state.effects.filter(e => e.componentId === selectedId).length;
-  }
-
-  get hasSelectedEffects() {
-    return this.selectedEffectCount > 0;
-  }
-
-  get selectedCreatedAt() {
-    return formatTime(this.selectedComponent?.createdAt);
-  }
-
-  get selectedStateEntries() {
-    const comp = this.selectedComponent;
-    if (!comp?.state) return [];
-    return Object.entries(comp.state).map(([key, value]) => ({
-      id: key,
-      key,
-      formattedValue: formatValue(value)
-    }));
+  get noSelected() {
+    return !this.hasSelected;
   }
 
   // Event handlers
@@ -198,56 +150,11 @@ export default class ComponentsTab extends Component(HTMLElement) {
 
         <div class="split-right">
           <${If} condition="{this.hasSelected}">
-            <div class="details-panel">
-              <div class="details-header">
-                <span class="details-tag">&lt;{this.selectedTagName}&gt;</span>
-                <span class="details-id">#{this.selectedComponentId}</span>
-              </div>
-
-              <div class="details-section">
-                <div class="details-section-title">State</div>
-                <div class="details-properties">
-                  <${If} condition="{this.selectedModelId}">
-                    <div class="details-property">
-                      <span class="details-prop-key">model</span>
-                      <span class="details-prop-value details-model-link" onclick="{handleNavigateToModel}">{this.selectedModelId}</span>
-                    </div>
-                  </${If}>
-                  <${Loop} items="{this.selectedStateEntries}" key="id" as="entry">
-                    <div class="details-property">
-                      <span class="details-prop-key">{entry.key}</span>
-                      <span class="details-prop-value">{entry.formattedValue}</span>
-                    </div>
-                  </${Loop}>
-                </div>
-              </div>
-
-              <div class="details-section">
-                <div class="details-section-title">Info</div>
-                <div class="details-properties">
-                  <div class="details-property">
-                    <span class="details-prop-key">Created</span>
-                    <span class="details-prop-value">{this.selectedCreatedAt}</span>
-                  </div>
-                  <div class="details-property">
-                    <span class="details-prop-key">Renders</span>
-                    <span class="details-prop-value">{this.selectedRenderCount}</span>
-                  </div>
-                  <${If} condition="{this.hasSelectedEffects}">
-                    <div class="details-property">
-                      <span class="details-prop-key">Effects</span>
-                      <span class="details-prop-value">{this.selectedEffectCount}</span>
-                    </div>
-                  </${If}>
-                  <${If} condition="{this.selectedChildCount}">
-                    <div class="details-property">
-                      <span class="details-prop-key">Children</span>
-                      <span class="details-prop-value">{this.selectedChildCount}</span>
-                    </div>
-                  </${If}>
-                </div>
-              </div>
-            </div>
+            <component-details
+              :component="{this.selectedComponent}"
+              :effects="{this.state.effects}"
+              :on-navigate-to-model="{this.state.onNavigateToModel}">
+            </component-details>
           </${If}>
 
           <${If} condition="{this.noSelected}">
