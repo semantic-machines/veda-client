@@ -2,6 +2,8 @@
  * Content script that injects the devtools hook into the page
  */
 
+import { DEVTOOLS_CONFIG } from './config.js';
+
 // Inject hook script into page context
 const script = document.createElement('script');
 script.src = chrome.runtime.getURL('hook.js');
@@ -145,7 +147,7 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
       }
     };
     window.addEventListener('message', listener);
-    setTimeout(() => window.removeEventListener('message', listener), 5000);
+    setTimeout(() => window.removeEventListener('message', listener), DEVTOOLS_CONFIG.MESSAGE_LISTENER_TIMEOUT_MS);
     return false;
   }
 });

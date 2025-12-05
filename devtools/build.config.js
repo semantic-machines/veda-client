@@ -40,6 +40,17 @@ export const BUILD_CONFIGS = {
     minify: false
   },
   
+  contentScript: {
+    entryPoints: [path.join(PATHS.src, 'content-script.js')],
+    bundle: true,
+    format: 'iife',
+    outfile: path.join(PATHS.dist, 'content-script.js'),
+    platform: 'browser',
+    target: 'es2020',
+    sourcemap: false,
+    minify: false
+  },
+  
   panel: {
     entryPoints: [path.join(PATHS.src, 'panel/index.js')],
     bundle: true,
@@ -56,7 +67,6 @@ export const BUILD_CONFIGS = {
  * Static files to copy from src/ to dist/
  */
 export const STATIC_FILES = [
-  { from: 'src/content-script.js', to: 'content-script.js' },
   { from: 'src/devtools-page.js', to: 'devtools.js' },
   { from: 'src/panel/panel.html', to: 'panel.html' },
   { from: 'src/devtools.html', to: 'devtools.html' },

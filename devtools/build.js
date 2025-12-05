@@ -21,6 +21,7 @@ try {
   await Promise.all([
     esbuild.build({ ...BUILD_CONFIGS.hook, logLevel: 'warning' }),
     esbuild.build({ ...BUILD_CONFIGS.background, logLevel: 'warning' }),
+    esbuild.build({ ...BUILD_CONFIGS.contentScript, logLevel: 'warning' }),
     esbuild.build({ ...BUILD_CONFIGS.panel, logLevel: 'info' })
   ]);
 

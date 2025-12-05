@@ -20,6 +20,7 @@ if (!fs.existsSync(PATHS.dist)) {
 const contexts = await Promise.all([
   esbuild.context({ ...BUILD_CONFIGS.hook, logLevel: 'info' }),
   esbuild.context({ ...BUILD_CONFIGS.background, logLevel: 'info' }),
+  esbuild.context({ ...BUILD_CONFIGS.contentScript, logLevel: 'info' }),
   esbuild.context({ ...BUILD_CONFIGS.panel, logLevel: 'info' })
 ]);
 

@@ -12,6 +12,7 @@ import { ModelTracker } from './modules/ModelTracker.js';
 import { EffectTracker } from './modules/EffectTracker.js';
 import { SubscriptionTracker } from './modules/SubscriptionTracker.js';
 import { Inspector } from './modules/Inspector.js';
+import { DEVTOOLS_CONFIG } from '../config.js';
 
 (function() {
   if (window.__VEDA_DEVTOOLS_HOOK__) return;
@@ -22,27 +23,35 @@ import { Inspector } from './modules/Inspector.js';
   const serializer = new Serializer();
   const profiler = new Profiler();
 
+  // Pre-bind frequently used methods
+  const emit = emitter.emit.bind(emitter);
+  const addToTimeline = timeline.add.bind(timeline);
+  const extractComponentState = serializer.extractComponentState.bind(serializer);
+  const serializeModelProperties = serializer.serializeModelProperties.bind(serializer);
+  const getModelType = serializer.getModelType.bind(serializer);
+  const recordProfile = profiler.record.bind(profiler);
+
   // Create trackers
   const componentTracker = new ComponentTracker(
-    emitter.emit.bind(emitter),
-    timeline.add.bind(timeline),
-    serializer.extractComponentState.bind(serializer)
+    emit,
+    addToTimeline,
+    extractComponentState
   );
 
   const modelTracker = new ModelTracker(
-    emitter.emit.bind(emitter),
-    timeline.add.bind(timeline),
-    serializer.serializeModelProperties.bind(serializer),
-    serializer.getModelType.bind(serializer)
+    emit,
+    addToTimeline,
+    serializeModelProperties,
+    getModelType
   );
 
   const effectTracker = new EffectTracker(
-    emitter.emit.bind(emitter),
-    timeline.add.bind(timeline),
+    emit,
+    addToTimeline,
     componentTracker.componentToId
   );
 
-  const subscriptionTracker = new SubscriptionTracker(emitter.emit.bind(emitter));
+  const subscriptionTracker = new SubscriptionTracker(emit);
 
   const inspector = new Inspector(componentTracker.components);
 
@@ -53,18 +62,18 @@ import { Inspector } from './modules/Inspector.js';
     untrackComponent: (comp) => componentTracker.untrack(comp),
     trackComponentStateChange: (comp) => componentTracker.trackStateChange(comp),
     trackComponentRender: (comp, startTime) =>
-      componentTracker.trackRender(comp, startTime, profiler.record.bind(profiler)),
+      componentTracker.trackRender(comp, startTime, recordProfile),
 
     // Model tracking
     trackModel: (model) => modelTracker.track(model),
     trackModelUpdate: (model) =>
-      modelTracker.trackUpdate(model, profiler.record.bind(profiler)),
+      modelTracker.trackUpdate(model, recordProfile),
 
     // Effect tracking
     trackEffect: (effect) => effectTracker.track(effect),
     trackEffectDependency: (effect, target, key) => effectTracker.trackDependency(effect, target, key),
     trackEffectTrigger: (effect) =>
-      effectTracker.trackTrigger(effect, profiler.record.bind(profiler)),
+      effectTracker.trackTrigger(effect, recordProfile),
     untrackEffect: (effect) => effectTracker.untrack(effect),
 
     // Subscription tracking
@@ -266,92 +275,115 @@ import { Inspector } from './modules/Inspector.js';
   }, '*');
 
   // Subscription interceptor
+  function findSubscriptionObject() {
+    return window.Subscription || window.__VEDA_SUBSCRIPTION__ || null;
+  }
+
+  function interceptSubscriptionMethods(Subscription) {
+    const originalSubscribe = Subscription.subscribe.bind(Subscription);
+    const originalUnsubscribe = Subscription.unsubscribe.bind(Subscription);
+
+    Subscription.subscribe = function(ref, subscription) {
+      const [id, updateCounter] = subscription;
+      hook.trackSubscription(id, updateCounter);
+      return originalSubscribe(ref, subscription);
+    };
+
+    Subscription.unsubscribe = function(id) {
+      hook.trackUnsubscription(id);
+      return originalUnsubscribe(id);
+    };
+  }
+
+  function syncExistingSubscriptions(Subscription) {
+    if (Subscription._subscriptions && Subscription._subscriptions.size > 0) {
+      for (const [id, subscription] of Subscription._subscriptions.entries()) {
+        const updateCounter = subscription[1] || 0;
+        hook.trackSubscription(id, updateCounter);
+      }
+      console.log('[Veda DevTools] Synced', Subscription._subscriptions.size, 'existing subscriptions');
+    }
+  }
+
+  function interceptReceive(Subscription) {
+    const originalReceive = Subscription._receive;
+    if (!originalReceive) return;
+
+    Subscription._receive = function(event) {
+      const msg = event.data;
+      if (msg && msg !== '') {
+        const ids = (msg.indexOf('=') === 0 ? msg.substr(1) : msg).split(',');
+        for (const pairStr of ids) {
+          const pair = pairStr.split('=');
+          const [id, updateCounter] = pair;
+          if (id && Subscription._subscriptions.has(id)) {
+            hook.trackSubscriptionUpdate(id, Number(updateCounter));
+          }
+        }
+      }
+      return originalReceive.call(Subscription, event);
+    };
+
+    if (Subscription._socket) {
+      Subscription._socket.onmessage = Subscription._receive;
+    }
+  }
+
+  function interceptConnect(Subscription) {
+    const originalConnect = Subscription._connect?.bind(Subscription);
+    if (!originalConnect) return;
+
+    Subscription._connect = async function(event) {
+      const result = await originalConnect(event);
+      setTimeout(() => {
+        hook.wsConnected = Subscription._socket?.readyState === 1;
+        hook.wsAddress = Subscription._address;
+        hook.emit('ws:state-changed', {
+          connected: hook.wsConnected,
+          address: hook.wsAddress
+        });
+      }, DEVTOOLS_CONFIG.WS_STATE_CHECK_DELAY_MS);
+      return result;
+    };
+  }
+
+  function setupSubscriptionInterception(Subscription) {
+    if (Subscription._devtoolsIntercepted) return;
+    Subscription._devtoolsIntercepted = true;
+
+    // Intercept subscription methods
+    interceptSubscriptionMethods(Subscription);
+
+    // Update WS state
+    if (Subscription._socket) {
+      hook.wsConnected = Subscription._socket.readyState === 1;
+      hook.wsAddress = Subscription._address;
+    }
+
+    // Sync existing subscriptions
+    syncExistingSubscriptions(Subscription);
+
+    // Intercept message receive
+    interceptReceive(Subscription);
+
+    // Intercept connect for state updates
+    interceptConnect(Subscription);
+
+    console.log('[Veda DevTools] Subscription tracking enabled');
+  }
+
   function interceptSubscription() {
     const checkInterval = setInterval(() => {
-      let Subscription = null;
-
-      if (window.Subscription) {
-        Subscription = window.Subscription;
-      }
-
-      if (!Subscription && window.__VEDA_SUBSCRIPTION__) {
-        Subscription = window.__VEDA_SUBSCRIPTION__;
-      }
-
-      if (Subscription && Subscription.subscribe && !Subscription._devtoolsIntercepted) {
-        Subscription._devtoolsIntercepted = true;
-
-        const originalSubscribe = Subscription.subscribe.bind(Subscription);
-        const originalUnsubscribe = Subscription.unsubscribe.bind(Subscription);
-
-        Subscription.subscribe = function(ref, subscription) {
-          const [id, updateCounter] = subscription;
-          hook.trackSubscription(id, updateCounter);
-          return originalSubscribe(ref, subscription);
-        };
-
-        Subscription.unsubscribe = function(id) {
-          hook.trackUnsubscription(id);
-          return originalUnsubscribe(id);
-        };
-
-        if (Subscription._socket) {
-          hook.wsConnected = Subscription._socket.readyState === 1;
-          hook.wsAddress = Subscription._address;
-        }
-
-        if (Subscription._subscriptions && Subscription._subscriptions.size > 0) {
-          for (const [id, subscription] of Subscription._subscriptions.entries()) {
-            const updateCounter = subscription[1] || 0;
-            hook.trackSubscription(id, updateCounter);
-          }
-          console.log('[Veda DevTools] Synced', Subscription._subscriptions.size, 'existing subscriptions');
-        }
-
-        const originalReceive = Subscription._receive;
-        if (originalReceive) {
-          Subscription._receive = function(event) {
-            const msg = event.data;
-            if (msg && msg !== '') {
-              const ids = (msg.indexOf('=') === 0 ? msg.substr(1) : msg).split(',');
-              for (const pairStr of ids) {
-                const pair = pairStr.split('=');
-                const [id, updateCounter] = pair;
-                if (id && Subscription._subscriptions.has(id)) {
-                  hook.trackSubscriptionUpdate(id, Number(updateCounter));
-                }
-              }
-            }
-            return originalReceive.call(Subscription, event);
-          };
-
-          if (Subscription._socket) {
-            Subscription._socket.onmessage = Subscription._receive;
-          }
-        }
-
-        const originalConnect = Subscription._connect?.bind(Subscription);
-        if (originalConnect) {
-          Subscription._connect = async function(event) {
-            const result = await originalConnect(event);
-            setTimeout(() => {
-              hook.wsConnected = Subscription._socket?.readyState === 1;
-              hook.wsAddress = Subscription._address;
-              hook.emit('ws:state-changed', {
-                connected: hook.wsConnected,
-                address: hook.wsAddress
-              });
-            }, 100);
-            return result;
-          };
-        }
-
-        console.log('[Veda DevTools] Subscription tracking enabled');
+      const Subscription = findSubscriptionObject();
+      
+      if (Subscription && Subscription.subscribe) {
+        setupSubscriptionInterception(Subscription);
         clearInterval(checkInterval);
       }
-    }, 500);
+    }, DEVTOOLS_CONFIG.SUBSCRIPTION_CHECK_INTERVAL_MS);
 
-    setTimeout(() => clearInterval(checkInterval), 30000);
+    // Stop checking after timeout
+    setTimeout(() => clearInterval(checkInterval), DEVTOOLS_CONFIG.SUBSCRIPTION_CHECK_TIMEOUT_MS);
   }
 
   interceptSubscription();

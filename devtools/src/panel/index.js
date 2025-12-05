@@ -35,6 +35,13 @@ class DevToolsPanel extends Component(HTMLElement) {
 
     this.port = null;
     this._snapshotDebounceTimer = null;
+    this._refreshInterval = null;
+    this._retryTimeout = null;
+    this._cleanupHandlers = [];
+    
+    // Pre-bind methods
+    this.handleKeydown = this.handleKeydown.bind(this);
+    this.handleBeforeUnload = this.handleBeforeUnload.bind(this);
     
     // Create debounced snapshot request
     this.requestSnapshotDebounced = debounce(() => {
@@ -54,37 +61,32 @@ class DevToolsPanel extends Component(HTMLElement) {
 
     // Try to get initial snapshot
     this.requestSnapshot();
-    setTimeout(() => {
+    this._retryTimeout = setTimeout(() => {
       if (this.state.components.length === 0) {
         this.retrySnapshot();
       }
-    }, 1000);
+    }, DEVTOOLS_CONFIG.INITIAL_SNAPSHOT_RETRY_MS);
 
-    // Fallback polling (every 30s) - ensures eventual consistency
-    this._refreshInterval = setInterval(() => {
-      if (this.state.connected && this.port) {
-        this.requestSnapshot();
-      }
-    }, 30000);
-
-    // Keyboard shortcuts
-    document.addEventListener('keydown', this.handleKeydown.bind(this));
+    // Keyboard shortcuts (pre-bound in constructor)
+    document.addEventListener('keydown', this.handleKeydown);
 
     // Setup resizer for split panels
     this.setupResizer();
 
-    // Hide highlight when DevTools panel closes
+    // Hide highlight when DevTools panel closes (pre-bound in constructor)
     window.addEventListener('beforeunload', this.handleBeforeUnload);
     window.addEventListener('pagehide', this.handleBeforeUnload);
+    
+    // Track cleanup handlers
+    this._cleanupHandlers.push(
+      () => document.removeEventListener('keydown', this.handleKeydown),
+      () => window.removeEventListener('beforeunload', this.handleBeforeUnload),
+      () => window.removeEventListener('pagehide', this.handleBeforeUnload)
+    );
   }
 
-  handleBeforeUnload = () => {
-    if (this.port) {
-      this.port.postMessage({
-        type: 'hide-highlight',
-        tabId: chrome.devtools.inspectedWindow.tabId
-      });
-    }
+  handleBeforeUnload() {
+    this.cleanup();
   }
 
   setupResizer() {
@@ -128,18 +130,43 @@ class DevToolsPanel extends Component(HTMLElement) {
   }
 
   disconnectedCallback() {
-    if (this._refreshInterval) {
-      clearInterval(this._refreshInterval);
-      this._refreshInterval = null;
-    }
-    // Hide highlight when DevTools closes
-    if (this.port) {
-      this.port.postMessage({
-        type: 'hide-highlight',
-        tabId: chrome.devtools.inspectedWindow.tabId
-      });
-    }
+    this.cleanup();
     super.disconnectedCallback?.();
+  }
+  
+  cleanup() {
+    // Clear all timers
+    if (this._retryTimeout) {
+      clearTimeout(this._retryTimeout);
+      this._retryTimeout = null;
+    }
+    
+    if (this._snapshotDebounceTimer) {
+      clearTimeout(this._snapshotDebounceTimer);
+      this._snapshotDebounceTimer = null;
+    }
+    
+    // Run all cleanup handlers
+    this._cleanupHandlers.forEach(handler => {
+      try {
+        handler();
+      } catch (e) {
+        console.warn('[Veda DevTools] Cleanup handler error:', e);
+      }
+    });
+    this._cleanupHandlers = [];
+    
+    // Hide highlight
+    if (this.port) {
+      try {
+        this.port.postMessage({
+          type: 'hide-highlight',
+          tabId: chrome.devtools.inspectedWindow.tabId
+        });
+      } catch (e) {
+        // Port might be disconnected
+      }
+    }
   }
 
   // ===========================================================================
@@ -299,7 +326,7 @@ class DevToolsPanel extends Component(HTMLElement) {
         }
       })()`,
       (result, error) => {
-        setTimeout(() => this.requestSnapshot(), 500);
+        setTimeout(() => this.requestSnapshot(), DEVTOOLS_CONFIG.DELAYED_SNAPSHOT_MS);
       }
     );
   }
