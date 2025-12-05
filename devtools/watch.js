@@ -30,7 +30,7 @@ await Promise.all(contexts.map(ctx => ctx.watch()));
 for (const file of STATIC_FILES) {
   const srcPath = path.join(PATHS.devtools, file.from);
   const distPath = path.join(PATHS.dist, file.to);
-  
+
   if (fs.existsSync(srcPath)) {
     fs.copyFileSync(srcPath, distPath);
   }
