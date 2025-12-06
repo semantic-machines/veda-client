@@ -294,7 +294,7 @@ class DevToolsPanel extends Component(HTMLElement) {
     if (e.key === 'c') {
       this.handleClear();
     }
-    if (e.key === 'g') {
+    if (e.key === 'f') {
       this.handleForceGC();
     }
     if (e.key >= '1' && e.key <= '5') {
@@ -412,7 +412,7 @@ class DevToolsPanel extends Component(HTMLElement) {
         <div class="toolbar-spacer"></div>
         <button class="btn btn-icon" onclick="{handleRefresh}" title="Refresh (R)">↻</button>
         <button class="btn btn-icon" onclick="{handleClear}" title="Clear (C)">✕</button>
-        <button class="btn btn-icon" onclick="{handleForceGC}" title="Force GC (G)">🗑</button>
+        <button class="btn btn-icon" onclick="{handleForceGC}" title="Force GC (F)">🗑</button>
         <div class="stats">
           <span class="stat">
             <span class="stat-icon">◆</span>
@@ -468,7 +468,7 @@ class DevToolsPanel extends Component(HTMLElement) {
             <div class="keyboard-hints">
               <span class="hint"><kbd>R</kbd> Refresh</span>
               <span class="hint"><kbd>C</kbd> Clear</span>
-              <span class="hint"><kbd>G</kbd> Force GC</span>
+              <span class="hint"><kbd>F</kbd> Force GC</span>
               <span class="hint"><kbd>1-5</kbd> Tabs</span>
             </div>
           </div>
