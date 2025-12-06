@@ -11,6 +11,52 @@ import { debounce } from '../../utils/common.js';
 registerComponents();
 
 // ============================================================================
+// Theme Detection - Respect Browser Theme
+// ============================================================================
+function detectAndApplyTheme() {
+  // Check if user has manually selected theme
+  const savedTheme = localStorage.getItem('veda-devtools-theme');
+  if (savedTheme) {
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    console.log('[Veda DevTools] Theme (saved):', savedTheme);
+    return;
+  }
+  
+  // Otherwise use browser preference
+  const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = isDark ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+  console.log('[Veda DevTools] Theme (auto):', theme);
+}
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', newTheme);
+  localStorage.setItem('veda-devtools-theme', newTheme);
+  console.log('[Veda DevTools] Theme toggled:', newTheme);
+  
+  // Dispatch custom event for components to react
+  window.dispatchEvent(new CustomEvent('veda-theme-changed', { detail: { theme: newTheme } }));
+}
+
+// Make toggleTheme available globally
+window.__VEDA_TOGGLE_THEME__ = toggleTheme;
+
+// Apply theme on load
+detectAndApplyTheme();
+
+// Watch for theme changes
+if (window.matchMedia) {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    // Only auto-update if user hasn't manually selected theme
+    if (!localStorage.getItem('veda-devtools-theme')) {
+      detectAndApplyTheme();
+    }
+  });
+}
+
+// ============================================================================
 // Main DevTools Panel Component
 // ============================================================================
 class DevToolsPanel extends Component(HTMLElement) {
@@ -32,6 +78,7 @@ class DevToolsPanel extends Component(HTMLElement) {
     this.state.subscriptionHistory = [];
     this.state.wsConnected = false;
     this.state.navigateToModelId = null;
+    this.state.currentTheme = 'dark'; // Track current theme
 
     this.port = null;
     this._snapshotDebounceTimer = null;
@@ -42,6 +89,7 @@ class DevToolsPanel extends Component(HTMLElement) {
     // Pre-bind methods
     this.handleKeydown = this.handleKeydown.bind(this);
     this.handleBeforeUnload = this.handleBeforeUnload.bind(this);
+    this.handleThemeChange = this.handleThemeChange.bind(this);
 
     // Create debounced snapshot request
     this.requestSnapshotDebounced = debounce(() => {
@@ -57,6 +105,13 @@ class DevToolsPanel extends Component(HTMLElement) {
     await super.connectedCallback();
 
     console.log('[Veda DevTools Panel] Connected');
+    
+    // Initialize theme state
+    this.state.currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    
+    // Listen for theme changes
+    window.addEventListener('veda-theme-changed', this.handleThemeChange);
+    
     this.connectToBackground();
 
     // Try to get initial snapshot
@@ -351,6 +406,24 @@ class DevToolsPanel extends Component(HTMLElement) {
     );
   }
 
+  handleToggleTheme = () => {
+    if (window.__VEDA_TOGGLE_THEME__) {
+      window.__VEDA_TOGGLE_THEME__();
+    }
+  }
+
+  handleThemeChange(event) {
+    this.state.currentTheme = event.detail.theme;
+  }
+
+  get themeIcon() {
+    return this.state.currentTheme === 'dark' ? '☀️' : '🌙';
+  }
+
+  get themeTitle() {
+    return this.state.currentTheme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme';
+  }
+
   switchTab(tab) {
     this.state.activeTab = tab;
   }
@@ -448,6 +521,7 @@ class DevToolsPanel extends Component(HTMLElement) {
           <span class="status-dot"></span>
           {this.statusText}
         </div>
+        <button class="btn btn-icon btn-theme" onclick="{handleToggleTheme}" title="{this.themeTitle}">{this.themeIcon}</button>
       </div>
 
       <div class="main">

@@ -74,6 +74,41 @@
       --transition-normal: 0.2s ease;
     }
 
+    /* Light theme - VS Code Light+ inspired */
+    :root[data-theme="light"] {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f3f3f3;
+      --bg-tertiary: #e8e8e8;
+      --bg-hover: #e8e8e8;
+      --bg-selected: #cce8ff;
+
+      --border-color: #d4d4d4;
+      --border-light: #e0e0e0;
+
+      --text-primary: #333333;
+      --text-secondary: #616161;
+      --text-muted: #858585;
+
+      /* Accent colors for light theme */
+      --accent-blue: #0078d4;
+      --accent-blue-hover: #106ebe;
+      --accent-cyan: #16825d;
+      --accent-green: #237a4f;
+      --accent-yellow: #a58114;
+      --accent-orange: #a65e2b;
+      --accent-purple: #8e479c;
+      --accent-red: #cd3131;
+
+      /* Value colors for light theme */
+      --value-string: #a65e2b;
+      --value-number: #098658;
+      --value-boolean: #0000ff;
+      --value-null: #0000ff;
+      --value-uri: #16825d;
+      --value-array: #a58114;
+      --value-object: #0070c1;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -172,6 +207,11 @@
     .btn-icon:hover {
       background: var(--bg-hover);
       border-color: var(--border-color);
+    }
+
+    .btn-theme {
+      margin-left: var(--space-sm);
+      font-size: 14px;
     }
 
     .btn-icon.flash {
