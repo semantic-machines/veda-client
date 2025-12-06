@@ -466,7 +466,10 @@ class DevToolsPanel extends Component(HTMLElement) {
 
           <div class="sidebar-footer">
             <div class="keyboard-hints">
-              <span class="hint"><kbd>R</kbd> <kbd>C</kbd> <kbd>G</kbd>  <kbd>1-5</kbd> Tabs</span>
+              <span class="hint"><kbd>R</kbd> Refresh</span>
+              <span class="hint"><kbd>C</kbd> Clear</span>
+              <span class="hint"><kbd>G</kbd> Force GC</span>
+              <span class="hint"><kbd>1-5</kbd> Tabs</span>
             </div>
           </div>
         </div>

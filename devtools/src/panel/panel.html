@@ -324,12 +324,17 @@
 
     .keyboard-hints {
       display: flex;
-      gap: var(--space-sm);
+      flex-wrap: wrap;
+      gap: var(--space-xs);
+      row-gap: 4px;
     }
 
     .hint {
       font-size: var(--font-size-xs);
       color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
     kbd {
