@@ -289,12 +289,15 @@ class DevToolsPanel extends Component(HTMLElement) {
     if (e.ctrlKey || e.metaKey) return;
 
     if (e.key === 'r') {
+      this.flashButton('refresh');
       this.handleRefresh();
     }
     if (e.key === 'c') {
+      this.flashButton('clear');
       this.handleClear();
     }
     if (e.key === 'f') {
+      this.flashButton('gc');
       this.handleForceGC();
     }
     if (e.key >= '1' && e.key <= '5') {
@@ -303,11 +306,21 @@ class DevToolsPanel extends Component(HTMLElement) {
     }
   }
 
+  flashButton(buttonId) {
+    const button = this.querySelector(`[data-action="${buttonId}"]`);
+    if (button) {
+      button.classList.add('flash');
+      setTimeout(() => button.classList.remove('flash'), 200);
+    }
+  }
+
   handleRefresh = () => {
+    this.flashButton('refresh');
     this.requestSnapshot();
   }
 
   handleClear = () => {
+    this.flashButton('clear');
     this.state.components = [];
     this.state.models = [];
     this.state.effects = [];
@@ -317,6 +330,7 @@ class DevToolsPanel extends Component(HTMLElement) {
   }
 
   handleForceGC = () => {
+    this.flashButton('gc');
     chrome.devtools.inspectedWindow.eval(
       `(function() {
         if (window.gc) {
@@ -410,9 +424,9 @@ class DevToolsPanel extends Component(HTMLElement) {
       <div class="toolbar">
         <div class="toolbar-brand">Veda DevTools</div>
         <div class="toolbar-spacer"></div>
-        <button class="btn btn-icon" onclick="{handleRefresh}" title="Refresh (R)">↻</button>
-        <button class="btn btn-icon" onclick="{handleClear}" title="Clear (C)">✕</button>
-        <button class="btn btn-icon" onclick="{handleForceGC}" title="Force GC (F)">🗑</button>
+        <button class="btn btn-icon" data-action="refresh" onclick="{handleRefresh}" title="Refresh (R)">↻</button>
+        <button class="btn btn-icon" data-action="clear" onclick="{handleClear}" title="Clear (C)">✕</button>
+        <button class="btn btn-icon" data-action="gc" onclick="{handleForceGC}" title="Force GC (F)">🗑</button>
         <div class="stats">
           <span class="stat">
             <span class="stat-icon">◆</span>
