@@ -531,7 +531,8 @@ class DevToolsPanel extends Component(HTMLElement) {
               :components="{this.state.components}"
               :on-inspect="{this.handleInspectComponent}"
               :on-hover="{this.handleHighlightComponent}"
-              :on-leave="{this.handleHideHighlight}">
+              :on-leave="{this.handleHideHighlight}"
+              :on-navigate-to-model="{this.navigateToModel}">
             </effects-tab>
           </${If}>
           <${If} condition="{this.isTimelineTabActive}">

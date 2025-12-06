@@ -17,6 +17,7 @@ export default class EffectsTab extends Component(HTMLElement) {
     this.state.onInspect = null;  // Callback for $v on click
     this.state.onHover = null;    // Callback for highlight on hover
     this.state.onLeave = null;    // Callback for hide highlight
+    this.state.onNavigateToModel = null;  // Callback for model navigation
   }
 
   // Filtering
@@ -331,7 +332,8 @@ export default class EffectsTab extends Component(HTMLElement) {
           <${If} condition="{this.showComponentDetails}">
             <component-details
               :component="{this.selectedComponent}"
-              :effects="{this.state.effects}">
+              :effects="{this.state.effects}"
+              :on-navigate-to-model="{this.state.onNavigateToModel}">
             </component-details>
           </${If}>
 
