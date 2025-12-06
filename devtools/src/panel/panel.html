@@ -815,7 +815,7 @@
       width: 480px;
       min-width: 300px;
       max-width: 95%;
-      background: var(--bg-secondary);
+      /*background: var(--bg-secondary);*/
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -833,16 +833,16 @@
        Details Panel
        ======================================================================== */
     .details-panel {
-      padding: var(--space-lg);
+      padding: var(--space-md);
     }
 
     .details-header {
       display: flex;
       align-items: center;
       gap: var(--space-sm);
-      padding-bottom: var(--space-lg);
+      padding-bottom: var(--space-md);
       border-bottom: 1px solid var(--border-color);
-      margin-bottom: var(--space-lg);
+      margin-bottom: 0;
     }
 
     .details-tag {
@@ -859,11 +859,12 @@
     }
 
     .details-section {
-      margin-bottom: var(--space-md);
+      margin-bottom: 0;
+      padding: var(--space-md) 0;
     }
 
     .details-section:last-child {
-      margin-bottom: var(--space-md);
+      margin-bottom: 0;
     }
 
     .details-section-title {
