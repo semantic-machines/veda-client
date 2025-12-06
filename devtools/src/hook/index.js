@@ -166,6 +166,7 @@ import { DEVTOOLS_CONFIG } from '../config.js';
               name: e.name,
               componentTag: e.componentTag,
               componentId: e.componentId,
+              modelId: e.modelId,
               dependencies: e.dependencies || [],
               depsCount: (e.dependencies || []).length,
               isComputed: e.isComputed || false,
@@ -375,7 +376,7 @@ import { DEVTOOLS_CONFIG } from '../config.js';
   function interceptSubscription() {
     const checkInterval = setInterval(() => {
       const Subscription = findSubscriptionObject();
-      
+
       if (Subscription && Subscription.subscribe) {
         setupSubscriptionInterception(Subscription);
         clearInterval(checkInterval);

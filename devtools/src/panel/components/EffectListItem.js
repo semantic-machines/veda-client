@@ -44,6 +44,14 @@ export default class EffectListItem extends Component(HTMLElement) {
     return this.state.data?.count || 0;
   }
 
+  get headerModelId() {
+    return this.state.data?.modelId || '';
+  }
+
+  get hasHeaderModelId() {
+    return Boolean(this.headerModelId);
+  }
+
   get isComponentSelected() {
     return this.headerId && this.headerId === this.state.selectedComponentId;
   }
@@ -161,6 +169,9 @@ export default class EffectListItem extends Component(HTMLElement) {
              onmouseenter="{handleMouseEnter}"
              onmouseleave="{handleMouseLeave}">
           <span class="tree-tag">&lt;{this.headerTag}&gt;</span>
+          <${If} condition="{this.hasHeaderModelId}">
+            <span class="tree-model-id">{this.headerModelId}</span>
+          </${If}>
           <span class="effect-group-count">{this.headerCount} effects</span>
         </div>
       `;

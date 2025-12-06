@@ -41,6 +41,7 @@ export default class EffectsTab extends Component(HTMLElement) {
         groups.set(groupKey, {
           componentId: effect.componentId,
           componentTag: effect.componentTag || 'standalone',
+          modelId: effect.modelId || null,
           effects: []
         });
       }
@@ -63,6 +64,7 @@ export default class EffectsTab extends Component(HTMLElement) {
         _isHeader: true,
         componentTag: group.componentTag,
         componentId: group.componentId,
+        modelId: group.modelId,
         count: group.effects.length
       });
       // Add effect items

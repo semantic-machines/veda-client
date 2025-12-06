@@ -20,6 +20,18 @@ export class EffectTracker {
     });
   }
 
+  getComponentModelId(component) {
+    try {
+      if (component.state?.model?.id) return component.state.model.id;
+      if (component.state?.model?.['@']) return component.state.model['@'];
+      if (component.model?.id) return component.model.id;
+      if (component.model?.['@']) return component.model['@'];
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   getEffectInfo(effect) {
     try {
       if (effect.options?.name && effect.options.name.length > 2) {
@@ -61,6 +73,7 @@ export class EffectTracker {
 
     let componentTag = null;
     let componentId = null;
+    let modelId = null;
     const comp = effect.options?.component;
     if (comp) {
       if (comp.tagName) {
@@ -69,6 +82,8 @@ export class EffectTracker {
         componentTag = comp.constructor.name;
       }
       componentId = this.componentToId.get(comp) || null;
+      // Extract modelId from component
+      modelId = this.getComponentModelId(comp);
     }
 
     const data = {
@@ -80,6 +95,7 @@ export class EffectTracker {
       name: effectName,
       componentTag,
       componentId,
+      modelId,
       dependencies: [],
       isComputed: effect.options?.computed || false,
       isLazy: effect.options?.lazy || false
