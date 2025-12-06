@@ -21,7 +21,7 @@ function detectAndApplyTheme() {
     console.log('[Veda DevTools] Theme (saved):', savedTheme);
     return;
   }
-  
+
   // Otherwise use browser preference
   const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   const theme = isDark ? 'dark' : 'light';
@@ -35,7 +35,7 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', newTheme);
   localStorage.setItem('veda-devtools-theme', newTheme);
   console.log('[Veda DevTools] Theme toggled:', newTheme);
-  
+
   // Dispatch custom event for components to react
   window.dispatchEvent(new CustomEvent('veda-theme-changed', { detail: { theme: newTheme } }));
 }
@@ -105,13 +105,13 @@ class DevToolsPanel extends Component(HTMLElement) {
     await super.connectedCallback();
 
     console.log('[Veda DevTools Panel] Connected');
-    
+
     // Initialize theme state
     this.state.currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-    
+
     // Listen for theme changes
     window.addEventListener('veda-theme-changed', this.handleThemeChange);
-    
+
     this.connectToBackground();
 
     // Try to get initial snapshot
