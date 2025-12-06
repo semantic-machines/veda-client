@@ -291,6 +291,12 @@ class DevToolsPanel extends Component(HTMLElement) {
     if (e.key === 'r') {
       this.handleRefresh();
     }
+    if (e.key === 'c') {
+      this.handleClear();
+    }
+    if (e.key === 'g') {
+      this.handleForceGC();
+    }
     if (e.key >= '1' && e.key <= '5') {
       const tabs = ['components', 'models', 'effects', 'timeline', 'subscriptions'];
       this.state.activeTab = tabs[parseInt(e.key) - 1];
@@ -402,16 +408,11 @@ class DevToolsPanel extends Component(HTMLElement) {
   render() {
     return html`
       <div class="toolbar">
-        <button class="btn btn-primary" onclick="{handleRefresh}" title="Refresh (R)">
-          ↻ Refresh
-        </button>
-        <button class="btn btn-secondary" onclick="{handleClear}" title="Clear all">
-          ✕ Clear
-        </button>
-        <button class="btn btn-secondary" onclick="{handleForceGC}" title="Force garbage collection">
-          ⌀ Force GC
-        </button>
+        <div class="toolbar-brand">Veda DevTools</div>
         <div class="toolbar-spacer"></div>
+        <button class="btn btn-icon" onclick="{handleRefresh}" title="Refresh (R)">↻</button>
+        <button class="btn btn-icon" onclick="{handleClear}" title="Clear (C)">✕</button>
+        <button class="btn btn-icon" onclick="{handleForceGC}" title="Force GC (G)">🗑</button>
         <div class="stats">
           <span class="stat">
             <span class="stat-icon">◆</span>
@@ -465,7 +466,7 @@ class DevToolsPanel extends Component(HTMLElement) {
 
           <div class="sidebar-footer">
             <div class="keyboard-hints">
-              <span class="hint"><kbd>R</kbd> Refresh  <kbd>1-5</kbd> Tabs</span>
+              <span class="hint"><kbd>R</kbd> <kbd>C</kbd> <kbd>G</kbd>  <kbd>1-5</kbd> Tabs</span>
             </div>
           </div>
         </div>
