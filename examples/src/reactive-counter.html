@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reactive Counter - Veda Examples</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <p><a href="index.html">← Back to Examples</a></p>
+  <h1>Reactive Counter</h1>
+  <p>Demonstrates basic reactivity with state, computed properties, and watchers.</p>
+
+  <reactive-counter></reactive-counter>
+
+  <div class="info-box">
+    <h3>How it works</h3>
+    <ul>
+      <li>Click buttons to change counter</li>
+      <li>Only changed text updates (no full re-render)</li>
+      <li>Computed properties (<code>doubled</code>, <code>isEven</code>) automatically update</li>
+      <li>Watchers react to changes and update background color</li>
+    </ul>
+  </div>
+
+  <script type="module" src="index.js"></script>
+</body>
+</html>

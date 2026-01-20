@@ -1,0 +1,14 @@
+{
+  "name": "veda-examples",
+  "version": "1.0.0",
+  "description": "Veda framework examples and demos",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node watch.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0",
+    "esbuild-plugin-copy": "^2.1.1"
+  }
+}

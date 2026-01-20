@@ -557,8 +557,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     #processCustomComponentAttributes(node) {
       const tagName = node.tagName.toLowerCase();
-      const isFrameworkComponent = tagName === 'veda-if' || tagName === 'veda-loop';
-      const frameworkAttrs = isFrameworkComponent ? ['condition', 'items', 'as', 'key', 'item-key'] : [];
+      const isFrameworkComponent = tagName === 'veda-if' || tagName === 'veda-loop' || tagName === 'veda-virtual';
+      const frameworkAttrs = isFrameworkComponent ? ['condition', 'items', 'as', 'key', 'item-key', 'height', 'item-height', 'overscan'] : [];
 
       for (const attr of [...node.attributes]) {
         const attrName = attr.nodeName;

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veda Framework Examples</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <h1>Veda Framework Examples</h1>
+  <p>Interactive demos showcasing the Veda reactive web components framework.</p>
+
+  <ul class="nav-list">
+    <li>
+      <a href="reactive-counter.html">
+        <strong>Reactive Counter</strong>
+        <span>Basic reactivity with state, computed properties, and watchers</span>
+      </a>
+    </li>
+    <li>
+      <a href="reactive-expressions.html">
+        <strong>Reactive Expressions</strong>
+        <span>Template expressions and fine-grained DOM updates</span>
+      </a>
+    </li>
+    <li>
+      <a href="loop-if-demo.html">
+        <strong>Loop & If Components</strong>
+        <span>Conditional rendering and list iteration</span>
+      </a>
+    </li>
+    <li>
+      <a href="array-index-reactivity.html">
+        <strong>Array Index Reactivity</strong>
+        <span>Reactive array mutations and index access</span>
+      </a>
+    </li>
+    <li>
+      <a href="virtual-list-demo.html">
+        <strong>Virtual List</strong>
+        <span>Efficient rendering of 10,000+ items with virtualization</span>
+      </a>
+    </li>
+  </ul>
+
+  <div class="info-box">
+    <h3>Running Examples</h3>
+    <p>Build the examples first:</p>
+    <pre><code>cd examples && pnpm install && pnpm build</code></pre>
+    <p>Then serve from <code>dist/examples/</code> or use a local server.</p>
+  </div>
+
+  <script type="module" src="index.js"></script>
+</body>
+</html>

@@ -75,45 +75,52 @@ Known limitations and when to use alternatives.
 
 ## Known Limitations
 
-### 1. Loop Component - Naive Reconciliation
+### 1. Loop Component - LIS-Optimized Reconciliation
 
-**Issue:** Uses simple key-based reconciliation without LIS optimization.
+**Status:** ✅ Optimized with LIS algorithm
 
-**Impact:**
-- Reordering large lists has O(n²) DOM operations
-- Reversing 1000 items = ~54ms (measured)
-- Reversing 500 items = ~17ms (measured)
-- Reversing 100 items = ~2ms (measured)
+Loop uses Longest Increasing Subsequence (LIS) algorithm for efficient reordering with O(n log n) complexity.
 
 **Benchmark Results:**
 ```
-Reorder (100 items):   2.31ms  ✓ Excellent
-Reorder (500 items):  17.24ms  ✓ Good
-Reorder (1000 items): 53.62ms  ⚠ Noticeable
+Reorder (100 items):   ~4ms   ✓ Excellent
+Reorder (500 items):  ~13ms   ✓ Good
+Reorder (1000 items): ~33ms   ✓ Good
 ```
 
-**Workaround:**
-- Avoid frequent reordering of large lists (> 500 items)
-- Use pagination for large datasets
-- Consider virtualization library for 1000+ items
+**Best practices:**
+- Use `key` attribute for stable item identity
+- For 10,000+ items, use Virtual component
 
-**Status:** Documented limitation (MVP), may optimize if needed
+### 2. Virtual Component - Browser Height Limit
 
-### 2. No Virtualization
+**Status:** ✅ Built-in virtualization available
 
-**Issue:** Renders ALL items in list.
+The `Virtual` component renders only visible items (~15-20 DOM nodes regardless of list size).
 
-**Impact:**
-- 10,000 items = 10,000 DOM nodes
-- Memory: ~50-100MB for large lists
-- Slow scrolling
+**Usage:**
+```html
+<veda-virtual items="{this.state.items}" height="400" item-height="50">
+  <veda-loop items="{this.visibleItems}" key="id" as="item">
+    <div class="row">{item.name}</div>
+  </veda-loop>
+</veda-virtual>
+```
 
-**Workaround:**
-- Paginate lists > 500 items
-- Use intersection observer for lazy loading
-- Consider react-virtualized or similar
+**Browser Height Limitation:**
+Browsers limit element height to ~33,554,432 pixels. This affects maximum scrollable items:
 
-**Status:** Use pagination or external library
+| item-height | Max scrollable items |
+|-------------|---------------------|
+| 50px | ~671,000 |
+| 40px | ~838,000 |
+| 30px | ~1,118,000 |
+| 20px | ~1,677,000 |
+
+**Workaround for 1M+ items:**
+- Reduce `item-height`
+- Use server-side pagination
+- Implement infinite scroll with data windowing
 
 ### 3. Expression Parser - Limited Syntax
 

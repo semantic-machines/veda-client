@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Virtual List Demo - Veda Examples</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <p><a href="index.html">← Back to Examples</a></p>
+  <h1>Virtual List</h1>
+  <p>Efficient rendering of large lists (10,000+ items) using virtualization.</p>
+
+  <virtual-list-demo></virtual-list-demo>
+
+  <div class="info-box">
+    <h3>How Virtual Scrolling Works</h3>
+    <ul>
+      <li><strong>DOM Efficiency:</strong> Only ~15-20 DOM elements exist regardless of list size</li>
+      <li><strong>Memory Savings:</strong> 10,000 items use same memory as 20 items</li>
+      <li><strong>Smooth Scrolling:</strong> Overscan renders extra items above/below viewport</li>
+      <li><strong>Reactive:</strong> Adding/removing items automatically updates the view</li>
+    </ul>
+
+    <h3>Usage</h3>
+    <pre><code>&lt;Virtual items="{this.state.items}" height="400" item-height="50"&gt;
+  &lt;Loop items="{this.visibleItems}" key="id" as="item"&gt;
+    &lt;div class="row"&gt;{item.name}&lt;/div&gt;
+  &lt;/Loop&gt;
+&lt;/Virtual&gt;</code></pre>
+
+    <h3>Attributes</h3>
+    <ul>
+      <li><code>items</code> - Source array expression</li>
+      <li><code>height</code> - Viewport height in pixels (or "auto")</li>
+      <li><code>item-height</code> - Height of each item in pixels</li>
+      <li><code>overscan</code> - Extra items to render (default: 3)</li>
+    </ul>
+  </div>
+
+  <script type="module" src="index.js"></script>
+</body>
+</html>

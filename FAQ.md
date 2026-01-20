@@ -227,28 +227,39 @@ class DataTable extends Component(HTMLElement) {
 
 **Solution 2 - Virtual Scrolling (for 10,000+ items):**
 
-Use external library like `lit-virtualizer` or `virtual-scroller`:
-
-```bash
-npm install @lit-labs/virtualizer
-```
+Use the built-in `Virtual` component:
 
 ```javascript
-import { virtualize } from '@lit-labs/virtualizer/virtualize.js';
+import Component, { html, Virtual, Loop } from 'veda-client';
 
 class VirtualList extends Component(HTMLElement) {
+  constructor() {
+    super();
+    this.state.items = Array.from({ length: 100000 }, (_, i) => ({
+      id: i,
+      name: `Item ${i}`
+    }));
+  }
+
   render() {
     return html`
-      <div style="height: 600px; overflow: auto;">
-        ${virtualize({
-          items: this.state.allItems,
-          renderItem: (item) => html`<item-card .model=${item}></item-card>`
-        })}
-      </div>
+      <${Virtual} items="{this.state.items}" height="400" item-height="50">
+        <${Loop} items="{this.visibleItems}" key="id" as="item">
+          <div class="row">{item.name}</div>
+        </${Loop}>
+      </${Virtual}>
     `;
   }
 }
 ```
+
+**Virtual attributes:**
+- `items` - Source array expression
+- `height` - Viewport height in pixels (or "auto")
+- `item-height` - Height of each item in pixels
+- `overscan` - Extra items to render above/below (default: 3)
+
+**Note:** Browser limits element height to ~33M pixels. At 50px per item, max ~671,000 scrollable items. Use smaller `item-height` or pagination for larger datasets.
 
 **Solution 3 - Lazy Loading (infinite scroll):**
 ```javascript
@@ -278,9 +289,9 @@ async loadMore() {
 ```
 
 **Recommendation:**
-- **< 500 items:** Use Loop component as-is
-- **500-1000 items:** Use pagination
-- **1000+ items:** Use virtual scrolling or pagination
+- **< 1000 items:** Use Loop component as-is
+- **1000-100,000 items:** Use Virtual component
+- **100,000+ items:** Use Virtual + smaller item-height, or pagination
 - **Infinite data:** Use lazy loading with Intersection Observer
 
 **See:** [BENCHMARKS.md - Loop Component Performance](./BENCHMARKS.md#loop-component-performance)

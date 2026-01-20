@@ -317,8 +317,8 @@
   - Performance profiling
 
 ### Core Optimizations
-- [ ] **LIS reconciliation in Loop** (if benchmarks show need)
-- [ ] **Virtualization component** (if demand exists)
+- [x] **LIS reconciliation in Loop** - O(n log n) reordering
+- [x] **Virtual component** - renders only visible items (10K+ supported)
 - [ ] **Concurrent mode** (if needed)
 
 ### Developer Experience

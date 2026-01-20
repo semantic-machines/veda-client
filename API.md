@@ -1567,6 +1567,79 @@ class ConditionalView extends Component(HTMLElement) {
 }
 ```
 
+### Virtual
+
+Virtual scrolling component for efficient rendering of large lists. Renders only visible items plus a configurable overscan buffer.
+
+#### Import
+
+```javascript
+import { Virtual, Loop } from 'veda-client';
+```
+
+#### Basic Usage
+
+```javascript
+class LargeList extends Component(HTMLElement) {
+  constructor() {
+    super();
+    this.state.items = Array.from({ length: 100000 }, (_, i) => ({
+      id: i,
+      name: `Item ${i + 1}`
+    }));
+  }
+
+  render() {
+    return html`
+      <${Virtual} items="{this.state.items}" height="400" item-height="50">
+        <${Loop} items="{this.visibleItems}" key="id" as="item">
+          <div class="row">{item.name}</div>
+        </${Loop}>
+      </${Virtual}>
+    `;
+  }
+}
+```
+
+#### Attributes
+
+| Attribute | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `items` | Expression | required | Source array expression |
+| `height` | Number/"auto" | 400 | Viewport height in pixels |
+| `item-height` | Number | 40 | Height of each item in pixels |
+| `overscan` | Number | 3 | Extra items to render above/below viewport |
+
+#### Provided Context
+
+Virtual provides these properties to child components via parent context:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `this.visibleItems` | Array | Slice of items currently in view |
+| `this.virtualStart` | Number | Index of first visible item |
+| `this.virtualEnd` | Number | Index of last visible item |
+| `this.virtualTotal` | Number | Total number of items |
+
+#### Browser Height Limitation
+
+Browsers limit element height to ~33,554,432 pixels. This affects maximum scrollable items:
+
+| item-height | Max scrollable |
+|-------------|----------------|
+| 50px | ~671,000 items |
+| 40px | ~838,000 items |
+| 30px | ~1,118,000 items |
+| 20px | ~1,677,000 items |
+
+The component will log a warning if this limit is exceeded.
+
+#### Performance
+
+- **DOM nodes:** Always ~15-20 regardless of list size
+- **Scroll update:** ~0.03ms per scroll event
+- **Memory:** Only visible items + overscan in DOM
+
 ### Property
 
 Renders RDF property values with language support and reactive updates.
