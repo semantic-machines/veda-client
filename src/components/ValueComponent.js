@@ -5,6 +5,7 @@ export default function ValueComponent (Class = HTMLElement) {
   return class ValueComponentClass extends Component(Class) {
     #propEffect = null;
     #valueNodes = new Map();
+    #isFirstEffectRun = true;
 
   added () {
     this._vedaParentContext = this._findParentComponent();
@@ -12,7 +13,19 @@ export default function ValueComponent (Class = HTMLElement) {
 
     if (!this.#propEffect) {
       this.#propEffect = effect(() => {
-        this.render();
+        // Read dependency for tracking (intentional - triggers reactivity)
+        this.state.model?.[this.prop]; // eslint-disable-line no-unused-expressions
+
+        // Skip render() on first effect run - initial render is done by connectedCallback
+        if (this.#isFirstEffectRun) {
+          this.#isFirstEffectRun = false;
+          return;
+        }
+
+        // Only re-render if component is still connected to DOM
+        if (this.isConnected) {
+          this.render();
+        }
       }, { component: this._vedaParentContext });
     }
   }

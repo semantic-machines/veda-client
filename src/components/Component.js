@@ -103,8 +103,14 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         }
 
         await this.populate();
+        // Early exit if component was disconnected during async operation
+        if (!this.isConnected) return;
+
         const added = this.added();
         if (added instanceof Promise) await added;
+        // Early exit if component was disconnected during async operation
+        if (!this.isConnected) return;
+
         await this.update();
       } catch (error) {
         console.log(this, 'Component render error', error);
@@ -266,7 +272,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         } catch {
           // Backend may not be configured (e.g., in tests) - ignore
         }
-        this.state.model.subscribe?.();
+        // Check that component is still connected and model wasn't cleared during await
+        if (this.isConnected && this.state.model) {
+          this.state.model.subscribe?.();
+        }
       }
     }
 
