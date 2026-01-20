@@ -2319,14 +2319,19 @@ Check if object is a member of a specific group/org.
 
 ### Properties
 
-Properties are arrays (RDF-style):
+Properties are arrays. After `load()`, values are **parsed** by `Value.parse()`:
 
 ```javascript
-// Read
-console.log(model['v-s:title']); // [{ data: 'Title', type: 'String' }]
+// Read - values are already parsed (not raw {data, type} objects)
+console.log(model['v-s:title']);     // ['Title'] - array of strings
+console.log(model['v-s:title'][0]);  // 'Title' - direct value
+console.log(model['v-s:count'][0]);  // 42 - number
+console.log(model['v-s:active'][0]); // true - boolean
 
-// Write
-model['v-s:title'] = [{ data: 'New Title', type: 'String' }];
+// Write - use plain values (Value.serialize converts on save())
+model['v-s:title'] = ['New Title'];
+model['v-s:count'] = [42];
+model['v-s:active'] = [true];
 
 // Check
 if (model['v-s:creator']) {
@@ -3412,35 +3417,32 @@ interface PersonModel extends Model {
 const person = new Model('d:Person_123') as PersonModel;
 await person.load();
 
-// Type-safe access
-const name = person['v-s:name'][0].data;  // Type: string | number | boolean
-const age = person['v-s:age'][0].data as number;
-const isActive = person['v-s:isActive'][0].data as boolean;
+// Type-safe access - values are already parsed by Value.parse()
+const name = person['v-s:name'][0];      // string (e.g., 'John Doe')
+const age = person['v-s:age'][0];        // number (e.g., 30)
+const isActive = person['v-s:isActive'][0]; // boolean
 
-// Type-safe setting
-person['v-s:name'] = [{ data: 'John Doe', type: 'String' }];
-person['v-s:age'] = [{ data: 30, type: 'Integer' }];
-person['v-s:isActive'] = [{ data: true, type: 'Boolean' }];
+// Type-safe setting - use plain values
+person['v-s:name'] = ['John Doe'];
+person['v-s:age'] = [30];
+person['v-s:isActive'] = [true];
 ```
 
-**Alternative: Strongly typed properties:**
+**Alternative: Strongly typed properties (after Value.parse):**
 
 ```typescript
-// More strict typing for specific value types
-type StringProperty = Array<{ data: string; type: 'String' }>;
-type IntegerProperty = Array<{ data: number; type: 'Integer' }>;
-type BooleanProperty = Array<{ data: boolean; type: 'Boolean' }>;
-
+// After load(), values are parsed - type accordingly
 interface TypedPerson extends Model {
-  ['v-s:name']: StringProperty;
-  ['v-s:age']: IntegerProperty;
-  ['v-s:isActive']: BooleanProperty;
+  ['v-s:name']: string[];
+  ['v-s:age']: number[];
+  ['v-s:isActive']: boolean[];
 }
 
-const typedPerson = new Model() as TypedPerson;
-typedPerson['v-s:name'] = [{ data: 'John', type: 'String' }];  // ✅
-// @ts-expect-error
-typedPerson['v-s:name'] = [{ data: 123, type: 'Integer' }];     // ❌ Type error
+const typedPerson = new Model('d:Person_1') as TypedPerson;
+await typedPerson.load();
+
+const name: string = typedPerson['v-s:name'][0];  // ✅ Type-safe
+typedPerson['v-s:name'] = ['John'];               // ✅ Set with plain values
 ```
 
 ### Type-Safe Reactive State

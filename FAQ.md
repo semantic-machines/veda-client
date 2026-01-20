@@ -392,20 +392,21 @@ import type {
 
 **Understanding RDF properties:**
 
-In Veda, all RDF properties are **arrays** of values:
+In Veda, all RDF properties are **arrays** of parsed values. `Value.parse()` automatically converts raw RDF values to JavaScript types:
 
 ```javascript
 const person = new Model('d:Person1');
 await person.load();
 
-// ❌ Wrong - not an array
-console.log(person['v-s:name']);  // [{ data: 'John', type: 'String' }]
+// Properties are arrays of PARSED values (not raw {data, type} objects)
+console.log(person['v-s:name']);     // ['John'] - array of strings
+console.log(person['v-s:name'][0]);  // 'John' - string value directly
 
-// ✅ Correct - access first element
-console.log(person['v-s:name'][0]);  // { data: 'John', type: 'String' }
-
-// ✅ Get actual value
-console.log(person['v-s:name'][0]?.data);  // 'John'
+// Other types are also parsed:
+console.log(person['v-s:age'][0]);       // 25 (number, from Integer)
+console.log(person['v-s:active'][0]);    // true (boolean)
+console.log(person['v-s:created'][0]);   // Date object (from Datetime)
+console.log(person['v-s:manager'][0]);   // Model instance (from Uri)
 ```
 
 **Common patterns:**
