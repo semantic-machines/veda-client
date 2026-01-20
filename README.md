@@ -10,7 +10,7 @@ A lightweight reactive framework for building semantic web applications with fin
 - 📝 **Declarative templates** - JSX-like syntax with reactive expressions
 - 🔄 **Built-in components** - Loop, If, Property, Relation components
 - ♻️ **Circular references** - Automatic handling for RDF graph structures
-- 📦 **Minimal footprint** - 48 KB browser bundle, 82 KB with Node.js (ws)
+- 📦 **Minimal footprint** - ~50 KB browser bundle, ~85 KB with Node.js (includes ws)
 - 🎨 **TypeScript** - Full type definitions included
 
 ## Quick Start
@@ -146,7 +146,7 @@ The framework exports the following modules from `./src/index.js`:
 | **Utilities** | `Router` | Hash-based router | Router.js |
 |  | `Emitter` | Event emitter mixin | Emitter.js |
 |  | `BackendError` | Backend error class | BackendError.js |
-|  | `genUri`, `guid`, `timeout`, `diff`, `eq` | Utility functions | Util.js |
+|  | `genUri`, `guid`, `timeout`, `diff`, `eq`, `dashToCamel`, `decorator` | Utility functions | Util.js |
 | **Types** | `Reactive<T>` | TypeScript type for reactive objects | Reactive.d.ts |
 |  | `ReactiveOptions` | Options for reactive() function | Reactive.d.ts |
 |  | `ComponentInstance` | Component instance type | Component.d.ts |
@@ -220,8 +220,8 @@ Requires:
 
 ## Bundle Size
 
-- **Browser**: 48 KB (minified, without ws)
-- **Node.js**: 82 KB (minified, includes ws for WebSocket support)
+- **Browser**: ~50 KB (minified, without ws)
+- **Node.js**: ~85 KB (minified, includes ws for WebSocket support)
 - Both versions are bundled and tree-shakeable
 
 ## Testing

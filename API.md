@@ -274,7 +274,7 @@ Component method that watches reactive value changes and runs callback when valu
 
 **Important:** Uses strict equality (===) for comparison. Array/object mutations won't trigger unless reference changes.
 
-**Note on immediate option:** When `immediate: true`, the callback runs synchronously during effect setup. On the first call, `oldValue` will equal `newValue` since there's no previous value yet.
+**Note on immediate option:** When `immediate: true`, the callback runs synchronously during effect setup. On the first call, `oldValue` will be `undefined` since there's no previous value yet.
 
 **Examples:**
 
@@ -374,11 +374,11 @@ this.watch(
 );
 // Class added immediately based on initial state
 
-// ⚠️ Note: On first call with immediate, oldValue equals newValue
+// ⚠️ Note: On first call with immediate, oldValue is undefined
 this.watch(
   () => this.state.count,
   (newValue, oldValue) => {
-    console.log(newValue, oldValue); // 0, 0 on first call
+    console.log(newValue, oldValue); // 0, undefined on first call
   },
   { immediate: true }
 );
@@ -2383,12 +2383,12 @@ import { Backend, BackendError } from 'veda-client';
 
 // Register global error handler
 const unsubscribe = Backend.onError((error) => {
-  console.error('Backend error:', error.status, error.message);
+  console.error('Backend error:', error.code, error.message);
 
-  if (error.status === 401) {
+  if (error.code === 401) {
     // Redirect to login
     location.href = '/login';
-  } else if (error.status === 500) {
+  } else if (error.code === 500) {
     // Show error notification
     showNotification('Server error. Please try again.');
   }
@@ -2413,7 +2413,7 @@ unsubscribe();
 
 ```javascript
 Backend.onError((error) => {
-  if (error.status === 503) { // Service unavailable
+  if (error.code === 503) { // Service unavailable
     console.log('Server busy, retrying in 5s...');
     setTimeout(() => {
       // Retry the failed request
@@ -2429,14 +2429,14 @@ Backend.onError((error) => {
 // Logger
 Backend.onError((error) => {
   logToAnalytics('backend_error', {
-    status: error.status,
+    code: error.code,
     endpoint: error.url
   });
 });
 
 // User notification
 Backend.onError((error) => {
-  if (error.status >= 500) {
+  if (error.code >= 500) {
     toast.error('Server error. Please try again.');
   }
 });
@@ -2907,14 +2907,14 @@ const cache = new WeakCache();
 const obj = { data: 'value' };
 cache.set('key', obj);
 
-// Get value
+// Get value (returns undefined if not found or GC'd)
 cache.get('key'); // obj
 
-// Check existence
-cache.has('key'); // true
-
-// Delete (automatic when obj is garbage collected)
+// Delete
 cache.delete('key');
+
+// Clear all
+cache.clear();
 ```
 
 **Use case:** Model caching, temporary component state.
@@ -3123,7 +3123,7 @@ try {
   await Backend.get_individual('invalid:id');
 } catch (error) {
   if (error instanceof BackendError) {
-    console.log('Status:', error.status);      // HTTP status code
+    console.log('Code:', error.code);          // HTTP status code
     console.log('Message:', error.message);    // Error message
     console.log('Response:', error.response);  // Raw response
   }
@@ -3133,7 +3133,7 @@ try {
 ### Properties
 
 ```javascript
-error.status    // HTTP status code (e.g., 404, 500)
+error.code      // HTTP status code (e.g., 404, 500)
 error.message   // Error description
 error.response  // Raw server response
 ```

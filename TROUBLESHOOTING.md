@@ -272,7 +272,7 @@ console.log(derived); // Updated value
 1. **Too many items in Loop** (>500)
    - Solution: Pagination or virtualization
 
-2. **Missing `item-key`**
+2. **Missing `key` attribute**
    - Solution: Add `key="id" as="item"`
 
 3. **Complex computed properties**

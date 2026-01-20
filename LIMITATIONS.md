@@ -10,7 +10,7 @@ Known limitations and when to use alternatives.
 - Lists < 500 items
 - RDF/semantic data applications
 - Minimal dependencies preferred
-- Bundle size critical (48 KB)
+- Bundle size critical (~50 KB)
 - Learning curve should be minimal
 
 ### ⚠️ Consider Alternatives When
@@ -68,8 +68,8 @@ Known limitations and when to use alternatives.
 - **1000+ items:** Avoid or use pagination, reordering >50ms
 
 **Bundle sizes:**
-- Browser: 48 KB (minified, platform: 'browser')
-- Node.js: 82 KB (minified, platform: 'node', includes ws)
+- Browser: ~50 KB (minified, platform: 'browser')
+- Node.js: ~85 KB (minified, platform: 'node', includes ws)
 
 ---
 
@@ -379,7 +379,7 @@ function TodoList() {
 ## Summary
 
 **Veda Client strengths:**
-- ✅ Small bundle (48 KB)
+- ✅ Small bundle (~50 KB)
 - ✅ Simple API
 - ✅ RDF/semantic data
 - ✅ Good for forms and small lists

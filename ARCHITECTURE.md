@@ -397,7 +397,7 @@ state.c = 3;  // Queued
 |---------|------|-------|----------|-------|
 | Reactivity | Proxy | Proxy | Signals | Hooks |
 | Updates | Fine-grained | VDOM | Fine-grained | VDOM |
-| Bundle | 48 KB | ~80 KB | ~15 KB | ~130 KB |
+| Bundle | ~50 KB | ~80 KB | ~15 KB | ~130 KB |
 | API | Simple | Medium | Simple | Complex |
 | RDF Support | Native | Plugin | Plugin | Plugin |
 
