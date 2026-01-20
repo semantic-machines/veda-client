@@ -1,6 +1,6 @@
 # TodoMVC - Veda Client Implementation
 
-Two implementations of TodoMVC demonstrating different approaches with Veda Framework.
+A TodoMVC implementation demonstrating both **imperative** and **declarative** approaches within the same application.
 
 ## Quick Start
 
@@ -13,81 +13,75 @@ node build.mjs
 open http://localhost:8081/app-todo/
 ```
 
-Choose **Imperative** or **Declarative** version.
-
 ---
 
-## Versions
+## Two Approaches in One App
 
-### Imperative (`src/`)
-- Manual rendering with `render()` methods
-- Loop component for lists
-- Full control over rendering logic
-- **Best for:** Dynamic, interactive UIs
+This implementation showcases how Veda Framework supports both approaches:
 
-### Declarative (`src-declarative/`)
-- Property component for model bindings
-- Automatic updates from model
-- Minimal JavaScript
-- **Best for:** Model-driven UIs
+### Declarative (property/rel components)
 
----
+Values are automatically bound to model properties:
 
-## Key Differences
+```html
+<!-- In TodoHeader: title from model -->
+<h1 property="rdfs:label"></h1>
 
-| Feature | Imperative | Declarative |
-|---------|------------|-------------|
-| List rendering | `<Loop>` + manual template | `<Loop>` + property binding |
-| Value display | `{this.title}` | `<label property="v-s:title">` |
-| Model binding | Manual expressions | Automatic via property |
-| JavaScript | More code | Less code |
-
----
-
-## Examples
-
-### Imperative
-
-```javascript
-import { Loop } from '../src/components/LoopComponent.js';
-
-render() {
-  return html`
-    <ul>
-      <${Loop} items="{this.filteredTodos}" item-key="id">
-        <li>
-          <label>{this.title}</label>
-          <input checked="{this.completed}" />
-        </li>
-      </${Loop}>
-    </ul>
-  `;
-}
+<!-- In TodoFooter: list type via rel -->
+<span rel="rdf:type" property="rdfs:label"></span>
 ```
 
-### Declarative
+**When to use:**
+- Simple display of model data
+- No event handlers needed on the element
+- Automatic reactivity without computed getters
 
-```javascript
-render() {
-  return html`
-    <ul>
-      <${Loop} items="{this.filteredTodos}" item-key="id">
-        <li>
-          <label property="v-s:title"></label>
-          <input checked="{this.completed}" />
-        </li>
-      </${Loop}>
-    </ul>
-  `;
-}
+### Imperative (expressions + computed getters)
+
+Values are explicitly accessed via expressions:
+
+```html
+<!-- In TodoItem: title via getter -->
+<label ondblclick="{handleEdit}">{this.title}</label>
+
+<!-- In TodoFooter: count via state -->
+<span>{this.state.activeCount}</span>
 ```
+
+**When to use:**
+- Need event handlers on the element
+- Complex transformations or filtering
+- Combining multiple values
+
+---
+
+## Component Architecture
+
+| Component | Approach | Why |
+|-----------|----------|-----|
+| **TodoHeader** | Declarative | `property="rdfs:label"` for list title |
+| **TodoItem** | Imperative | Need `ondblclick` for editing |
+| **TodoFooter** | Hybrid | Counts via expressions, type via `rel` |
+| **TodoApp** | Imperative | Complex state management with `Loop`, `If` |
+
+---
+
+## Key Features Demonstrated
+
+- **Loop component** for reactive list rendering with reconciliation
+- **If component** for conditional rendering
+- **effect()** for side effects (checkbox sync)
+- **watch()** for reacting to value changes (CSS classes)
+- **property/rel** components for declarative data binding
+- **Custom events** for parent-child communication
+- **Error handling** with optimistic updates and rollback
 
 ---
 
 ## Build
 
 ```bash
-# Build both versions
+# Build
 npm run build
 
 # Watch mode
@@ -101,7 +95,3 @@ npm run watch
 - **[Main Documentation](../README.md)**
 - **[API Reference](../API.md)**
 - **[Reactivity Guide](../REACTIVITY.md)**
-
----
-
-Both implementations are production-ready. Choose based on your use case.

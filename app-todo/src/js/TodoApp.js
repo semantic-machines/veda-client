@@ -207,7 +207,8 @@ export default class TodoApp extends Component(HTMLElement) {
   render() {
     return html`
       <section class="todoapp">
-        <${TodoHeader}></${TodoHeader}>
+        <!-- Pass model to header for declarative property binding -->
+        <${TodoHeader} :model="{this.state.model}"></${TodoHeader}>
 
         <${If} condition="{this.hasTodos}">
           <section class="main">
@@ -222,12 +223,14 @@ export default class TodoApp extends Component(HTMLElement) {
 
             <ul class="todo-list">
               <${Loop} items="{this.filteredTodos}" as="todo" key="id">
-                <li is="${TodoItem}" :todo="{todo}"></li>
+                <li is="${TodoItem}" :model="{todo}"></li>
               </${Loop}>
             </ul>
           </section>
 
+          <!-- Pass model to footer for declarative rel binding -->
           <${TodoFooter}
+            :model="{this.state.model}"
             :active-count="{this.activeTodos.length}"
             :completed-count="{this.completedTodos.length}"
             :filter="{this.state.filter}">

@@ -1,18 +1,21 @@
 import { Component, html } from '../../../src/index.js';
 
+/**
+ * TodoFooter - demonstrates both approaches:
+ * - IMPERATIVE: {this.state.activeCount} for dynamic counts
+ */
 export default class TodoFooter extends Component(HTMLElement) {
   static tag = 'todo-footer';
 
   constructor() {
     super();
-    // State is auto-created
-    // Properties will be set via :prop syntax from parent
+    // Properties will be set via :prop binding from parent
     this.state.activeCount = 0;
     this.state.completedCount = 0;
     this.state.filter = 'all';
   }
 
-  // Computed properties for reactive attributes
+  // Computed properties for reactive class bindings
   get filterAllClass() { return this.state.filter === 'all' ? 'selected' : ''; }
   get filterActiveClass() { return this.state.filter === 'active' ? 'selected' : ''; }
   get filterCompletedClass() { return this.state.filter === 'completed' ? 'selected' : ''; }
@@ -26,6 +29,7 @@ export default class TodoFooter extends Component(HTMLElement) {
   render() {
     return html`
       <footer class="footer">
+        <!-- IMPERATIVE: computed expressions for dynamic counts -->
         <span class="todo-count"><strong>{this.state.activeCount}</strong> {this.itemPlural} left</span>
         <ul class="filters">
           <li><a class="{this.filterAllClass}" href="#/">All</a></li>

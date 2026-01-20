@@ -1,25 +1,37 @@
 import { Component, html } from '../../../src/index.js';
 
+/**
+ * TodoItem - demonstrates IMPERATIVE approach with reactive expressions
+ *
+ * Uses `{this.title}` expressions for display - this is the IMPERATIVE approach
+ * where you explicitly read values via computed getters.
+ *
+ * Why not declarative here? Because we need ondblclick on the label,
+ * and property component doesn't support event handlers directly.
+ *
+ * Alternative declarative approach would be:
+ *   <label property="v-s:title"></label>
+ * But then ondblclick would need to be on a wrapper element.
+ */
 export default class TodoItem extends Component(HTMLLIElement) {
   static tag = 'todo-item';
 
   constructor() {
     super();
-    // State is auto-created, just set properties
     this.state.editing = false;
   }
 
-  // Computed properties
+  // Computed properties - read from state.model (auto-subscribed by Component)
   get completed() {
-    return this.state.todo?.['v-s:completed']?.[0] || false;
+    return this.state.model?.['v-s:completed']?.[0] || false;
   }
 
   get title() {
-    return this.state.todo?.['v-s:title']?.[0] || '';
+    return this.state.model?.['v-s:title']?.[0] || '';
   }
 
   get todoId() {
-    return this.state.todo?.id || '';
+    return this.state.model?.id || '';
   }
 
   async connectedCallback() {
@@ -113,6 +125,8 @@ export default class TodoItem extends Component(HTMLLIElement) {
                id="toggle-${this.todoId}"
                checked="{this.completed}"
                onchange="{handleToggle}" />
+        <!-- IMPERATIVE: {this.title} uses computed getter for reactive display -->
+        <!-- We use this approach because we need ondblclick on the label -->
         <label ondblclick="{handleEdit}">{this.title}</label>
         <button class="destroy"
                 aria-label="Delete todo"

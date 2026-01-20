@@ -1,5 +1,12 @@
 import { Component, html } from '../../../src/index.js';
 
+/**
+ * TodoHeader - demonstrates declarative property binding for title
+ *
+ * Uses `property="rdfs:label"` to display list name from model.
+ * This is the DECLARATIVE approach - the value is automatically
+ * bound to the model property and updates reactively.
+ */
 export default class TodoHeader extends Component(HTMLElement) {
   static tag = 'todo-header';
 
@@ -14,7 +21,8 @@ export default class TodoHeader extends Component(HTMLElement) {
   render() {
     return html`
       <header class="header">
-        <h1>todos</h1>
+        <!-- DECLARATIVE: property component auto-binds to model.rdfs:label -->
+        <h1 property="rdfs:label"></h1>
         <input class="new-todo" id="new-todo" name="new-todo" aria-label="Create a new todo" placeholder="What needs to be done?" onkeydown="{handleNewTodo}" />
       </header>
     `;

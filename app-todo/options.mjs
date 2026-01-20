@@ -1,7 +1,7 @@
 import {copy} from 'esbuild-plugin-copy';
 
-// Common build configuration
-const commonOptions = {
+// Build configuration for TodoMVC
+export const buildOptions = {
   bundle: true,
   format: 'esm',
   target: 'es2020',
@@ -10,13 +10,8 @@ const commonOptions = {
   platform: 'browser',
   mainFields: ['module', 'main'],
   logLevel: 'info',
-};
-
-// Imperative version (Loop-based)
-export const imperativeOptions = {
-  ...commonOptions,
   entryPoints: ['./src/js/index.js'],
-  outfile: '../dist/app-todo/index-imperative.js',
+  outfile: '../dist/app-todo/index.js',
   plugins: [
     copy({
       assets: [
@@ -33,8 +28,8 @@ export const imperativeOptions = {
           to: ['./'],
         },
         {
-          from: ['./node_modules/todomvc-app-css/index.css'],
-          to: ['./css/base.css'],
+          from: ['./src/css/**/*'],
+          to: ['./css'],
         },
       ],
       watch: false,
@@ -42,9 +37,5 @@ export const imperativeOptions = {
   ],
 };
 
-// Declarative version (property/rel-based)
-export const declarativeOptions = {
-  ...commonOptions,
-  entryPoints: ['./src-declarative/js/index.js'],
-  outfile: '../dist/app-todo/index-declarative.js',
-};
+// Backward compatibility exports
+export const imperativeOptions = buildOptions;
