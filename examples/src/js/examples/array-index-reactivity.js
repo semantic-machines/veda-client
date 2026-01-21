@@ -1,28 +1,19 @@
 import Component, { html } from '../../../../src/components/Component.js';
 import { Loop } from '../../../../src/components/LoopComponent.js';
 
+/**
+ * This example demonstrates array reactivity.
+ */
 class ArrayIndexReactivity extends Component(HTMLElement) {
   static tag = 'array-index-reactivity';
 
   constructor() {
     super();
-    // Use objects with id for Loop key
-    this.state.numbers = [
-      { id: 0, value: 1 },
-      { id: 1, value: 2 },
-      { id: 2, value: 3 },
-      { id: 3, value: 4 },
-      { id: 4, value: 5 },
-    ];
-    this.state.nextId = 5;
-  }
-
-  get values() {
-    return this.state.numbers.map(n => n.value);
+    this.state.numbers = [1, 2, 3, 4, 5];
   }
 
   get sum() {
-    return this.values.reduce((a, b) => a + b, 0);
+    return this.state.numbers.reduce((acc, n) => acc + n, 0);
   }
 
   get average() {
@@ -31,49 +22,47 @@ class ArrayIndexReactivity extends Component(HTMLElement) {
   }
 
   get arrayString() {
-    return '[' + this.values.join(', ') + ']';
+    return '[' + this.state.numbers.toString() + ']';
   }
 
   get length() {
     return this.state.numbers.length;
   }
 
-  updateByIndex(e) {
+  handleInput(e) {
     const index = parseInt(e.target.dataset.index);
     const value = parseInt(e.target.value) || 0;
-    this.state.numbers[index].value = value;
+    this.state.numbers[index] = value;
   }
 
   push() {
-    const newNum = { id: this.state.nextId++, value: Math.floor(Math.random() * 100) };
-    this.state.numbers = [...this.state.numbers, newNum];
+    this.state.numbers.push(Math.floor(Math.random() * 100));
   }
 
   pop() {
     if (this.state.numbers.length > 1) {
-      this.state.numbers = this.state.numbers.slice(0, -1);
+      this.state.numbers.pop();
     }
   }
 
   doubleAll() {
-    this.state.numbers = this.state.numbers.map(n => ({ ...n, value: n.value * 2 }));
+    this.state.numbers = this.state.numbers.map(n => n*2);
   }
 
   shuffle() {
-    const arr = [...this.state.numbers];
+    const arr = this.state.numbers;
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
-    this.state.numbers = arr;
   }
 
   reverse() {
-    this.state.numbers = [...this.state.numbers].reverse();
+    this.state.numbers.reverse();
   }
 
   sort() {
-    this.state.numbers = [...this.state.numbers].sort((a, b) => a.value - b.value);
+    this.state.numbers.sort((a, b) => a - b);
   }
 
   render() {
@@ -82,12 +71,12 @@ class ArrayIndexReactivity extends Component(HTMLElement) {
         <h2>Array Index Reactivity</h2>
 
         <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
-          <${Loop} items="{this.state.numbers}" key="id" as="num">
+          <${Loop} items="{this.state.numbers}" as="num">
             <input
               type="number"
-              value="{num.value}"
+              value="{num}"
               data-index="{index}"
-              oninput="{updateByIndex}"
+              oninput="{handleInput}"
               style="width: 60px; text-align: center;"
             />
           </${Loop}>
