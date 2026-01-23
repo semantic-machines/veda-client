@@ -5,29 +5,32 @@ import ExpressionParser from './ExpressionParser.js';
 import {effect} from '../Effect.js';
 import {reactive} from '../Reactive.js';
 
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const MAX_TREE_DEPTH = 20;
+const EXPR_REGEX = /!\{([^}]+)\}|\{([^}]+)\}/g;
+const UNSAFE_MARKER_REGEX = /!\{/g;
+const HTML_ESCAPE_MAP = {
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
+  "'": '&#39;', '/': '&#x2F;', '\\': '&#x5C;', '`': '&#x60;',
+};
+const HTML_ESCAPE_REGEX = /[&<>"'/\\`]/g;
+const SAFE_EXPR_REGEX = /\{[^}]*\}/g;
+
+// ============================================================================
+// TEMPLATE ENGINE (html, raw, safe)
+// ============================================================================
+
 const marker = Date.now();
 const re = new RegExp(`^${marker}`);
-
-/**
- * Sanitize expression result to prevent XSS via template injection.
- * Replaces !{ with !\u200B{ (zero-width space between) so it won't be parsed as unsafe expression.
- * @param {*} value - Value to sanitize
- * @returns {string} - Sanitized string
- */
-function sanitizeExpressionResult(value) {
-  if (value == null) return '';
-  const str = String(value);
-  // Replace !{ with ! + zero-width space + { to prevent re-parsing as unsafe expression
-  return str.replace(/!\{/g, '!\u200B{');
-}
 
 export function raw (strings, ...values) {
   let result = '';
   for (let i = 0; i < strings.length; i++) {
     let value = values[i] ?? '';
-    if (Array.isArray(value)) {
-      value = value.join(' ');
-    }
+    if (Array.isArray(value)) value = value.join(' ');
     result += strings[i] + value;
   }
   return marker + result.trimEnd();
@@ -50,38 +53,62 @@ export function html (strings, ...values) {
 export function safe (value) {
   if (Array.isArray(value)) return value.map(safe);
   if (typeof value !== 'string' && !(value instanceof String)) return value;
-  const map = {
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-    '/': '&#x2F;',
-    '\\': '&#x5C;',
-    '`': '&#x60;',
-  };
   return value
-    .replace(/[&<>"'/\\`]/g, char => map[char])
-    // Prevent template injection: escape !{ with zero-width space
-    .replace(/!\{/g, '!\u200B{')
-    // Remove any remaining expression patterns
-    .replace(/\{[^}]*\}/g, '');
+    .replace(HTML_ESCAPE_REGEX, char => HTML_ESCAPE_MAP[char])
+    .replace(UNSAFE_MARKER_REGEX, '!\u200B{')
+    .replace(SAFE_EXPR_REGEX, '');
 }
+
+// ============================================================================
+// EXPRESSION HELPERS
+// ============================================================================
+
+function evalExpr(unsafeCode, safeCode, context) {
+  return unsafeCode !== undefined
+    ? ExpressionParser.evaluateUnsafe(unsafeCode.trim(), context)
+    : ExpressionParser.evaluate(safeCode.trim(), context);
+}
+
+function sanitizeExpressionResult(value) {
+  if (value == null) return '';
+  return String(value).replace(UNSAFE_MARKER_REGEX, '!\u200B{');
+}
+
+// ============================================================================
+// COMPONENT CLASS
+// ============================================================================
 
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
   return class ComponentClass extends ElementClass {
     static tag = 'veda-component';
+    static toString () { return this.tag; }
 
-    static toString () {
-      return this.tag;
+    // ---------- Private Fields ----------
+    #resolveRendered;
+    #childrenRendered = [];
+    #effects = [];
+    #renderEffects = [];
+    #eventListeners = [];
+    #isReactive = false;
+    template;
+
+    // ---------- Constructor & Lifecycle ----------
+    constructor() {
+      super();
+      const componentRef = new WeakRef(this);
+      this.state = reactive({}, {
+        onSet: () => {
+          if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
+            const c = componentRef.deref();
+            if (c) window.__VEDA_DEVTOOLS_HOOK__.trackComponentStateChange(c);
+          }
+        }
+      });
+      this.#isReactive = true;
+      this.rendered = new Promise((resolve) => { this.#resolveRendered = resolve; });
     }
 
-  #resolveRendered;
-  #childrenRendered = [];
-  #effects = []; // User-created effects via watch()
-  #renderEffects = []; // Auto-created effects for {expressions}
-  #eventListeners = []; // Event listeners to cleanup on disconnect
-  #isReactive = false; // Tracks if component uses reactive state
+    renderedCallback () {}
 
     async #setRendered() {
       await Promise.all(this.#childrenRendered);
@@ -89,46 +116,16 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       this.renderedCallback();
     }
 
-    constructor() {
-      super();
-      // Auto-create reactive state for all components with DevTools integration
-      // Use WeakRef to avoid preventing GC of component
-      const componentRef = new WeakRef(this);
-      this.state = reactive({}, {
-        onSet: (key, value, oldValue) => {
-          if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
-            const component = componentRef.deref();
-            if (component) {
-              window.__VEDA_DEVTOOLS_HOOK__.trackComponentStateChange(component);
-            }
-          }
-        }
-      });
-      this.#isReactive = true;
-
-      this.rendered = new Promise((resolve) => {
-        this.#resolveRendered = resolve;
-      });
-    }
-
-    renderedCallback () {}
-
     async connectedCallback () {
       try {
-        // DevTools integration
         if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
           window.__VEDA_DEVTOOLS_HOOK__.trackComponent(this);
         }
-
         await this.populate();
-        // Early exit if component was disconnected during async operation
         if (!this.isConnected) return;
-
         const added = this.added();
         if (added instanceof Promise) await added;
-        // Early exit if component was disconnected during async operation
         if (!this.isConnected) return;
-
         await this.update();
       } catch (error) {
         console.log(this, 'Component render error', error);
@@ -137,46 +134,32 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       }
     }
 
-  async disconnectedCallback () {
-    try {
-      // DevTools integration: untrack component
-      if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
-        window.__VEDA_DEVTOOLS_HOOK__.untrackComponent(this);
-      }
-
-      // Cleanup reactive effects and event listeners
-      this.#cleanupEffects();
-      this.#cleanupEventListeners();
-
-      // Clear state to release any model references
-      if (this.state) {
-        for (const key of Object.keys(this.state)) {
-          this.state[key] = null;
+    async disconnectedCallback () {
+      try {
+        if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
+          window.__VEDA_DEVTOOLS_HOOK__.untrackComponent(this);
         }
+        this.#cleanupEffects();
+        this.#cleanupEventListeners();
+        if (this.state) {
+          for (const key of Object.keys(this.state)) this.state[key] = null;
+        }
+        const removed = this.removed();
+        if (removed instanceof Promise) await removed;
+      } catch (error) {
+        console.log(this, 'Component remove error', error);
+      } finally {
+        this.#setRendered();
       }
-
-      const removed = this.removed();
-      if (removed instanceof Promise) await removed;
-    } catch (error) {
-      console.log(this, 'Component remove error', error);
-    } finally {
-      this.#setRendered();
     }
-  }
 
-    /**
-     * Clean up all effects
-     */
     #cleanupEffects() {
-      this.#effects.forEach(cleanup => cleanup());
+      this.#effects.forEach(c => c());
       this.#effects = [];
-      this.#renderEffects.forEach(cleanup => cleanup());
+      this.#renderEffects.forEach(c => c());
       this.#renderEffects = [];
     }
 
-    /**
-     * Clean up all event listeners
-     */
     #cleanupEventListeners() {
       this.#eventListeners.forEach(({ node, eventName, handler }) => {
         node.removeEventListener(eventName, handler);
@@ -184,51 +167,24 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       this.#eventListeners = [];
     }
 
-    /**
-     * Public method for external cleanup (used by If/Loop components)
-     */
-    _cleanupAllEventListeners() {
-      this.#cleanupEventListeners();
-    }
-
-    /**
-     * Get current count of render effects (for Loop component)
-     */
-    _getRenderEffectsCount() {
-      return this.#renderEffects.length;
-    }
-
-    /**
-     * Extract render effects added after startIndex (for Loop component)
-     */
-    _extractRenderEffects(startIndex) {
-      const extracted = this.#renderEffects.splice(startIndex);
-      return extracted;
-    }
-
-    // Internal field for storing innerHTML of child components
-    template;
-
+    // ---------- Lifecycle Hooks (override in subclass) ----------
     added () {}
-
     pre () {}
-
-    render () {
-      return this.template ?? this.innerHTML;
-    }
-
+    render () { return this.template ?? this.innerHTML; }
     post () {}
-
     removed () {}
 
+    // ---------- Internal API (used by If/Loop/Virtual) ----------
+    _cleanupAllEventListeners() { this.#cleanupEventListeners(); }
+    _getRenderEffectsCount() { return this.#renderEffects.length; }
+    _extractRenderEffects(startIndex) { return this.#renderEffects.splice(startIndex); }
+
+    // ---------- Render Pipeline ----------
     async update () {
       const _renderStart = performance.now();
       try {
-        // Clear old child promises to prevent memory leak
         this.#childrenRendered = [];
-
-        // Clear old render effects
-        this.#renderEffects.forEach(cleanup => cleanup());
+        this.#renderEffects.forEach(c => c());
         this.#renderEffects = [];
 
         const pre = this.pre();
@@ -236,7 +192,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
         let html = this.render();
         if (html instanceof Promise) html = await html;
-
         if (typeof html === 'undefined') {
           const post = this.post();
           if (post instanceof Promise) await post;
@@ -255,7 +210,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           : this;
         container.replaceChildren(fragment);
 
-        // Track render for DevTools
         if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
           window.__VEDA_DEVTOOLS_HOOK__.trackComponentRender(this, _renderStart);
         }
@@ -272,317 +226,197 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     async populate () {
-      // Handle 'about' attribute - auto-populate this.state.model
       if (this.hasAttribute('about')) {
         const uri = this.getAttribute('about');
         if (!this.state.model || this.state.model.id !== uri) {
           this.state.model = new ModelClass(uri);
         }
-      } else if (this.state.model && this.state.model.id) {
-        // If model exists in state, sync about attribute
+      } else if (this.state.model?.id) {
         this.setAttribute('about', this.state.model.id);
       }
-
-      // Load and subscribe to model if it exists
       if (this.state.model) {
-        try {
-          await this.state.model.load?.();
-        } catch {
-          // Backend may not be configured (e.g., in tests) - ignore
-        }
-        // Check that component is still connected and model wasn't cleared during await
-        if (this.isConnected && this.state.model) {
-          this.state.model.subscribe?.();
-        }
+        try { await this.state.model.load?.(); } catch { /* Backend not configured */ }
+        if (this.isConnected && this.state.model) this.state.model.subscribe?.();
       }
     }
 
-  /**
-   * Process text node for reactive expressions {expr} and !{expr}
-   */
-  #processTextNode(textNode) {
-      // Skip already processed nodes (prevents XSS via re-parsing expression results)
-      if (textNode.__vedaProcessed) {
-        return;
-      }
+    // ========================================================================
+    // DOM BINDING - Expression processing in text nodes and attributes
+    // ========================================================================
 
-      // Skip text nodes inside <style> and <script> tags
+    #processTextNode(textNode) {
+      // Skip already processed nodes or nodes inside <style>/<script>
+      if (textNode.__vedaProcessed) return;
       const parent = textNode.parentNode;
-      if (parent && (parent.tagName === 'STYLE' || parent.tagName === 'SCRIPT')) {
-        return;
-      }
+      if (parent && (parent.tagName === 'STYLE' || parent.tagName === 'SCRIPT')) return;
 
       const text = textNode.nodeValue;
-      // Combined regex: !{ } (unsafe) or { } (safe), unsafe checked first
-      const regex = /!\{([^}]+)\}|\{([^}]+)\}/g;
-
-      // Check if text contains expressions
-      if (!regex.test(text)) {
-        return;
-      }
-
-      regex.lastIndex = 0; // Reset regex
+      EXPR_REGEX.lastIndex = 0;
+      if (!EXPR_REGEX.test(text)) return;
+      EXPR_REGEX.lastIndex = 0;
 
       // Parse text into parts: static text and expressions
       const parts = [];
       let lastIndex = 0;
       let match;
 
-      while ((match = regex.exec(text)) !== null) {
-        // Add static text before expression
+      while ((match = EXPR_REGEX.exec(text)) !== null) {
         if (match.index > lastIndex) {
-          parts.push({
-            type: 'static',
-            value: text.substring(lastIndex, match.index)
-          });
+          parts.push({ type: 's', value: text.substring(lastIndex, match.index) });
         }
-
-        // match[1] = unsafe (from !{}), match[2] = safe (from {})
-        if (match[1] !== undefined) {
-          parts.push({
-            type: 'unsafe',
-            code: match[1].trim()
-          });
-        } else {
-          parts.push({
-            type: 'expression',
-            code: match[2].trim()
-          });
-        }
-
-        lastIndex = regex.lastIndex;
+        // match[1] = unsafe (!{}), match[2] = safe ({})
+        parts.push(match[1] !== undefined
+          ? { type: 'u', code: match[1].trim() }
+          : { type: 'e', code: match[2].trim() });
+        lastIndex = EXPR_REGEX.lastIndex;
       }
-
-      // Add remaining static text
       if (lastIndex < text.length) {
-        parts.push({
-          type: 'static',
-          value: text.substring(lastIndex)
-        });
+        parts.push({ type: 's', value: text.substring(lastIndex) });
       }
 
-      // If reactive component, create effects for expressions
       if (this.#isReactive) {
-        const parent = textNode.parentNode;
         const evalContext = this._currentEvalContext || this;
-
-        // Create nodes for each part
         const nodes = parts.map(part => {
-          if (part.type === 'static') {
-            return document.createTextNode(part.value);
-          } else {
-            // Create text node for expression
-            const node = document.createTextNode('');
-            const isUnsafe = part.type === 'unsafe';
-
-            // Create effect to update this text node
-            // Capture evalContext in closure
-            const cleanup = effect(() => {
-              const value = isUnsafe
-                ? ExpressionParser.evaluateUnsafe(part.code, evalContext)
-                : ExpressionParser.evaluate(part.code, evalContext);
-              // Sanitize to prevent XSS via !{ } in data
-              node.nodeValue = sanitizeExpressionResult(value);
-            }, { component: this });
-
-            this.#renderEffects.push(cleanup);
-            return node;
-          }
+          if (part.type === 's') return document.createTextNode(part.value);
+          const node = document.createTextNode('');
+          const isUnsafe = part.type === 'u';
+          const cleanup = effect(() => {
+            const value = isUnsafe
+              ? ExpressionParser.evaluateUnsafe(part.code, evalContext)
+              : ExpressionParser.evaluate(part.code, evalContext);
+            node.nodeValue = sanitizeExpressionResult(value);
+          }, { component: this });
+          this.#renderEffects.push(cleanup);
+          return node;
         });
 
-        // Replace textNode content with empty string (keep the node for walker)
         textNode.nodeValue = '';
-
-        // Insert new nodes after the (now empty) textNode in correct order
-        // Mark them as processed to prevent re-parsing
         let insertAfter = textNode;
-        nodes.forEach(node => {
-          node.__vedaProcessed = true; // Mark as processed
+        for (const node of nodes) {
+          node.__vedaProcessed = true;
           parent.insertBefore(node, insertAfter.nextSibling);
           insertAfter = node;
-        });
+        }
       } else {
-        // Non-reactive: just evaluate once
-        // Sanitize results to prevent XSS
-        textNode.nodeValue = text.replace(/!\{([^}]+)\}|\{([^}]+)\}/g, (_, unsafeCode, safeCode) => {
-          const value = unsafeCode !== undefined
-            ? ExpressionParser.evaluateUnsafe(unsafeCode.trim(), this)
-            : this.#evaluate(safeCode.trim());
-          return sanitizeExpressionResult(value);
-        });
-        textNode.__vedaProcessed = true; // Mark as processed
+        textNode.nodeValue = text.replace(EXPR_REGEX, (_, u, s) =>
+          sanitizeExpressionResult(evalExpr(u, s, this)));
+        textNode.__vedaProcessed = true;
       }
     }
 
     _process (fragment, evalContext = null) {
-      // Store eval context for this processing session
       const previousContext = this._currentEvalContext;
 
-      // If no explicit evalContext provided, use this.state with prototype to this
       if (!evalContext) {
         evalContext = this.state;
-        // Set prototype chain: evalContext -> this (for methods)
         if (evalContext && typeof evalContext === 'object') {
           Object.setPrototypeOf(evalContext, this);
         }
       }
-
       this._currentEvalContext = evalContext;
 
       const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
-
       let node = walker.nextNode();
 
       while (node) {
         if (node.nodeType === Node.TEXT_NODE) {
-          // Process reactive expressions in text nodes
           this.#processTextNode(node);
           node = walker.nextNode();
-        } else {
-          if (!node.tagName.includes('-') && !node.hasAttribute('is') && !node.hasAttribute('about') && !node.hasAttribute('property') && !node.hasAttribute('rel')) {
-            this.#processAttributes(node);
-            node = walker.nextNode();
-            continue;
-          }
-
-          const tag = node.tagName.toLowerCase();
-          const isCustom = tag.includes('-') || node.hasAttribute('is');
-
-          let component;
-
-          // Inline component
-          if (!isCustom && node.hasAttribute('about') && !node.hasAttribute('property') && !node.hasAttribute('rel')) {
-            const is = `${tag}-inline-component`;
-            const Class = customElements.get(is);
-            if (!Class) {
-              const Class = Component(node.constructor);
-              customElements.define(is, Class, {extends: tag});
-            }
-            component = document.createElement(tag, {is});
-            component.setAttribute('is', is); // Explicitly set 'is' attribute for findMethod
-            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-          }
-
-          // Property/Relation component
-          if (!isCustom && (node.hasAttribute('property') || node.hasAttribute('rel'))) {
-            const type = node.hasAttribute('property') ? 'property' : 'rel';
-            const is = `${tag}-${type}-component`;
-            const Class = customElements.get(is);
-            if (!Class) {
-              const Class = (type === 'property' ? PropertyComponent : RelationComponent)(node.constructor);
-              customElements.define(is, Class, {extends: tag});
-            }
-            component = document.createElement(tag, {is});
-            component.setAttribute('is', is); // Explicitly set 'is' attribute for findMethod
-            [...node.attributes].forEach((attr) => component.setAttribute(attr.nodeName, attr.nodeValue));
-            if (!component.hasAttribute('about')) {
-              // Use evalContext.model if available, otherwise fall back to this.state.model
-              const contextModel = (this._currentEvalContext && this._currentEvalContext.model) || this.state.model;
-              if (contextModel) {
-                component.state.model = contextModel;
-              }
-            }
-          }
-
-          // Custom component
-          if (tag.includes('-')) {
-            const Class = customElements.get(tag);
-            if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
-            component = document.createElement(tag);
-            // Copy attributes but preserve original values (not evaluated)
-            [...node.attributes].forEach((attr) => {
-              const originalValue = node.getAttribute(attr.nodeName);
-              component.setAttribute(attr.nodeName, originalValue);
-            });
-          }
-
-          // Customized built-in component
-          if (node.hasAttribute('is')) {
-            const is = node.getAttribute('is');
-            const Class = customElements.get(is);
-            if (!Class) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
-            component = document.createElement(tag, {is});
-            component.setAttribute('is', is); // Explicitly set 'is' attribute for findMethod
-            // Copy attributes but preserve original values (not evaluated)
-            [...node.attributes].forEach((attr) => {
-              if (attr.nodeName !== 'is') {
-                const originalValue = node.getAttribute(attr.nodeName);
-                component.setAttribute(attr.nodeName, originalValue);
-              }
-            });
-          }
-
-          // Store original innerHTML for components that need it (Loop, If)
-          component.template = node.innerHTML.trim();
-
-          this.#processAttributes(component);
-
-          node.parentNode.replaceChild(component, node);
-
-          this.#childrenRendered.push(component.rendered);
-
-          walker.currentNode = component;
-
-          // Find next node to process
-          let nextNode = null;
-
-          // First check next sibling node
-          if (component.nextSibling) {
-            walker.currentNode = component.nextSibling;
-            nextNode = component.nextSibling;
-          } else {
-            // If no next sibling, traverse up the tree
-            let parent = component.parentNode;
-            while (parent && parent.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
-              if (parent.nextSibling) {
-                walker.currentNode = parent.nextSibling;
-                nextNode = parent.nextSibling;
-                break;
-              }
-              parent = parent.parentNode;
-            }
-          }
-          node = nextNode;
+          continue;
         }
+
+        const tag = node.tagName.toLowerCase();
+        const hasIs = node.hasAttribute('is');
+        const hasDash = tag.includes('-');
+        const hasProp = node.hasAttribute('property');
+        const hasRel = node.hasAttribute('rel');
+        const hasAbout = node.hasAttribute('about');
+
+        // Plain native element - just process attributes
+        if (!hasDash && !hasIs && !hasAbout && !hasProp && !hasRel) {
+          this.#processAttributes(node);
+          node = walker.nextNode();
+          continue;
+        }
+
+        let component;
+        const copyAttrs = (skip) => {
+          for (const attr of node.attributes) {
+            if (attr.nodeName !== skip) component.setAttribute(attr.nodeName, attr.nodeValue);
+          }
+        };
+
+        if (hasDash) {
+          // Custom element (e.g., <my-component>)
+          if (!customElements.get(tag)) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
+          component = document.createElement(tag);
+          copyAttrs();
+        } else if (hasIs) {
+          // Customized built-in (e.g., <div is="my-div">)
+          const is = node.getAttribute('is');
+          if (!customElements.get(is)) throw Error(`Custom elements registry has no entry for '${is}'`);
+          component = document.createElement(tag, {is});
+          component.setAttribute('is', is);
+          copyAttrs('is');
+        } else if (hasProp || hasRel) {
+          // Property/Relation component
+          const type = hasProp ? 'property' : 'rel';
+          const is = `${tag}-${type}-component`;
+          if (!customElements.get(is)) {
+            customElements.define(is, (type === 'property' ? PropertyComponent : RelationComponent)(node.constructor), {extends: tag});
+          }
+          component = document.createElement(tag, {is});
+          component.setAttribute('is', is);
+          copyAttrs();
+          if (!component.hasAttribute('about')) {
+            const model = this._currentEvalContext?.model || this.state.model;
+            if (model) component.state.model = model;
+          }
+        } else if (hasAbout) {
+          // Inline component with about attribute
+          const is = `${tag}-inline-component`;
+          if (!customElements.get(is)) {
+            customElements.define(is, Component(node.constructor), {extends: tag});
+          }
+          component = document.createElement(tag, {is});
+          component.setAttribute('is', is);
+          copyAttrs();
+        }
+
+        component.template = node.innerHTML.trim();
+        this.#processAttributes(component);
+        node.parentNode.replaceChild(component, node);
+        this.#childrenRendered.push(component.rendered);
+
+        // Find next node
+        walker.currentNode = component;
+        let next = component.nextSibling;
+        if (!next) {
+          let p = component.parentNode;
+          while (p && p.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
+            if (p.nextSibling) { next = p.nextSibling; break; }
+            p = p.parentNode;
+          }
+        }
+        if (next) walker.currentNode = next;
+        node = next;
       }
 
-      // Restore previous eval context
       this._currentEvalContext = previousContext;
     }
 
-    #evaluate (e, fromNode = null) {
-      // Use stored eval context if available, otherwise use this
-      const context = this._currentEvalContext || this;
-
-      try {
-        return ExpressionParser.evaluate(e, context);
-      } catch (error) {
-        console.warn(`Invalid expression '${e}':`, error.message);
-        return '';
-      }
-    }
-
     #findMethod (name) {
-      // Search for method in current component
       if (typeof this[name] === 'function') {
         return { method: this[name], context: this };
       }
-
-      // Search up the component tree via parentElement and shadow DOM hosts
-      // Start with parentElement if available, otherwise try shadow host
-      let parent = this.parentElement || this.getRootNode?.()?.host;
-      let depth = 0;
-      while (parent && depth < 20) {
-        depth++;
-        const isComponent = parent.tagName?.includes('-') || parent.hasAttribute('is');
-        if (isComponent && typeof parent[name] === 'function') {
-          return { method: parent[name], context: parent };
+      // Search up the component tree
+      let el = this.parentElement || this.getRootNode?.()?.host;
+      for (let i = 0; el && i < MAX_TREE_DEPTH; i++) {
+        if ((el.tagName?.includes('-') || el.hasAttribute?.('is')) && typeof el[name] === 'function') {
+          return { method: el[name], context: el };
         }
-
-        // Try to go up: first try parentElement, if null try shadow host
-        parent = parent.parentElement || parent.getRootNode?.()?.host;
+        el = el.parentElement || el.getRootNode?.()?.host;
       }
-
       console.warn(`Method '${name}' not found in component tree`);
       return null;
     }
@@ -597,119 +431,63 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     #processCustomComponentAttributes(node) {
-      const tagName = node.tagName.toLowerCase();
-      const isFrameworkComponent = tagName === 'veda-if' || tagName === 'veda-loop' || tagName === 'veda-virtual';
-      const frameworkAttrs = isFrameworkComponent ? ['condition', 'items', 'as', 'key', 'item-key', 'height', 'item-height', 'overscan'] : [];
+      const tag = node.tagName.toLowerCase();
+      const isFramework = tag === 'veda-if' || tag === 'veda-loop' || tag === 'veda-virtual';
+      const skip = isFramework ? ['condition', 'items', 'as', 'key', 'item-key', 'height', 'item-height', 'overscan'] : [];
 
       for (const attr of [...node.attributes]) {
-        const attrName = attr.nodeName;
-
-        if (attrName.startsWith(':')) {
+        if (attr.nodeName.startsWith(':')) {
           this.#processPropertyBinding(node, attr);
-          continue;
-        }
-
-        if (frameworkAttrs.includes(attr.name)) {
-          continue;
-        }
-
-        if (attr.value?.includes('{') || attr.value?.includes('!{')) {
-          this.#processAttributeExpression(node, attr);
+        } else if (!skip.includes(attr.name) && attr.value?.includes('{')) {
+          this.#processAttrExpr(node, attr, false);
         }
       }
     }
 
     #processPropertyBinding(node, attr) {
-      const attrName = attr.nodeName;
-      const propName = attrName.slice(1).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
-      const expression = attr.nodeValue;
-
-      node.removeAttribute(attrName);
+      const propName = attr.nodeName.slice(1).replace(/-([a-z])/g, (_, l) => l.toUpperCase());
+      const expr = attr.nodeValue;
+      node.removeAttribute(attr.nodeName);
 
       const evalContext = this._currentEvalContext || this;
+      const target = node.state || node;
 
-      if (this.#isReactive && (expression.includes('!{') || expression.includes('{'))) {
+      // Check for pure expression (single {expr} or !{expr})
+      const pureUnsafe = expr.match(/^!\{(.+)\}$/);
+      const pureSafe = !pureUnsafe && expr.match(/^\{([^}]+)\}$/);
+
+      if (this.#isReactive && expr.includes('{')) {
         const cleanup = effect(() => {
-          // Check for pure unsafe expression !{ }
-          const pureUnsafeMatch = expression.match(/^!\{(.+)\}$/);
-          if (pureUnsafeMatch) {
-            const target = node.state || node;
-            target[propName] = ExpressionParser.evaluateUnsafe(pureUnsafeMatch[1].trim(), evalContext);
-            return;
-          }
-
-          // Check for pure safe expression { }
-          const pureSafeMatch = expression.match(/^\{([^}]+)\}$/);
-          if (pureSafeMatch) {
-            const target = node.state || node;
-            target[propName] = ExpressionParser.evaluate(pureSafeMatch[1].trim(), evalContext);
-            return;
-          }
-
-          // Mixed template with multiple expressions
-          const value = expression.replace(/!\{([^}]+)\}|\{([^}]+)\}/g, (_, unsafeCode, safeCode) =>
-            unsafeCode !== undefined
-              ? ExpressionParser.evaluateUnsafe(unsafeCode.trim(), evalContext)
-              : ExpressionParser.evaluate(safeCode.trim(), evalContext));
-
-          const target = node.state || node;
-          target[propName] = value;
-        }, { component: this });
-        this.#renderEffects.push(cleanup);
-      } else {
-        const value = expression.replace(/!\{([^}]+)\}|\{([^}]+)\}/g, (_, unsafeCode, safeCode) =>
-          unsafeCode !== undefined
-            ? ExpressionParser.evaluateUnsafe(unsafeCode.trim(), this)
-            : this.#evaluate(safeCode.trim(), node));
-
-        const target = node.state || node;
-        target[propName] = value;
-      }
-    }
-
-    #processAttributeExpression(node, attr) {
-      const attrName = attr.nodeName;
-      const template = attr.nodeValue;
-      const contextForReactivity = this._currentEvalContext || this;
-      const isReactive = contextForReactivity.__isReactive || contextForReactivity.state?.__isReactive || false;
-
-      // Check for any expression syntax
-      const hasExpression = /!\{[^}]+\}|\{[^}]+\}/g.test(template);
-
-      if (isReactive && hasExpression) {
-        const evalContext = this._currentEvalContext || this;
-        const cleanup = effect(() => {
-          const value = template.replace(/!\{([^}]+)\}|\{([^}]+)\}/g, (_, unsafeCode, safeCode) =>
-            sanitizeExpressionResult(unsafeCode !== undefined
-              ? ExpressionParser.evaluateUnsafe(unsafeCode.trim(), evalContext)
-              : ExpressionParser.evaluate(safeCode.trim(), evalContext)));
-
-          if (node.getAttribute(attrName) !== value) {
-            node.setAttribute(attrName, value);
+          if (pureUnsafe) {
+            target[propName] = ExpressionParser.evaluateUnsafe(pureUnsafe[1].trim(), evalContext);
+          } else if (pureSafe) {
+            target[propName] = ExpressionParser.evaluate(pureSafe[1].trim(), evalContext);
+          } else {
+            target[propName] = expr.replace(EXPR_REGEX, (_, u, s) => evalExpr(u, s, evalContext));
           }
         }, { component: this });
         this.#renderEffects.push(cleanup);
       } else {
-        const value = template.replace(/!\{([^}]+)\}|\{([^}]+)\}/g, (_, unsafeCode, safeCode) =>
-          sanitizeExpressionResult(unsafeCode !== undefined
-            ? ExpressionParser.evaluateUnsafe(unsafeCode.trim(), this)
-            : this.#evaluate(safeCode.trim(), node)));
-        attr.nodeValue = value;
+        if (pureUnsafe) {
+          target[propName] = ExpressionParser.evaluateUnsafe(pureUnsafe[1].trim(), this);
+        } else if (pureSafe) {
+          target[propName] = ExpressionParser.evaluate(pureSafe[1].trim(), this);
+        } else {
+          target[propName] = expr.replace(EXPR_REGEX, (_, u, s) => evalExpr(u, s, this));
+        }
       }
     }
 
     #processNativeElementAttributes(node) {
       for (const attr of [...node.attributes]) {
-        const attrName = attr.name;
-        const hasExpression = attr.value?.includes('{');
-
-        // Property binding with : prefix (e.g., :value="{num}")
-        if (attrName.startsWith(':')) {
+        const name = attr.name;
+        const hasExpr = attr.value?.includes('{');
+        if (name.startsWith(':')) {
           this.#processPropertyBinding(node, attr);
-        } else if (attrName.startsWith('on') && attrName.length > 2 && hasExpression) {
+        } else if (name.startsWith('on') && name.length > 2 && hasExpr) {
           this.#processEventAttribute(node, attr);
-        } else if (hasExpression) {
-          this.#processRegularAttribute(node, attr);
+        } else if (hasExpr) {
+          this.#processAttrExpr(node, attr, true);
         }
       }
     }
@@ -717,72 +495,72 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     #processEventAttribute(node, attr) {
       const eventName = attr.name.slice(2).toLowerCase();
       const expr = attr.value.replace(/[{}]/g, '').trim();
-
       node.removeAttribute(attr.name);
 
+      let handler;
       try {
         const result = ExpressionParser.evaluate(expr, this, true);
-
         if (result && typeof result.value === 'function') {
-          const handler = (e) => {
-            result.value.call(result.context, e, node);
-          };
-          node.addEventListener(eventName, handler);
-          this.#eventListeners.push({ node, eventName, handler });
+          handler = (e) => result.value.call(result.context, e, node);
         } else if (/^\w+$/.test(expr)) {
-          const handler = (e) => {
+          handler = (e) => {
             const found = this.#findMethod(expr);
-            if (found) {
-              found.method.call(found.context, e, node);
-            } else {
-              console.warn(`Method '${expr}' not found in component tree`);
-            }
+            if (found) found.method.call(found.context, e, node);
           };
-          node.addEventListener(eventName, handler);
-          this.#eventListeners.push({ node, eventName, handler });
-        } else {
-          console.warn(`Handler expression '${expr}' did not resolve to a function`);
         }
       } catch (error) {
-        console.warn(`Invalid event handler expression '${expr}':`, error.message);
+        console.warn(`Invalid event handler '${expr}':`, error.message);
+        return;
+      }
+
+      if (handler) {
+        node.addEventListener(eventName, handler);
+        this.#eventListeners.push({ node, eventName, handler });
+      } else {
+        console.warn(`Handler '${expr}' did not resolve to a function`);
       }
     }
 
-    #processRegularAttribute(node, attr) {
+    // Unified attribute expression handler
+    // isNative=true: use smart property handling (value, checked, etc.)
+    // isNative=false: simple setAttribute for custom components
+    #processAttrExpr(node, attr, isNative) {
       const attrName = attr.nodeName;
       const template = attr.nodeValue;
+      const ctx = this._currentEvalContext || this;
+      const isReactive = ctx.__isReactive || ctx.state?.__isReactive || false;
 
-      const contextForReactivity = this._currentEvalContext || this;
-      const isReactive = contextForReactivity.__isReactive || contextForReactivity.state?.__isReactive || false;
+      EXPR_REGEX.lastIndex = 0;
+      if (!EXPR_REGEX.test(template)) return;
 
-      // Check for any expression syntax
-      const hasExpression = /!\{[^}]+\}|\{[^}]+\}/g.test(template);
-
-      if (isReactive && hasExpression) {
-        node.removeAttribute(attrName);
-
-        const evalContext = this._currentEvalContext || this;
+      if (isReactive) {
+        if (isNative) node.removeAttribute(attrName);
         const cleanup = effect(() => {
-          const { value, hasNull } = this.#evaluateTemplate(template, evalContext);
-          this.#setAttributeOrProperty(node, attrName, value, hasNull);
+          if (isNative) {
+            const { value, hasNull } = this.#evaluateTemplate(template, ctx);
+            this.#setAttributeOrProperty(node, attrName, value, hasNull);
+          } else {
+            const value = template.replace(EXPR_REGEX, (_, u, s) =>
+              sanitizeExpressionResult(evalExpr(u, s, ctx)));
+            if (node.getAttribute(attrName) !== value) node.setAttribute(attrName, value);
+          }
         }, { component: this });
         this.#renderEffects.push(cleanup);
-      } else {
+      } else if (isNative) {
         const { value, hasNull } = this.#evaluateTemplate(template, this);
         this.#setAttributeOrProperty(node, attrName, value, hasNull, attr);
+      } else {
+        attr.nodeValue = template.replace(EXPR_REGEX, (_, u, s) =>
+          sanitizeExpressionResult(evalExpr(u, s, this)));
       }
     }
 
     #evaluateTemplate(template, context) {
       let hasNull = false;
-      // Process !{ } (unsafe) and { } (safe), unsafe first
-      const value = template.replace(/!\{([^}]+)\}|\{([^}]+)\}/g, (_, unsafeCode, safeCode) => {
-        const rawValue = unsafeCode !== undefined
-          ? ExpressionParser.evaluateUnsafe(unsafeCode.trim(), context)
-          : ExpressionParser.evaluate(safeCode.trim(), context);
-        if (rawValue === null || rawValue === undefined) hasNull = true;
-        // Sanitize to prevent XSS via !{ } in data
-        return sanitizeExpressionResult(rawValue);
+      const value = template.replace(EXPR_REGEX, (_, u, s) => {
+        const raw = evalExpr(u, s, context);
+        if (raw == null) hasNull = true;
+        return sanitizeExpressionResult(raw);
       });
       return { value, hasNull };
     }
@@ -821,9 +599,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       }
     }
 
-    /**
-     * Helper: create an effect
-     */
+    // ========================================================================
+    // PUBLIC API - Reactivity helpers
+    // ========================================================================
+
     effect(fn) {
       const cleanup = effect(fn, { component: this });
       this.#effects.push(cleanup);
@@ -831,61 +610,33 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     /**
-     * Helper: watch a value and run callback when it changes
-     *
-     * NOTE: Uses reference equality (===) for comparison.
-     * For objects/arrays, callback will only trigger if the reference changes,
-     * not when properties inside are modified.
-     *
-     * Examples:
-     *   this.watch(() => state.count, (val) => ...);  // Triggers on count change
-     *   this.watch(() => state.items, (val) => ...);  // Only triggers if items = newArray
-     *   state.items.push(x);  // Won't trigger (same reference)
-     *   state.items = [...state.items, x];  // Triggers (new reference)
-     *
-     * WORKAROUNDS for arrays/objects:
-     *   1. Watch specific property: this.watch(() => state.items.length, ...)
-     *   2. Watch nested property: this.watch(() => state.user.name, ...)
-     *   3. Reassign after mutation: state.items.push(x); state.items = state.items.slice();
-     *
-     * @param {Function} getter - Function that returns the value to watch
-     * @param {Function} callback - Callback to run when value changes
-     * @param {Object} options - Options { immediate: true } to run callback immediately
+     * Watch a value and run callback when it changes (reference equality).
+     * For arrays: watch length or reassign after mutation.
      */
-  watch(getter, callback, options = {}) {
-      let oldValue;
-      let isFirst = true;
-
+    watch(getter, callback, options = {}) {
+      let oldValue, isFirst = true;
       const cleanup = effect(() => {
         const newValue = getter();
         if (isFirst) {
           isFirst = false;
           oldValue = newValue;
-          // Run callback immediately on first run if immediate option is true
-          if (options.immediate) {
-            callback(newValue, undefined);
-          }
+          if (options.immediate) callback(newValue, undefined);
         } else if (newValue !== oldValue) {
           callback(newValue, oldValue);
           oldValue = newValue;
         }
       }, { ...options, component: this });
-
       this.#effects.push(cleanup);
       return cleanup;
     }
 
-    /**
-     * Find parent component (excluding framework components)
-     */
     _findParentComponent() {
       let parent = this.parentElement;
-      for (let depth = 0; parent && depth < 10; depth++, parent = parent.parentElement) {
+      for (let d = 0; parent && d < MAX_TREE_DEPTH; d++, parent = parent.parentElement) {
         const tag = parent.tagName?.toLowerCase();
-        const isComponent = tag?.includes('-') || parent.hasAttribute('is');
-        const isFramework = tag === 'veda-if' || tag === 'veda-loop';
-
-        if (isComponent && !isFramework) return parent;
+        if ((tag?.includes('-') || parent.hasAttribute('is')) && tag !== 'veda-if' && tag !== 'veda-loop') {
+          return parent;
+        }
       }
       return null;
     }
