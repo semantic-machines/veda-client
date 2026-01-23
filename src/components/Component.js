@@ -8,6 +8,19 @@ import {reactive} from '../Reactive.js';
 const marker = Date.now();
 const re = new RegExp(`^${marker}`);
 
+/**
+ * Sanitize expression result to prevent XSS via template injection.
+ * Replaces !{ with !\u200B{ (zero-width space between) so it won't be parsed as unsafe expression.
+ * @param {*} value - Value to sanitize
+ * @returns {string} - Sanitized string
+ */
+function sanitizeExpressionResult(value) {
+  if (value == null) return '';
+  const str = String(value);
+  // Replace !{ with ! + zero-width space + { to prevent re-parsing as unsafe expression
+  return str.replace(/!\{/g, '!\u200B{');
+}
+
 export function raw (strings, ...values) {
   let result = '';
   for (let i = 0; i < strings.length; i++) {
@@ -47,7 +60,12 @@ export function safe (value) {
     '\\': '&#x5C;',
     '`': '&#x60;',
   };
-  return value.replace(/[&<>"'/\\`]/g, char => map[char]).replace(/\{.*?\}/g, '');
+  return value
+    .replace(/[&<>"'/\\`]/g, char => map[char])
+    // Prevent template injection: escape !{ with zero-width space
+    .replace(/!\{/g, '!\u200B{')
+    // Remove any remaining expression patterns
+    .replace(/\{[^}]*\}/g, '');
 }
 
 export default function Component (ElementClass = HTMLElement, ModelClass = Model) {
@@ -280,9 +298,14 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
   /**
-   * Process text node for reactive expressions {expr}
+   * Process text node for reactive expressions {expr} and !{expr}
    */
   #processTextNode(textNode) {
+      // Skip already processed nodes (prevents XSS via re-parsing expression results)
+      if (textNode.__vedaProcessed) {
+        return;
+      }
+
       // Skip text nodes inside <style> and <script> tags
       const parent = textNode.parentNode;
       if (parent && (parent.tagName === 'STYLE' || parent.tagName === 'SCRIPT')) {
@@ -290,7 +313,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       }
 
       const text = textNode.nodeValue;
-      const regex = /\{([^}]+)\}/g;
+      // Combined regex: !{ } (unsafe) or { } (safe), unsafe checked first
+      const regex = /!\{([^}]+)\}|\{([^}]+)\}/g;
 
       // Check if text contains expressions
       if (!regex.test(text)) {
@@ -313,11 +337,18 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           });
         }
 
-        // Add expression
-        parts.push({
-          type: 'expression',
-          code: match[1].trim()
-        });
+        // match[1] = unsafe (from !{}), match[2] = safe (from {})
+        if (match[1] !== undefined) {
+          parts.push({
+            type: 'unsafe',
+            code: match[1].trim()
+          });
+        } else {
+          parts.push({
+            type: 'expression',
+            code: match[2].trim()
+          });
+        }
 
         lastIndex = regex.lastIndex;
       }
@@ -342,12 +373,16 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           } else {
             // Create text node for expression
             const node = document.createTextNode('');
+            const isUnsafe = part.type === 'unsafe';
 
             // Create effect to update this text node
             // Capture evalContext in closure
             const cleanup = effect(() => {
-              const value = ExpressionParser.evaluate(part.code, evalContext);
-              node.nodeValue = value != null ? String(value) : '';
+              const value = isUnsafe
+                ? ExpressionParser.evaluateUnsafe(part.code, evalContext)
+                : ExpressionParser.evaluate(part.code, evalContext);
+              // Sanitize to prevent XSS via !{ } in data
+              node.nodeValue = sanitizeExpressionResult(value);
             }, { component: this });
 
             this.#renderEffects.push(cleanup);
@@ -359,17 +394,23 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         textNode.nodeValue = '';
 
         // Insert new nodes after the (now empty) textNode in correct order
+        // Mark them as processed to prevent re-parsing
         let insertAfter = textNode;
         nodes.forEach(node => {
+          node.__vedaProcessed = true; // Mark as processed
           parent.insertBefore(node, insertAfter.nextSibling);
           insertAfter = node;
         });
       } else {
         // Non-reactive: just evaluate once
-        textNode.nodeValue = text.replace(/\{([^}]+)\}/g, (_, code) => {
-          const value = this.#evaluate(code.trim());
-          return value != null ? String(value) : '';
+        // Sanitize results to prevent XSS
+        textNode.nodeValue = text.replace(/!\{([^}]+)\}|\{([^}]+)\}/g, (_, unsafeCode, safeCode) => {
+          const value = unsafeCode !== undefined
+            ? ExpressionParser.evaluateUnsafe(unsafeCode.trim(), this)
+            : this.#evaluate(safeCode.trim());
+          return sanitizeExpressionResult(value);
         });
+        textNode.__vedaProcessed = true; // Mark as processed
       }
     }
 
@@ -572,7 +613,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           continue;
         }
 
-        if (attr.value?.includes('{')) {
+        if (attr.value?.includes('{') || attr.value?.includes('!{')) {
           this.#processAttributeExpression(node, attr);
         }
       }
@@ -587,21 +628,39 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
       const evalContext = this._currentEvalContext || this;
 
-      if (this.#isReactive && expression.includes('{')) {
+      if (this.#isReactive && (expression.includes('!{') || expression.includes('{'))) {
         const cleanup = effect(() => {
-          const pureExprMatch = expression.match(/^\{(.+)\}$/);
-          const value = pureExprMatch
-            ? ExpressionParser.evaluate(pureExprMatch[1].trim(), evalContext)
-            : expression.replace(/\{([^}]+)\}/g, (_, code) =>
-                ExpressionParser.evaluate(code.trim(), evalContext));
+          // Check for pure unsafe expression !{ }
+          const pureUnsafeMatch = expression.match(/^!\{(.+)\}$/);
+          if (pureUnsafeMatch) {
+            const target = node.state || node;
+            target[propName] = ExpressionParser.evaluateUnsafe(pureUnsafeMatch[1].trim(), evalContext);
+            return;
+          }
+
+          // Check for pure safe expression { }
+          const pureSafeMatch = expression.match(/^\{([^}]+)\}$/);
+          if (pureSafeMatch) {
+            const target = node.state || node;
+            target[propName] = ExpressionParser.evaluate(pureSafeMatch[1].trim(), evalContext);
+            return;
+          }
+
+          // Mixed template with multiple expressions
+          const value = expression.replace(/!\{([^}]+)\}|\{([^}]+)\}/g, (_, unsafeCode, safeCode) =>
+            unsafeCode !== undefined
+              ? ExpressionParser.evaluateUnsafe(unsafeCode.trim(), evalContext)
+              : ExpressionParser.evaluate(safeCode.trim(), evalContext));
 
           const target = node.state || node;
           target[propName] = value;
         }, { component: this });
         this.#renderEffects.push(cleanup);
       } else {
-        const value = expression.replace(/\{([^}]+)\}/g, (_, code) =>
-          this.#evaluate(code.trim(), node));
+        const value = expression.replace(/!\{([^}]+)\}|\{([^}]+)\}/g, (_, unsafeCode, safeCode) =>
+          unsafeCode !== undefined
+            ? ExpressionParser.evaluateUnsafe(unsafeCode.trim(), this)
+            : this.#evaluate(safeCode.trim(), node));
 
         const target = node.state || node;
         target[propName] = value;
@@ -614,11 +673,16 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       const contextForReactivity = this._currentEvalContext || this;
       const isReactive = contextForReactivity.__isReactive || contextForReactivity.state?.__isReactive || false;
 
-      if (isReactive && /\{([^}]+)\}/g.test(template)) {
+      // Check for any expression syntax
+      const hasExpression = /!\{[^}]+\}|\{[^}]+\}/g.test(template);
+
+      if (isReactive && hasExpression) {
         const evalContext = this._currentEvalContext || this;
         const cleanup = effect(() => {
-          const value = template.replace(/\{([^}]+)\}/g, (_, code) =>
-            ExpressionParser.evaluate(code.trim(), evalContext) ?? '');
+          const value = template.replace(/!\{([^}]+)\}|\{([^}]+)\}/g, (_, unsafeCode, safeCode) =>
+            sanitizeExpressionResult(unsafeCode !== undefined
+              ? ExpressionParser.evaluateUnsafe(unsafeCode.trim(), evalContext)
+              : ExpressionParser.evaluate(safeCode.trim(), evalContext)));
 
           if (node.getAttribute(attrName) !== value) {
             node.setAttribute(attrName, value);
@@ -626,17 +690,25 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         }, { component: this });
         this.#renderEffects.push(cleanup);
       } else {
-        const value = template.replace(/\{([^}]+)\}/g, (_, code) =>
-          this.#evaluate(code.trim(), node) ?? '');
+        const value = template.replace(/!\{([^}]+)\}|\{([^}]+)\}/g, (_, unsafeCode, safeCode) =>
+          sanitizeExpressionResult(unsafeCode !== undefined
+            ? ExpressionParser.evaluateUnsafe(unsafeCode.trim(), this)
+            : this.#evaluate(safeCode.trim(), node)));
         attr.nodeValue = value;
       }
     }
 
     #processNativeElementAttributes(node) {
       for (const attr of [...node.attributes]) {
-        if (attr.name.startsWith('on') && attr.name.length > 2 && attr.value.includes('{')) {
+        const attrName = attr.name;
+        const hasExpression = attr.value?.includes('{');
+
+        // Property binding with : prefix (e.g., :value="{num}")
+        if (attrName.startsWith(':')) {
+          this.#processPropertyBinding(node, attr);
+        } else if (attrName.startsWith('on') && attrName.length > 2 && hasExpression) {
           this.#processEventAttribute(node, attr);
-        } else if (attr.value?.includes('{')) {
+        } else if (hasExpression) {
           this.#processRegularAttribute(node, attr);
         }
       }
@@ -683,7 +755,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       const contextForReactivity = this._currentEvalContext || this;
       const isReactive = contextForReactivity.__isReactive || contextForReactivity.state?.__isReactive || false;
 
-      if (isReactive && /\{([^}]+)\}/g.test(template)) {
+      // Check for any expression syntax
+      const hasExpression = /!\{[^}]+\}|\{[^}]+\}/g.test(template);
+
+      if (isReactive && hasExpression) {
         node.removeAttribute(attrName);
 
         const evalContext = this._currentEvalContext || this;
@@ -700,10 +775,14 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     #evaluateTemplate(template, context) {
       let hasNull = false;
-      const value = template.replace(/\{([^}]+)\}/g, (_, code) => {
-        const rawValue = ExpressionParser.evaluate(code.trim(), context);
+      // Process !{ } (unsafe) and { } (safe), unsafe first
+      const value = template.replace(/!\{([^}]+)\}|\{([^}]+)\}/g, (_, unsafeCode, safeCode) => {
+        const rawValue = unsafeCode !== undefined
+          ? ExpressionParser.evaluateUnsafe(unsafeCode.trim(), context)
+          : ExpressionParser.evaluate(safeCode.trim(), context);
         if (rawValue === null || rawValue === undefined) hasNull = true;
-        return rawValue ?? '';
+        // Sanitize to prevent XSS via !{ } in data
+        return sanitizeExpressionResult(rawValue);
       });
       return { value, hasNull };
     }

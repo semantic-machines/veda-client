@@ -34,6 +34,8 @@ const template = raw`<div>${userInput}</div>`;
 
 ### Expression Injection Protection
 
+#### Safe Mode: `{expression}` - Property Access Only
+
 Reactive expressions `{expression}` are **safe** - they only evaluate property access:
 
 ```javascript
@@ -60,9 +62,71 @@ The `ExpressionParser` allows **only** dot notation, no operators or function ca
 
 This makes XSS via expression injection **impossible**.
 
+#### Unsafe Mode: `!{expression}` - Full JavaScript
+
+`!{ }` enables full JavaScript evaluation for developer convenience.
+
+**⚠️ IMPORTANT:** Unsafe mode uses JavaScript `eval` internally.
+
+**✅ SAFE - Templates written by developers:**
+
+```javascript
+// Templates in source code are safe
+render() {
+  return html`
+    <span>!{ this.state.count * 2 }</span>
+    <span>!{ this.state.name.toUpperCase() }</span>
+  `;
+}
+```
+
+**✅ SAFE - Reading user data through expressions:**
+
+```javascript
+// Even with malicious data in model, this is safe
+this.state.userInput = '<script>alert(1)</script>';
+
+// Expression READS the data, doesn't execute it
+<span>!{ this.state.userInput }</span>  // Displays as text
+<span>!{ this.state.userInput.length }</span>  // Shows length: 29
+```
+
+**❌ DANGEROUS - Templates from untrusted sources:**
+
+```javascript
+// ❌ DANGEROUS: Template from database/API
+const template = await fetch('/api/template').then(r => r.text());
+this.innerHTML = template;  // If contains !{ alert(1) } - XSS!
+
+// ❌ DANGEROUS: Dynamic expression construction
+const field = userInput;  // User entered: name; alert(1);//
+const expr = `this.state.${field}`;
+// If used in template: XSS!
+```
+
+**❌ DANGEROUS - String interpolation before template parsing:**
+
+```javascript
+// ❌ DANGEROUS: Interpolating user data into expression
+const userValue = this.state.userInput;  // User entered: " + alert(1) + "
+
+// This builds: !{ "" + alert(1) + "" } - XSS!
+const template = `<span>!{ "${userValue}" }</span>`;
+```
+
+**Security Rules for Unsafe Mode:**
+
+| Source | Safe? | Example |
+|--------|-------|---------|
+| Hardcoded templates | ✅ Yes | `render() { return html\`!{ expr }\` }` |
+| Expression reads user data | ✅ Yes | `!{ this.state.userInput }` |
+| Template from database | ❌ No | `innerHTML = dbTemplate` |
+| Dynamic expression string | ❌ No | `` `!{ this.${userField} }` `` |
+| User input in expression | ❌ No | `` `!{ "${userInput}" }` `` |
+
 ### CSP (Content Security Policy)
 
-Veda Client is **CSP-compatible** without `unsafe-eval`:
+**Safe mode `{expression}`** is CSP-compatible without `unsafe-eval`:
 
 ```http
 Content-Security-Policy:
@@ -71,10 +135,23 @@ Content-Security-Policy:
   style-src 'self' 'unsafe-inline';
 ```
 
-**Why?**
-- No `eval()` or `Function()` constructors
-- Expression parser uses safe string parsing
-- Templates are static strings
+**Unsafe mode `!{expression}`** requires `unsafe-eval`:
+
+```http
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self' 'unsafe-eval';
+  style-src 'self' 'unsafe-inline';
+```
+
+**Summary:**
+
+| Mode | CSP Requirement | Why |
+|------|-----------------|-----|
+| Safe `{expr}` | No `unsafe-eval` | Uses safe string parsing, no eval/Function |
+| Unsafe `!{expr}` | Requires `unsafe-eval` | Uses `new Function()` internally |
+
+**Recommendation:** If your application requires strict CSP without `unsafe-eval`, use only safe mode `{expression}` with computed properties for complex logic.
 
 ### Sanitizing HTML
 

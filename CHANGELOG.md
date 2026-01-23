@@ -39,9 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prototype pollution prevention
 
 ### Security
-- Expression parser prevents XSS via function call injection
-- safe() function removes expression braces to prevent injection
-- CSP-compatible (no eval or Function constructor)
+- Safe mode `{expr}`: prevents XSS via function call injection, CSP-compatible (no eval)
+- Unsafe mode `!{expr}`: full JS expressions, requires `unsafe-eval` CSP, sanitizes results
+- safe() function escapes `!{` and removes `{expr}` to prevent template injection
+- Double protection against XSS: result sanitization + processed node marking
 
 ## [1.x] - Previous versions
 

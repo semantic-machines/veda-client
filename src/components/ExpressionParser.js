@@ -1,18 +1,23 @@
 /**
  * Ultra-minimal safe expression parser for template interpolation
  *
- * Supports only dot notation with optional chaining:
+ * Safe mode (default) - only dot notation with optional chaining:
  *   model.id
  *   model.rdfs:label.0
  *   model?.items?.0?.id
  *   this.model.v-s:hasApplication.0
  *
- * No bracket notation, no operators - just property access.
- * For complex logic, use getters in your component.
+ * Unsafe mode (for !{ expr }) - full JavaScript expressions:
+ *   model.items.length > 0
+ *   model.price * 1.2
+ *   model.status === 'active' ? 'Yes' : 'No'
+ *
+ * No bracket notation, no operators in safe mode - just property access.
+ * For complex logic, use getters in your component or !{ } syntax.
  */
 export default class ExpressionParser {
   /**
-   * Evaluate expression in given context
+   * Evaluate expression in given context (safe mode - property access only)
    * @param {string} expr - Expression to evaluate (e.g., "model.rdfs:label.0")
    * @param {object} context - Context object (usually component instance)
    * @param {boolean} preserveContext - If true, returns {value, context} for functions
@@ -37,6 +42,29 @@ export default class ExpressionParser {
     }
 
     return result.value;
+  }
+
+  /**
+   * Evaluate expression in unsafe mode (full JavaScript)
+   * Use for !{ expr } syntax - allows operators, method calls, etc.
+   * @param {string} expr - JavaScript expression
+   * @param {object} context - Context object
+   * @returns {*} Evaluated result
+   */
+  static evaluateUnsafe(expr, context) {
+    if (!expr || typeof expr !== 'string') {
+      return undefined;
+    }
+
+    try {
+      // Create function with context as 'this' and properties available via 'with'
+      // This allows both 'this.state.x' and direct 'model.x' access
+      const fn = new Function(`with(this) { return ${expr}; }`);
+      return fn.call(context);
+    } catch (error) {
+      console.warn(`Unsafe expression error '${expr}':`, error.message);
+      return undefined;
+    }
   }
 
   static #normalizeExpression(expr) {

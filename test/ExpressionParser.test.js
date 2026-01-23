@@ -232,5 +232,116 @@ export default ({test, assert}) => {
     const bound = result.value.bind(result.context);
     assert(bound() === 'saved:test:123');
   });
+
+  // === UNSAFE MODE TESTS (for !{ expr } syntax) ===
+
+  test('ExpressionParser.evaluateUnsafe - comparison operators', () => {
+    const context = {
+      model: {
+        count: 5,
+        status: 'active',
+        items: [1, 2, 3]
+      }
+    };
+
+    assert(ExpressionParser.evaluateUnsafe('model.count > 0', context) === true);
+    assert(ExpressionParser.evaluateUnsafe('model.count < 10', context) === true);
+    assert(ExpressionParser.evaluateUnsafe('model.count === 5', context) === true);
+    assert(ExpressionParser.evaluateUnsafe('model.count !== 0', context) === true);
+    assert(ExpressionParser.evaluateUnsafe('model.status === "active"', context) === true);
+    assert(ExpressionParser.evaluateUnsafe('model.items.length > 0', context) === true);
+  });
+
+  test('ExpressionParser.evaluateUnsafe - arithmetic operators', () => {
+    const context = {
+      model: {
+        price: 100,
+        quantity: 3,
+        discount: 0.1
+      }
+    };
+
+    assert(ExpressionParser.evaluateUnsafe('model.price * model.quantity', context) === 300);
+    assert(ExpressionParser.evaluateUnsafe('model.price + 50', context) === 150);
+    assert(ExpressionParser.evaluateUnsafe('model.price - model.price * model.discount', context) === 90);
+    assert(ExpressionParser.evaluateUnsafe('model.quantity * 2', context) === 6);
+  });
+
+  test('ExpressionParser.evaluateUnsafe - logical operators', () => {
+    const context = {
+      model: {
+        isActive: true,
+        isAdmin: false,
+        count: 5
+      }
+    };
+
+    assert(ExpressionParser.evaluateUnsafe('model.isActive && model.count > 0', context) === true);
+    assert(ExpressionParser.evaluateUnsafe('model.isActive || model.isAdmin', context) === true);
+    assert(ExpressionParser.evaluateUnsafe('!model.isAdmin', context) === true);
+    assert(ExpressionParser.evaluateUnsafe('model.isActive && !model.isAdmin', context) === true);
+  });
+
+  test('ExpressionParser.evaluateUnsafe - ternary operator', () => {
+    const context = {
+      model: {
+        count: 5,
+        status: 'active'
+      }
+    };
+
+    assert(ExpressionParser.evaluateUnsafe('model.count > 0 ? "has items" : "empty"', context) === 'has items');
+    assert(ExpressionParser.evaluateUnsafe('model.count === 0 ? "none" : "some"', context) === 'some');
+    assert(ExpressionParser.evaluateUnsafe('model.status === "active" ? "Yes" : "No"', context) === 'Yes');
+  });
+
+  test('ExpressionParser.evaluateUnsafe - method calls', () => {
+    const context = {
+      model: {
+        items: [1, 2, 3, 4, 5],
+        name: 'Hello World'
+      }
+    };
+
+    const filtered = ExpressionParser.evaluateUnsafe('model.items.filter(x => x > 2)', context);
+    assert(Array.isArray(filtered));
+    assert(filtered.length === 3);
+
+    const mapped = ExpressionParser.evaluateUnsafe('model.items.map(x => x * 2)', context);
+    assert(mapped[0] === 2);
+    assert(mapped[4] === 10);
+
+    assert(ExpressionParser.evaluateUnsafe('model.name.toLowerCase()', context) === 'hello world');
+    assert(ExpressionParser.evaluateUnsafe('model.name.split(" ").length', context) === 2);
+  });
+
+  test('ExpressionParser.evaluateUnsafe - nullish coalescing and optional chaining', () => {
+    const context = {
+      model: {
+        value: null,
+        nested: { deep: { id: 'found' } }
+      }
+    };
+
+    assert(ExpressionParser.evaluateUnsafe('model.value ?? "default"', context) === 'default');
+    assert(ExpressionParser.evaluateUnsafe('model.nonexistent?.id ?? "not found"', context) === 'not found');
+    assert(ExpressionParser.evaluateUnsafe('model.nested?.deep?.id', context) === 'found');
+  });
+
+  test('ExpressionParser.evaluateUnsafe - error handling', () => {
+    const context = { model: { id: 'test' } };
+
+    // Invalid syntax should return undefined
+    const result = ExpressionParser.evaluateUnsafe('model.{invalid}', context);
+    assert(result === undefined);
+  });
+
+  test('ExpressionParser.evaluateUnsafe - empty/null input', () => {
+    const context = { model: { id: 'test' } };
+
+    assert(ExpressionParser.evaluateUnsafe('', context) === undefined);
+    assert(ExpressionParser.evaluateUnsafe(null, context) === undefined);
+    assert(ExpressionParser.evaluateUnsafe(undefined, context) === undefined);
+  });
 };
 

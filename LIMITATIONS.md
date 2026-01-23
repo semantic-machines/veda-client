@@ -122,23 +122,23 @@ Browsers limit element height to ~33,554,432 pixels. This affects maximum scroll
 - Use server-side pagination
 - Implement infinite scroll with data windowing
 
-### 3. Expression Parser - Limited Syntax
+### 3. Expression Parser - Safe Mode Limited Syntax
 
-**Issue:** Only property access supported, no operators.
+**Issue:** Safe mode `{expr}` only supports property access, no operators.
 
 ```javascript
-// ✅ Supported
+// ✅ Safe mode supported
 {this.user.name}
 {this.items.0.title}
 {this.model.v-s:title.0}
 
-// ❌ Not supported
+// ❌ Safe mode NOT supported
 {this.count + 1}
 {this.isActive ? 'Yes' : 'No'}
 {this.formatDate(date)}
 ```
 
-**Workaround:** Use computed properties (getters)
+**Workaround 1:** Use computed properties (getters) — recommended
 
 ```javascript
 get incrementedCount() {
@@ -148,7 +148,15 @@ get incrementedCount() {
 <div>{this.incrementedCount}</div>
 ```
 
-**Status:** By design (security and simplicity)
+**Workaround 2:** Use unsafe mode `!{expr}` for quick inline expressions
+
+```javascript
+// ⚠️ Requires unsafe-eval CSP
+<div>!{ this.count + 1 }</div>
+<div>!{ this.isActive ? 'Yes' : 'No' }</div>
+```
+
+**Status:** Safe mode limited by design (security, CSP-compatible). Unsafe mode available for convenience but requires `unsafe-eval` in CSP.
 
 ### 4. Watch Uses Reference Equality
 
@@ -295,13 +303,17 @@ this.state.todos = [...this.state.todos]; // Single trigger
 
 ## Security Limitations
 
-### safe() Removes All Braces
+### safe() Escapes Template Markers
 
-The `safe()` function removes `{}` characters to prevent expression injection:
+The `safe()` function prevents template injection:
+
+1. **Escapes `!{`** — replaces with `!​{` (zero-width space) to prevent unsafe expression injection
+2. **Removes `{...}`** — removes single-brace patterns to prevent safe expression injection
 
 ```javascript
-safe('Style: { color: red }');    // Returns: 'Style: '
-safe('JSON: {"key": "value"}');   // Returns: 'JSON: '
+safe('Test !{alert(1)}');         // Returns: 'Test !​{alert(1)}'  (ZWS escaped)
+safe('Style: { color: red }');    // Returns: 'Style: '  (removed)
+safe('JSON: {"key": "value"}');   // Returns: 'JSON: '  (removed)
 ```
 
 **Workaround:** Use `raw()` for code/JSON display (with trusted content only):
@@ -392,9 +404,9 @@ function TodoList() {
 - ✅ Good for forms and small lists
 
 **Limitations:**
-- ❌ No virtualization
+- ❌ No virtualization (use `<veda-virtual>` for large lists)
 - ❌ Naive reconciliation
-- ❌ Limited expression syntax
+- ❌ Safe mode limited to property access (use unsafe mode `!{}` or getters for complex expressions)
 
 **Decision rule:**
 - < 500 items → Use Veda Client

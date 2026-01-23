@@ -57,7 +57,10 @@ export default function ValueComponent (Class = HTMLElement) {
   }
 
     renderValue (value, container, index) {
-      const node = document.createTextNode(value.toString());
+      // Sanitize to prevent XSS via !{ } in data
+      const sanitized = value.toString().replace(/!\{/g, '!\u200B{');
+      const node = document.createTextNode(sanitized);
+      node.__vedaProcessed = true; // Mark as processed to skip re-parsing
       container.appendChild(node);
       this.#valueNodes.set(index, {value, node});
     }

@@ -87,14 +87,21 @@ export default function LoopComponent(Class = HTMLElement) {
 
     #evaluateItems(expr) {
       try {
-        const cleanExpr = expr.trim().replace(/^\{/, '').replace(/\}$/, '');
-
         const context = this._vedaParentContext;
 
         if (!context) {
           return [];
         }
 
+        // Check for unsafe expression !{ }
+        const unsafeMatch = expr.trim().match(/^!\{(.+)\}$/);
+        if (unsafeMatch) {
+          const items = ExpressionParser.evaluateUnsafe(unsafeMatch[1].trim(), context);
+          return Array.isArray(items) ? items : [];
+        }
+
+        // Safe expression { }
+        const cleanExpr = expr.trim().replace(/^\{/, '').replace(/\}$/, '');
         const items = ExpressionParser.evaluate(cleanExpr, context);
         return Array.isArray(items) ? items : [];
       } catch (error) {

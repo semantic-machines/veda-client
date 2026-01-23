@@ -74,7 +74,7 @@ export default class AppComponent extends Component(HTMLElement) {
         <ul>
           <li property="rdfs:comment"></li>
           <li>{this.state.model.rdfs:comment.0}</li>
-          <li>${this.state.model['rdfs:comment']?.[0]}</li>
+          <li>!{this.state.model['rdfs:comment']?.[0]}</li>
           <li>${this
             ? html`111 <span>true</span>`
             : html`<span>false</span>`

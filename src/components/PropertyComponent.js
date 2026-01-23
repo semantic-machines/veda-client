@@ -33,13 +33,24 @@ export default function PropertyComponent (Class = HTMLElement) {
       const fragment = template.content.cloneNode(true);
 
       const slot = fragment.querySelector('slot');
-      const valueText = value.toString();
+      // Sanitize to prevent XSS via !{ } in data
+      const valueText = value.toString().replace(/!\{/g, '!\u200B{');
 
       if (slot) {
-        slot.replaceWith(document.createTextNode(valueText));
+        const textNode = document.createTextNode(valueText);
+        textNode.__vedaProcessed = true; // Mark as processed to skip re-parsing
+        slot.replaceWith(textNode);
       } else {
         const node = fragment.firstElementChild;
-        if (node) node.textContent = valueText;
+        if (node) {
+          node.textContent = valueText;
+          // Mark all text nodes as processed
+          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+          let textNode;
+          while ((textNode = walker.nextNode())) {
+            textNode.__vedaProcessed = true;
+          }
+        }
       }
 
       this._process(fragment);

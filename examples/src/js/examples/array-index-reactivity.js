@@ -74,7 +74,7 @@ class ArrayIndexReactivity extends Component(HTMLElement) {
           <${Loop} items="{this.state.numbers}" as="num">
             <input
               type="number"
-              value="{num}"
+              :value="{num}"
               data-index="{index}"
               oninput="{handleInput}"
               style="width: 60px; text-align: center;"

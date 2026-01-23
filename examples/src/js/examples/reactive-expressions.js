@@ -70,7 +70,7 @@ class ReactiveExpressions extends Component(HTMLElement) {
           </label>
           <label>
             Age:
-            <input type="number" value="{this.state.age}" oninput="{updateAge}" />
+            <input type="number" :value="{this.state.age}" oninput="{updateAge}" />
           </label>
         </div>
 

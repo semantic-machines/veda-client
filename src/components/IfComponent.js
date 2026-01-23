@@ -80,14 +80,21 @@ export default function IfComponent(Class = HTMLElement) {
 
     #evaluateCondition(expr) {
       try {
-        const cleanExpr = expr.trim().replace(/^\{/, '').replace(/\}$/, '');
-
         const context = this._vedaParentContext;
 
         if (!context) {
           return false;
         }
 
+        // Check for unsafe expression !{ }
+        const unsafeMatch = expr.trim().match(/^!\{(.+)\}$/);
+        if (unsafeMatch) {
+          const value = ExpressionParser.evaluateUnsafe(unsafeMatch[1].trim(), context);
+          return !!value;
+        }
+
+        // Safe expression { }
+        const cleanExpr = expr.trim().replace(/^\{/, '').replace(/\}$/, '');
         const value = ExpressionParser.evaluate(cleanExpr, context);
         return !!value;
       } catch (error) {

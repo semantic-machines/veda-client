@@ -84,7 +84,7 @@ class VirtualListDemo extends Component(HTMLElement) {
     return html`
       <div class="card">
         <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center;">
-          <input type="number" value="{this.state.itemCount}" oninput="{setItemCount}" style="width: 100px;" />
+          <input type="number" :value="{this.state.itemCount}" oninput="{setItemCount}" style="width: 100px;" />
           <button onclick="{applyCount}">Set Count</button>
           <button onclick="{shuffleItems}">Shuffle</button>
           <button onclick="{addItems}">Add 100</button>

@@ -202,6 +202,36 @@ class UserCard extends Component(HTMLElement) {
 </my-component>
 ```
 
+**Native elements with `:` prefix:**
+
+For native elements, `:prop` sets the DOM property directly (not `state`):
+
+```html
+<!-- Use :value for inputs with type validation -->
+<input type="number" :value="{this.state.count}" />
+<input type="date" :value="{this.state.date}" />
+<input type="range" :value="{this.state.slider}" />
+
+<!-- Also useful for -->
+<input type="checkbox" :checked="{this.state.isActive}" />
+<select :value="{this.state.selected}">...</select>
+<textarea :value="{this.state.text}"></textarea>
+```
+
+**Why use `:value` instead of `value`?**
+
+With `value="{expr}"`, the browser parses the attribute **before** expression evaluation:
+```html
+<input type="number" value="{count}">
+<!-- Browser warning: "{count}" is not a valid number -->
+```
+
+With `:value="{expr}"`, the property is set **after** evaluation via JavaScript:
+```html
+<input type="number" :value="{count}">
+<!-- No warning, sets input.value = 5 programmatically -->
+```
+
 **Native elements:**
 
 ```html
@@ -462,9 +492,11 @@ Populate component from model (internal use).
 
 ## Expression Parser
 
-The Expression Parser evaluates template expressions like `{this.state.count}` in a safe, restricted manner.
+The Expression Parser evaluates template expressions in two modes:
 
-### Supported Syntax
+### Safe Mode: `{expression}` (Default)
+
+Evaluates expressions in a safe, restricted manner - **property access only**.
 
 **✅ Supported:**
 - Dot notation: `{this.state.count}`
@@ -473,46 +505,113 @@ The Expression Parser evaluates template expressions like `{this.state.count}` i
 - Nested access: `{this.state.model.v-s:title.0}`
 - Dashes in property names: `{this.state.model.v-s:hasValue}`
 
-**❌ Not Supported:**
+**❌ Not Supported in safe mode:**
 - Operators: `{this.a + this.b}` ❌
 - Function calls: `{this.format(date)}` ❌
 - Ternary operators: `{this.show ? 'yes' : 'no'}` ❌
-- Bracket notation: `{this.items['key']}`, `{this.state.model['v-s:title']}` ❌
+- Bracket notation: `{this.items['key']}` ❌
 - Method calls: `{this.items.map(x => x)}` ❌
 
-**Instead use:**
-- For numeric indices: `{this.items.0}` ✅
-- For properties with dashes: `{this.state.model.v-s:title.0}` ✅
+### Unsafe Mode: `!{expression}` (Full JavaScript)
+
+For complex expressions, use `!{ }` to enable full JavaScript evaluation:
+
+```javascript
+// ✅ Operators
+<span>!{ this.state.count + 1 }</span>
+<span>!{ this.state.price * 1.2 }</span>
+
+// ✅ Comparisons
+<span>!{ this.state.count > 0 ? 'positive' : 'zero' }</span>
+
+// ✅ Logical operators
+<span>!{ this.state.isActive && this.state.isVisible ? 'shown' : 'hidden' }</span>
+
+// ✅ String operations
+<span>!{ this.state.name.toUpperCase() }</span>
+
+// ✅ Array methods
+<span>!{ this.state.items.filter(x => x.active).length } active items</span>
+
+// ✅ Nullish coalescing
+<span>!{ this.state.title ?? 'Untitled' }</span>
+```
+
+**Use with conditions:**
+
+```javascript
+// Complex conditions in veda-if
+<veda-if condition="!{ this.state.items.length > 0 }">
+  <span>Has items</span>
+</veda-if>
+
+<veda-if condition="!{ this.state.status === 'active' && this.state.count >= 10 }">
+  <span>Active and ready</span>
+</veda-if>
+```
+
+**Use with loops:**
+
+```javascript
+// Filtered items in veda-loop
+<veda-loop items="!{ this.state.items.filter(x => x.visible) }" key="id" as="item">
+  <div>{item.name}</div>
+</veda-loop>
+```
+
+**⚠️ Security Warning:** Unsafe mode uses JavaScript `eval` internally. Only use with trusted, developer-written templates. Never use with user-provided expressions. See [Security](#security) section.
+
+### When to Use Each Mode
+
+| Scenario | Recommended |
+|----------|-------------|
+| Simple property display | `{this.state.name}` |
+| Computed values | Getter + `{this.computedValue}` |
+| Simple conditions | `{this.state.isActive}` |
+| Complex conditions | `!{ this.state.count > 0 }` |
+| Arithmetic | `!{ this.state.price * 1.2 }` |
+| String formatting | `!{ this.state.name.toUpperCase() }` |
+| Array operations | `!{ this.state.items.length }` |
 
 ### Examples
 
 ```javascript
-// ✅ Simple property access
+// ✅ Simple property access (safe)
 <div>{this.state.count}</div>
 
-// ✅ Nested property
+// ✅ Nested property (safe)
 <div>{this.user.profile.name}</div>
 
-// ✅ Optional chaining
+// ✅ Optional chaining (safe)
 <div>{this.user?.email}</div>
 
-// ✅ Array element access
+// ✅ Array element access (safe)
 <li>{this.todos.0.title}</li>
 
-// ✅ RDF property names with dashes/colons
+// ✅ RDF property names with dashes/colons (safe)
 <span>{this.state.model.v-s:title.0}</span>
 
-// ❌ Complex expression - use computed property instead
-get incrementedCount() {
-  return this.state.count + 1;
-}
-<div>{this.incrementedCount}</div>
+// ✅ Arithmetic (unsafe mode)
+<span>Total: !{ this.state.price * this.state.quantity }</span>
 
-// ❌ Ternary - use computed property
+// ✅ Ternary operator (unsafe mode)
+<span>!{ this.state.active ? 'Active' : 'Inactive' }</span>
+
+// ✅ Method calls (unsafe mode)
+<span>!{ this.state.items.join(', ') }</span>
+```
+
+**Alternative: Computed properties** (recommended for complex logic)
+
+```javascript
+// Computed property (reusable, testable)
 get statusText() {
-  return this.isActive ? 'Active' : 'Inactive';
+  return this.state.active ? 'Active' : 'Inactive';
 }
 <span>{this.statusText}</span>
+
+// vs inline unsafe expression (quick, one-off)
+<span>!{ this.state.active ? 'Active' : 'Inactive' }</span>
 ```
 
 ### Error Handling
@@ -559,21 +658,24 @@ In Loop/If components, access data through the named variable:
 
 - Expression parsing happens once during template compilation
 - Reactive tracking is automatic (via Effect system)
-- No runtime eval() or Function() - secure and fast
+- Safe mode `{expr}`: no runtime eval() - secure and fast
+- Unsafe mode `!{expr}`: uses `new Function()` - requires `unsafe-eval` CSP
 
-### Why Limited Syntax?
+### Why Two Modes?
 
-**Security:**
+**Safe mode `{expr}` — Security first:**
 - No eval() or Function() constructor
 - Cannot execute arbitrary code
+- CSP-compatible without `unsafe-eval`
 - Safe for user-provided templates
 
-**Simplicity:**
-- Easy to understand what expressions do
-- Predictable behavior
-- Encourages computed properties for complex logic
+**Unsafe mode `!{expr}` — Convenience:**
+- Full JavaScript expressions
+- Uses `new Function()` internally
+- Requires `unsafe-eval` in CSP
+- Only for developer-written templates
 
-**Recommendation:** For any logic beyond simple property access, use computed properties (getters).
+**Recommendation:** Use safe mode `{expr}` with computed properties (getters) for most cases. Use unsafe mode `!{expr}` only when needed for quick inline expressions in trusted templates.
 
 ---
 

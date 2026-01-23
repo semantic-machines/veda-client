@@ -171,10 +171,17 @@ effect(() => {
 });
 ```
 
-**Parser:**
+**Parser (two modes):**
+
+*Safe mode `{expr}`:*
 - Supports: property access, optional chaining, numeric array access (via dot)
-- Rejects: operators, function calls, ternaries, bracket notation with string keys
-- Security: prevents eval/Function injection
+- Rejects: operators, function calls, ternaries, bracket notation
+- Security: no eval/Function, CSP-compatible
+
+*Unsafe mode `!{expr}`:*
+- Supports: full JavaScript expressions (operators, methods, ternary, etc.)
+- Uses: `new Function()` internally
+- Security: requires `unsafe-eval` CSP, sanitizes results to prevent injection
 
 ### Loop Reconciliation
 

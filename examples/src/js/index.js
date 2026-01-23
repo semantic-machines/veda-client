@@ -8,3 +8,4 @@ import './examples/reactive-expressions.js';
 import './examples/loop-if-demo.js';
 import './examples/array-index-reactivity.js';
 import './examples/virtual-list-demo.js';
+import './examples/unsafe-expressions.js';

@@ -638,5 +638,107 @@ export default ({ test, assert }) => {
     cleanup();
   });
 
+  // ==================== TEMPLATE INJECTION PROTECTION ====================
+
+  test('Security - safe() escapes !{ } template markers', () => {
+    const malicious = '!{alert("XSS")}';
+    const result = safe(malicious);
+
+    // Should not contain !{ that could be parsed as unsafe expression
+    assert(!result.includes('!{'), 'Should escape !{ markers');
+  });
+
+  test('Security - expression results cannot inject new expressions', async () => {
+    let alertCalled = false;
+    const originalAlert = globalThis.alert;
+    globalThis.alert = () => { alertCalled = true; };
+
+    class InjectionTestComponent extends Component(HTMLElement) {
+      constructor() {
+        super();
+        // Data contains !{ } that looks like an expression
+        this.state.userInput = '!{alert("XSS")}';
+      }
+      render() {
+        // Using safe expression to display user data
+        return html`<div>{this.state.userInput}</div>`;
+      }
+    }
+
+    const { component, cleanup } = await createTestComponent(InjectionTestComponent);
+    await flushEffects();
+
+    // Alert should NOT be called - the !{ } in data should not be executed
+    assert(!alertCalled, 'Should not execute !{ } from data');
+
+    // Content should be displayed (possibly with ZWS escaping)
+    const text = component.textContent;
+    assert(text.includes('alert'), 'Should display the text content');
+
+    globalThis.alert = originalAlert;
+    cleanup();
+  });
+
+  test('Security - unsafe expression results cannot inject new expressions', async () => {
+    let alertCalled = false;
+    const originalAlert = globalThis.alert;
+    globalThis.alert = () => { alertCalled = true; };
+
+    class UnsafeInjectionTestComponent extends Component(HTMLElement) {
+      constructor() {
+        super();
+        // Data contains !{ } that looks like an expression
+        this.state.userInput = '!{alert("XSS2")}';
+      }
+      render() {
+        // Using unsafe expression to display user data
+        return html`<div>!{ this.state.userInput }</div>`;
+      }
+    }
+
+    const { component, cleanup } = await createTestComponent(UnsafeInjectionTestComponent);
+    await flushEffects();
+
+    // Alert should NOT be called - the !{ } in data should be sanitized
+    assert(!alertCalled, 'Should not execute nested !{ } from data');
+
+    globalThis.alert = originalAlert;
+    cleanup();
+  });
+
+  test('Security - html tag escapes !{ } in interpolated values', () => {
+    const malicious = '!{alert("XSS")}';
+    const result = html`<div>${malicious}</div>`;
+
+    // Should not contain !{ that could be parsed as unsafe expression
+    assert(!result.includes('!{'), 'html tag should escape !{ in interpolated values');
+  });
+
+  test('Security - sanitizeExpressionResult escapes !{ }', async () => {
+    class SanitizeTestComponent extends Component(HTMLElement) {
+      constructor() {
+        super();
+        this.state.data = 'prefix !{alert(1)} suffix';
+      }
+      render() {
+        return html`<span>{this.state.data}</span>`;
+      }
+    }
+
+    const { component, cleanup } = await createTestComponent(SanitizeTestComponent);
+    await flushEffects();
+
+    // The !{ should be escaped with zero-width space
+    const text = component.textContent;
+    assert(text.includes('prefix'), 'Should contain prefix');
+    assert(text.includes('suffix'), 'Should contain suffix');
+    assert(text.includes('alert'), 'Should contain alert text (not executed)');
+
+    // Should NOT contain raw !{ (should have ZWS between)
+    assert(!text.includes('!{') || text.includes('!\u200B{'), 'Should escape !{ with ZWS');
+
+    cleanup();
+  });
+
 };
 
