@@ -259,4 +259,266 @@ export default ({ test, assert }) => {
     console.warn = originalWarn;
     container.remove();
   });
+
+  // ==================== If inside Loop ====================
+
+  test('IfComponent - safe expression accesses loop variable inside Loop', async () => {
+    class IfInLoopSafeComponent extends Component(HTMLElement) {
+      static tag = 'test-if-in-loop-safe';
+
+      constructor() {
+        super();
+        this.state.items = [
+          { id: 1, name: 'Active', active: true },
+          { id: 2, name: 'Inactive', active: false },
+          { id: 3, name: 'Also Active', active: true },
+        ];
+      }
+
+      render() {
+        return html`
+          <veda-loop items="{this.state.items}" as="item" key="id">
+            <div class="row">
+              <span class="name">{item.name}</span>
+              <veda-if condition="{item.active}">
+                <span class="badge">ON</span>
+              </veda-if>
+            </div>
+          </veda-loop>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-if-in-loop-safe')) {
+      customElements.define('test-if-in-loop-safe', IfInLoopSafeComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-if-in-loop-safe');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    const rows = component.querySelectorAll('.row');
+    assert.strictEqual(rows.length, 3, 'Should render 3 rows');
+
+    // Item 1: active=true → badge shown
+    assert.ok(rows[0].querySelector('.badge'), 'Active item should show badge');
+    assert.strictEqual(rows[0].querySelector('.badge').textContent, 'ON');
+
+    // Item 2: active=false → no badge
+    assert.strictEqual(rows[1].querySelector('.badge'), null, 'Inactive item should NOT show badge');
+
+    // Item 3: active=true → badge shown
+    assert.ok(rows[2].querySelector('.badge'), 'Second active item should show badge');
+
+    container.remove();
+  });
+
+  test('IfComponent - unsafe expression accesses loop variable inside Loop', async () => {
+    class IfInLoopUnsafeComponent extends Component(HTMLElement) {
+      static tag = 'test-if-in-loop-unsafe';
+
+      constructor() {
+        super();
+        this.state.items = [
+          { id: 1, name: 'Pass', score: 80 },
+          { id: 2, name: 'Fail', score: 30 },
+        ];
+      }
+
+      render() {
+        return html`
+          <veda-loop items="{this.state.items}" as="item" key="id">
+            <div class="row">
+              <span class="name">{item.name}</span>
+              <veda-if condition="!{item.score >= 50}">
+                <span class="pass">PASSED</span>
+              </veda-if>
+            </div>
+          </veda-loop>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-if-in-loop-unsafe')) {
+      customElements.define('test-if-in-loop-unsafe', IfInLoopUnsafeComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-if-in-loop-unsafe');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    const rows = component.querySelectorAll('.row');
+    assert.strictEqual(rows.length, 2, 'Should render 2 rows');
+
+    assert.ok(rows[0].querySelector('.pass'), 'Score 80 should show PASSED');
+    assert.strictEqual(rows[1].querySelector('.pass'), null, 'Score 30 should NOT show PASSED');
+
+    container.remove();
+  });
+
+  test('IfComponent - content inside If accesses loop variable', async () => {
+    class IfContentLoopVarComponent extends Component(HTMLElement) {
+      static tag = 'test-if-content-loopvar';
+
+      constructor() {
+        super();
+        this.state.items = [
+          { id: 1, name: 'Alice', admin: true },
+          { id: 2, name: 'Bob', admin: false },
+        ];
+      }
+
+      render() {
+        return html`
+          <veda-loop items="{this.state.items}" as="user" key="id">
+            <div class="row">
+              <veda-if condition="{user.admin}">
+                <span class="admin-name">{user.name}</span>
+              </veda-if>
+            </div>
+          </veda-loop>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-if-content-loopvar')) {
+      customElements.define('test-if-content-loopvar', IfContentLoopVarComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-if-content-loopvar');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    const rows = component.querySelectorAll('.row');
+
+    // Alice: admin=true → name rendered inside If
+    const adminName = rows[0].querySelector('.admin-name');
+    assert.ok(adminName, 'Admin user should have name rendered');
+    assert.strictEqual(adminName.textContent, 'Alice', 'Should render loop variable inside If body');
+
+    // Bob: admin=false → nothing rendered
+    assert.strictEqual(rows[1].querySelector('.admin-name'), null, 'Non-admin should not show name');
+
+    container.remove();
+  });
+
+  test('IfComponent - reactively toggles inside Loop when item changes', async () => {
+    class IfReactiveInLoopComponent extends Component(HTMLElement) {
+      static tag = 'test-if-reactive-in-loop';
+
+      constructor() {
+        super();
+        this.state.items = [
+          { id: 1, name: 'Task', done: false },
+        ];
+      }
+
+      render() {
+        return html`
+          <veda-loop items="{this.state.items}" as="task" key="id">
+            <div class="row">
+              <veda-if condition="{task.done}">
+                <span class="done-marker">DONE</span>
+              </veda-if>
+            </div>
+          </veda-loop>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-if-reactive-in-loop')) {
+      customElements.define('test-if-reactive-in-loop', IfReactiveInLoopComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-if-reactive-in-loop');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    // Initially done=false → no marker
+    assert.strictEqual(component.querySelector('.done-marker'), null, 'Should not show marker initially');
+
+    // Update item: done=true
+    component.state.items = [{ id: 1, name: 'Task', done: true }];
+    await flushEffects();
+
+    assert.ok(component.querySelector('.done-marker'), 'Should show marker after item becomes done');
+
+    container.remove();
+  });
+
+  test('IfComponent - If also accesses parent state inside Loop', async () => {
+    class IfParentStateInLoopComponent extends Component(HTMLElement) {
+      static tag = 'test-if-parent-state-loop';
+
+      constructor() {
+        super();
+        this.state.showDetails = true;
+        this.state.items = [
+          { id: 1, name: 'Item 1' },
+          { id: 2, name: 'Item 2' },
+        ];
+      }
+
+      render() {
+        return html`
+          <veda-loop items="{this.state.items}" as="item" key="id">
+            <div class="row">
+              <span class="name">{item.name}</span>
+              <veda-if condition="{this.state.showDetails}">
+                <span class="detail">Details for {item.name}</span>
+              </veda-if>
+            </div>
+          </veda-loop>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-if-parent-state-loop')) {
+      customElements.define('test-if-parent-state-loop', IfParentStateInLoopComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-if-parent-state-loop');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    const details = component.querySelectorAll('.detail');
+    assert.strictEqual(details.length, 2, 'Both items should show details when parent state is true');
+
+    // Parent state also accessible inside If body with loop variable
+    assert.ok(details[0].textContent.includes('Item 1'), 'Detail should contain loop variable value');
+    assert.ok(details[1].textContent.includes('Item 2'), 'Detail should contain loop variable value');
+
+    // Toggle parent state
+    component.state.showDetails = false;
+    await flushEffects();
+
+    assert.strictEqual(component.querySelectorAll('.detail').length, 0, 'Details should hide when parent state is false');
+
+    container.remove();
+  });
 };

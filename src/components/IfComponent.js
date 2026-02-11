@@ -80,7 +80,9 @@ export default function IfComponent(Class = HTMLElement) {
 
     #evaluateCondition(expr) {
       try {
-        const context = this._vedaParentContext;
+        // Prefer inherited eval context (e.g. from Loop iteration) over parent component.
+        // _vedaEvalContext has loop variables in scope via prototype chain.
+        const context = this._vedaEvalContext || this._vedaParentContext;
 
         if (!context) {
           return false;
@@ -144,6 +146,12 @@ export default function IfComponent(Class = HTMLElement) {
   }
 
   #createEvalContext() {
+    // If inherited eval context exists (e.g. from enclosing Loop), use it directly.
+    // It already has the correct prototype chain: { item, index } -> parent.state -> parent
+    if (this._vedaEvalContext) {
+      return this._vedaEvalContext;
+    }
+
     const parent = this._vedaParentContext;
     if (!parent?.state) return parent;
 

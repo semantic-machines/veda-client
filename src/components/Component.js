@@ -1,6 +1,7 @@
 import Model from '../Model.js';
 import PropertyComponent from './PropertyComponent.js';
 import RelationComponent from './RelationComponent.js';
+import LoopComponent from './LoopComponent.js';
 import ExpressionParser from './ExpressionParser.js';
 import {effect} from '../Effect.js';
 import {reactive} from '../Reactive.js';
@@ -383,6 +384,9 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           copyAttrs();
         }
 
+        // Propagate current eval context so child components (e.g. veda-if inside veda-loop)
+        // can access loop variables through the prototype chain
+        component._vedaEvalContext = this._currentEvalContext;
         component.template = node.innerHTML.trim();
         this.#processAttributes(component);
         node.parentNode.replaceChild(component, node);

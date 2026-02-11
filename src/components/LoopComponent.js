@@ -87,7 +87,9 @@ export default function LoopComponent(Class = HTMLElement) {
 
     #evaluateItems(expr) {
       try {
-        const context = this._vedaParentContext;
+        // Prefer inherited eval context (e.g. from outer Loop) over parent component.
+        // Enables nested loops: inner loop can access outer loop variables.
+        const context = this._vedaEvalContext || this._vedaParentContext;
 
         if (!context) {
           return [];
@@ -350,8 +352,14 @@ export default function LoopComponent(Class = HTMLElement) {
       const itemName = this.getAttribute('as') || 'item';
       const evalContext = reactive({ [itemName]: item, index });
 
-      // Set up prototype chain: evalContext -> parent.state -> parent
-      if (this._vedaParentContext) {
+      // Set up prototype chain for expression resolution.
+      // If inside another Loop (_vedaEvalContext exists), chain directly to it:
+      //   evalContext { item, index } -> outerEvalCtx { category, index } -> parent.state -> parent
+      // Otherwise use parent component's state:
+      //   evalContext { item, index } -> parent.state -> parent
+      if (this._vedaEvalContext) {
+        Object.setPrototypeOf(evalContext, this._vedaEvalContext);
+      } else if (this._vedaParentContext) {
         const parentState = this._vedaParentContext.state;
         Object.setPrototypeOf(evalContext, parentState || this._vedaParentContext);
         if (parentState) {
