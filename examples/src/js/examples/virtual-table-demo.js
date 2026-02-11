@@ -98,7 +98,7 @@ class VirtualTableDemo extends Component(HTMLElement) {
                   <td style="padding: 10px 12px; font-weight: 500;">{row.name}</td>
                   <td style="padding: 10px 12px; color: #666;">{row.department}</td>
                   <td style="padding: 10px 12px; color: #666;">{row.role}</td>
-                  <td style="padding: 10px 12px; text-align: right; color: #2e7d32; font-weight: bold;">!{row.salary.toLocaleString()}</td>
+                  <td style="padding: 10px 12px; text-align: right; color: #2e7d32; font-weight: bold;">{row.salary.toLocaleString()}</td>
                 </tr>
               </tbody>
               <tfoot condition="{this.state.showSummary}">

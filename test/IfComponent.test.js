@@ -318,9 +318,9 @@ export default ({ test, assert }) => {
     container.remove();
   });
 
-  test('IfComponent - unsafe expression accesses loop variable inside Loop', async () => {
-    class IfInLoopUnsafeComponent extends Component(HTMLElement) {
-      static tag = 'test-if-in-loop-unsafe';
+  test('IfComponent - complex expression accesses loop variable inside Loop', async () => {
+    class IfInLoopComplexComponent extends Component(HTMLElement) {
+      static tag = 'test-if-in-loop-complex';
 
       constructor() {
         super();
@@ -335,7 +335,7 @@ export default ({ test, assert }) => {
           <veda-loop items="{this.state.items}" as="item" key="id">
             <div class="row">
               <span class="name">{item.name}</span>
-              <veda-if condition="!{item.score >= 50}">
+              <veda-if condition="{item.score >= 50}">
                 <span class="pass">PASSED</span>
               </veda-if>
             </div>
@@ -344,14 +344,14 @@ export default ({ test, assert }) => {
       }
     }
 
-    if (!customElements.get('test-if-in-loop-unsafe')) {
-      customElements.define('test-if-in-loop-unsafe', IfInLoopUnsafeComponent);
+    if (!customElements.get('test-if-in-loop-complex')) {
+      customElements.define('test-if-in-loop-complex', IfInLoopComplexComponent);
     }
 
     const container = document.createElement('div');
     document.body.appendChild(container);
 
-    const component = document.createElement('test-if-in-loop-unsafe');
+    const component = document.createElement('test-if-in-loop-complex');
     container.appendChild(component);
 
     await component.rendered;

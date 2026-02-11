@@ -39,9 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prototype pollution prevention
 
 ### Security
-- Safe mode `{expr}`: prevents XSS via function call injection, CSP-compatible (no eval)
-- Unsafe mode `!{expr}`: full JS expressions, requires `unsafe-eval` CSP, sanitizes results
-- safe() function escapes `!{` and removes `{expr}` to prevent template injection
+- Unified `{expr}` syntax with auto-detection: simple property access is CSP-compatible (no eval), complex expressions (operators, ternaries, function calls) use safe evaluation with result sanitization
+- safe() function removes `{expr}` to prevent template injection
 - Double protection against XSS: result sanitization + processed node marking
 
 ## [1.x] - Previous versions

@@ -122,23 +122,28 @@ Browsers limit element height to ~33,554,432 pixels. This affects maximum scroll
 - Use server-side pagination
 - Implement infinite scroll with data windowing
 
-### 3. Expression Parser - Safe Mode Limited Syntax
+### 3. Expression Parser - Unified `{expr}` Syntax with Auto-Detection
 
-**Issue:** Safe mode `{expr}` only supports property access, no operators.
+**How it works:** The `{expr}` syntax automatically detects expression complexity:
+
+- **Simple property paths** — use safe property traversal (no eval, CSP-compatible)
+- **Complex expressions** — auto-detected and evaluated via `new Function()`
 
 ```javascript
-// ✅ Safe mode supported
+// ✅ Simple paths (safe traversal, no eval)
 {this.user.name}
 {this.items.0.title}
 {this.model.v-s:title.0}
 
-// ❌ Safe mode NOT supported
+// ✅ Complex expressions (auto-detected, uses new Function())
 {this.count + 1}
 {this.isActive ? 'Yes' : 'No'}
 {this.formatDate(date)}
 ```
 
-**Workaround 1:** Use computed properties (getters) — recommended
+**Note:** Complex expressions require `unsafe-eval` in CSP. Simple property paths work without it.
+
+**Best practice:** Use computed properties (getters) for reusable logic
 
 ```javascript
 get incrementedCount() {
@@ -148,15 +153,7 @@ get incrementedCount() {
 <div>{this.incrementedCount}</div>
 ```
 
-**Workaround 2:** Use unsafe mode `!{expr}` for quick inline expressions
-
-```javascript
-// ⚠️ Requires unsafe-eval CSP
-<div>!{ this.count + 1 }</div>
-<div>!{ this.isActive ? 'Yes' : 'No' }</div>
-```
-
-**Status:** Safe mode limited by design (security, CSP-compatible). Unsafe mode available for convenience but requires `unsafe-eval` in CSP.
+**Status:** Unified syntax — simple paths use safe traversal, complex expressions are auto-detected and evaluated via `new Function()`.
 
 ### 4. Watch Uses Reference Equality
 
@@ -245,13 +242,13 @@ this.watch(() => state.items.length, callback);
 
 ## Best Practices
 
-### 1. Use Computed for Logic
+### 1. Use Computed for Reusable Logic
 
 ```javascript
-// ❌ Bad - won't work
+// ✅ Works (auto-detected as complex expression)
 <div>{this.a > this.b ? this.a : this.b}</div>
 
-// ✅ Good
+// ✅ Better - reusable and CSP-compatible
 get max() {
   return Math.max(this.a, this.b);
 }
@@ -307,11 +304,9 @@ this.state.todos = [...this.state.todos]; // Single trigger
 
 The `safe()` function prevents template injection:
 
-1. **Escapes `!{`** — replaces with `!​{` (zero-width space) to prevent unsafe expression injection
-2. **Removes `{...}`** — removes single-brace patterns to prevent safe expression injection
+1. **Removes `{...}`** — removes brace patterns to prevent expression injection
 
 ```javascript
-safe('Test !{alert(1)}');         // Returns: 'Test !​{alert(1)}'  (ZWS escaped)
 safe('Style: { color: red }');    // Returns: 'Style: '  (removed)
 safe('JSON: {"key": "value"}');   // Returns: 'JSON: '  (removed)
 ```
@@ -406,7 +401,7 @@ function TodoList() {
 **Limitations:**
 - ❌ No virtualization (use `<veda-virtual>` for large lists)
 - ❌ Naive reconciliation
-- ❌ Safe mode limited to property access (use unsafe mode `!{}` or getters for complex expressions)
+- ❌ Complex expressions in `{expr}` require `unsafe-eval` CSP (use getters for CSP-strict environments)
 
 **Decision rule:**
 - < 500 items → Use Veda Client

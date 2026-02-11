@@ -1,21 +1,24 @@
 /**
- * Ultra-minimal safe expression parser for template interpolation
+ * Expression parser for template interpolation with auto-detection.
  *
- * Safe mode (default) - only dot notation with optional chaining:
- *   model.id
- *   model.rdfs:label.0
- *   model?.items?.0?.id
- *   this.model.v-s:hasApplication.0
+ * All expressions use unified {expr} syntax. The parser auto-detects complexity:
  *
- * Unsafe mode (for !{ expr }) - full JavaScript expressions:
- *   model.items.length > 0
- *   model.price * 1.2
- *   model.status === 'active' ? 'Yes' : 'No'
+ * Simple property access (no eval, CSP-compatible):
+ *   {model.id}
+ *   {model.rdfs:label.0}
+ *   {model?.items?.0?.id}
+ *   {this.model.v-s:hasApplication.0}
  *
- * No bracket notation, no operators in safe mode - just property access.
- * For complex logic, use getters in your component or !{ } syntax.
+ * Complex expressions (auto-detected, uses new Function):
+ *   {model.items.length > 0}
+ *   {model.price * 1.2}
+ *   {model.status === 'active' ? 'Yes' : 'No'}
  */
 export default class ExpressionParser {
+  // Pattern for simple property-access-only expressions:
+  // optional "this." prefix, then dot-separated property names (with optional chaining).
+  // Property names may contain word chars, colons (RDF), and hyphens.
+  static #SAFE_EXPR_PATTERN = /^(this\.)?([\w:-]+)(\??\.[\w:-]+)*$/;
   /**
    * Evaluate expression in given context (safe mode - property access only)
    * @param {string} expr - Expression to evaluate (e.g., "model.rdfs:label.0")
@@ -45,13 +48,42 @@ export default class ExpressionParser {
   }
 
   /**
-   * Evaluate expression in unsafe mode (full JavaScript)
-   * Use for !{ expr } syntax - allows operators, method calls, etc.
+   * Check if expression is a simple property path that can be handled by safe evaluate().
+   * Returns false for expressions with operators, method calls, brackets, etc.
+   * @param {string} expr - Expression to check
+   * @returns {boolean} True if expression is a safe property path
+   */
+  static isSafe(expr) {
+    if (!expr || typeof expr !== 'string') return true;
+    return this.#SAFE_EXPR_PATTERN.test(expr.trim());
+  }
+
+  /**
+   * Primary expression evaluator with auto-detection.
+   * Simple property paths use safe traversal (no eval, CSP-compatible).
+   * Complex expressions (operators, method calls, etc.) use new Function().
+   * @param {string} expr - Expression to evaluate
+   * @param {object} context - Context object
+   * @param {boolean} preserveContext - If true, returns {value, context} for functions (simple paths only)
+   * @returns {*} Evaluated result
+   */
+  static evaluateAuto(expr, context, preserveContext = false) {
+    if (!expr || typeof expr !== 'string') return undefined;
+    const trimmed = expr.trim();
+    if (this.isSafe(trimmed)) {
+      return this.evaluate(trimmed, context, preserveContext);
+    }
+    return this.#evaluateComplex(trimmed, context);
+  }
+
+  /**
+   * Evaluate complex JavaScript expression via new Function().
+   * Internal method — used by evaluateAuto() for expressions with operators, calls, etc.
    * @param {string} expr - JavaScript expression
    * @param {object} context - Context object
    * @returns {*} Evaluated result
    */
-  static evaluateUnsafe(expr, context) {
+  static #evaluateComplex(expr, context) {
     if (!expr || typeof expr !== 'string') {
       return undefined;
     }
@@ -62,7 +94,7 @@ export default class ExpressionParser {
       const fn = new Function(`with(this) { return ${expr}; }`);
       return fn.call(context);
     } catch (error) {
-      console.warn(`Unsafe expression error '${expr}':`, error.message);
+      console.warn(`Expression error '${expr}':`, error.message);
       return undefined;
     }
   }

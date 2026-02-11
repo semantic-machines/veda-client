@@ -3,48 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Unsafe Expressions !{ } - Veda Client Examples</title>
+  <title>Complex Expressions - Veda Client Examples</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
   <header>
-    <h1>Unsafe Expressions !{ }</h1>
-    <p>Full JavaScript expressions in templates</p>
+    <h1>Complex Expressions</h1>
+    <p>Full JavaScript expressions in templates with auto-detection</p>
     <nav>
       <a href="index.html">← Back to Examples</a>
     </nav>
   </header>
 
   <main>
-    <unsafe-expressions></unsafe-expressions>
+    <complex-expressions></complex-expressions>
     
     <div class="card" style="margin-top: 20px;">
       <h3>Usage</h3>
-      <pre><code>// Safe mode - property access only
+      <pre><code>// Simple property access (auto-detected as safe, CSP-compatible)
 &lt;span&gt;{this.state.count}&lt;/span&gt;
 
-// Unsafe mode - full JavaScript
-&lt;span&gt;!{ this.state.count * 2 }&lt;/span&gt;
-&lt;span&gt;!{ this.state.active ? 'Yes' : 'No' }&lt;/span&gt;
-&lt;span&gt;!{ this.state.name.toUpperCase() }&lt;/span&gt;
+// Complex expressions (auto-detected, uses new Function)
+&lt;span&gt;{ this.state.count * 2 }&lt;/span&gt;
+&lt;span&gt;{ this.state.active ? 'Yes' : 'No' }&lt;/span&gt;
+&lt;span&gt;{ this.state.name.toUpperCase() }&lt;/span&gt;
 
 // In conditions
-&lt;veda-if condition="!{ this.state.items.length > 0 }"&gt;
+&lt;veda-if condition="{ this.state.items.length > 0 }"&gt;
   ...
 &lt;/veda-if&gt;
 
 // In loops
-&lt;veda-loop items="!{ this.state.items.filter(x => x.active) }"&gt;
+&lt;veda-loop items="{ this.state.items.filter(x => x.active) }"&gt;
   ...
 &lt;/veda-loop&gt;</code></pre>
     </div>
 
     <div class="card" style="margin-top: 20px; background: #fff3e0;">
       <h3>⚠️ Security Note</h3>
-      <p>Unsafe mode uses JavaScript <code>eval</code> internally.</p>
+      <p>Complex expressions use <code>new Function()</code> internally for evaluation.</p>
       <ul>
         <li><strong>Safe:</strong> Hardcoded templates written by developers</li>
-        <li><strong>Safe:</strong> Expressions that read user data: <code>!{ this.state.userInput }</code></li>
+        <li><strong>Safe:</strong> Expressions that read user data: <code>{ this.state.userInput }</code></li>
         <li><strong>Dangerous:</strong> Templates from database/API</li>
         <li><strong>Dangerous:</strong> Dynamic expression construction with user input</li>
       </ul>

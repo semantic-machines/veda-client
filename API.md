@@ -492,60 +492,61 @@ Populate component from model (internal use).
 
 ## Expression Parser
 
-The Expression Parser evaluates template expressions in two modes:
+The Expression Parser evaluates template expressions using a unified `{expression}` syntax with **auto-detection**:
 
-### Safe Mode: `{expression}` (Default)
+### Simple Expressions (Safe Property Traversal)
 
-Evaluates expressions in a safe, restricted manner - **property access only**.
+Simple property paths are evaluated via safe property traversal — **no eval, CSP-compatible**.
 
-**✅ Supported:**
+**✅ Auto-detected as simple:**
 - Dot notation: `{this.state.count}`
 - Optional chaining: `{this.user?.name}`
 - Numeric array access: `{this.items.0}`
 - Nested access: `{this.state.model.v-s:title.0}`
 - Dashes in property names: `{this.state.model.v-s:hasValue}`
 
-**❌ Not Supported in safe mode:**
-- Operators: `{this.a + this.b}` ❌
-- Function calls: `{this.format(date)}` ❌
-- Ternary operators: `{this.show ? 'yes' : 'no'}` ❌
-- Bracket notation: `{this.items['key']}` ❌
-- Method calls: `{this.items.map(x => x)}` ❌
+### Complex Expressions (Auto-detected)
 
-### Unsafe Mode: `!{expression}` (Full JavaScript)
+Complex expressions containing operators, function calls, ternaries, etc. are **auto-detected** and evaluated via `new Function()`:
 
-For complex expressions, use `!{ }` to enable full JavaScript evaluation:
+- Operators: `{this.a + this.b}` ✅
+- Function calls: `{this.format(date)}` ✅
+- Ternary operators: `{this.show ? 'yes' : 'no'}` ✅
+- Bracket notation: `{this.items['key']}` ✅
+- Method calls: `{this.items.map(x => x)}` ✅
+
+**Complex expression examples:**
 
 ```javascript
 // ✅ Operators
-<span>!{ this.state.count + 1 }</span>
-<span>!{ this.state.price * 1.2 }</span>
+<span>{ this.state.count + 1 }</span>
+<span>{ this.state.price * 1.2 }</span>
 
 // ✅ Comparisons
-<span>!{ this.state.count > 0 ? 'positive' : 'zero' }</span>
+<span>{ this.state.count > 0 ? 'positive' : 'zero' }</span>
 
 // ✅ Logical operators
-<span>!{ this.state.isActive && this.state.isVisible ? 'shown' : 'hidden' }</span>
+<span>{ this.state.isActive && this.state.isVisible ? 'shown' : 'hidden' }</span>
 
 // ✅ String operations
-<span>!{ this.state.name.toUpperCase() }</span>
+<span>{ this.state.name.toUpperCase() }</span>
 
 // ✅ Array methods
-<span>!{ this.state.items.filter(x => x.active).length } active items</span>
+<span>{ this.state.items.filter(x => x.active).length } active items</span>
 
 // ✅ Nullish coalescing
-<span>!{ this.state.title ?? 'Untitled' }</span>
+<span>{ this.state.title ?? 'Untitled' }</span>
 ```
 
 **Use with conditions:**
 
 ```javascript
 // Complex conditions in veda-if
-<veda-if condition="!{ this.state.items.length > 0 }">
+<veda-if condition="{ this.state.items.length > 0 }">
   <span>Has items</span>
 </veda-if>
 
-<veda-if condition="!{ this.state.status === 'active' && this.state.count >= 10 }">
+<veda-if condition="{ this.state.status === 'active' && this.state.count >= 10 }">
   <span>Active and ready</span>
 </veda-if>
 ```
@@ -554,24 +555,27 @@ For complex expressions, use `!{ }` to enable full JavaScript evaluation:
 
 ```javascript
 // Filtered items in veda-loop
-<veda-loop items="!{ this.state.items.filter(x => x.visible) }" key="id" as="item">
+<veda-loop items="{ this.state.items.filter(x => x.visible) }" key="id" as="item">
   <div>{item.name}</div>
 </veda-loop>
 ```
 
-**⚠️ Security Warning:** Unsafe mode uses JavaScript `eval` internally. Only use with trusted, developer-written templates. Never use with user-provided expressions. See [Security](#security) section.
+**⚠️ Security Note:** Complex expressions are evaluated via `new Function()`. Only use complex expressions in trusted, developer-written templates. Simple property paths are always safe and CSP-compatible. See [Security](#security) section.
 
-### When to Use Each Mode
+### Expression Examples
 
-| Scenario | Recommended |
-|----------|-------------|
-| Simple property display | `{this.state.name}` |
-| Computed values | Getter + `{this.computedValue}` |
-| Simple conditions | `{this.state.isActive}` |
-| Complex conditions | `!{ this.state.count > 0 }` |
-| Arithmetic | `!{ this.state.price * 1.2 }` |
-| String formatting | `!{ this.state.name.toUpperCase() }` |
-| Array operations | `!{ this.state.items.length }` |
+All expressions use the unified `{expression}` syntax. The parser auto-detects complexity:
+
+| Scenario | Syntax | Detection |
+|----------|--------|-----------|
+| Simple property display | `{this.state.name}` | Safe traversal |
+| Computed values | `{this.computedValue}` | Safe traversal |
+| Simple conditions | `{this.state.isActive}` | Safe traversal |
+| Complex conditions | `{this.state.count > 0}` | Auto → `new Function()` |
+| Arithmetic | `{this.state.price * 1.2}` | Auto → `new Function()` |
+| String formatting | `{this.state.name.toUpperCase()}` | Auto → `new Function()` |
+| Array operations | `{this.state.items.length}` | Safe traversal |
+| Array methods | `{this.state.items.filter(x => x.active).length}` | Auto → `new Function()` |
 
 ### Examples
 
@@ -591,14 +595,14 @@ For complex expressions, use `!{ }` to enable full JavaScript evaluation:
 // ✅ RDF property names with dashes/colons (safe)
 <span>{this.state.model.v-s:title.0}</span>
 
-// ✅ Arithmetic (unsafe mode)
-<span>Total: !{ this.state.price * this.state.quantity }</span>
+// ✅ Arithmetic (auto-detected as complex)
+<span>Total: { this.state.price * this.state.quantity }</span>
 
-// ✅ Ternary operator (unsafe mode)
-<span>!{ this.state.active ? 'Active' : 'Inactive' }</span>
+// ✅ Ternary operator (auto-detected as complex)
+<span>{ this.state.active ? 'Active' : 'Inactive' }</span>
 
-// ✅ Method calls (unsafe mode)
-<span>!{ this.state.items.join(', ') }</span>
+// ✅ Method calls (auto-detected as complex)
+<span>{ this.state.items.join(', ') }</span>
 ```
 
 **Alternative: Computed properties** (recommended for complex logic)
@@ -610,8 +614,8 @@ get statusText() {
 }
 <span>{this.statusText}</span>
 
-// vs inline unsafe expression (quick, one-off)
-<span>!{ this.state.active ? 'Active' : 'Inactive' }</span>
+// vs inline complex expression (quick, one-off)
+<span>{ this.state.active ? 'Active' : 'Inactive' }</span>
 ```
 
 ### Error Handling
@@ -658,24 +662,26 @@ In Loop/If components, access data through the named variable:
 
 - Expression parsing happens once during template compilation
 - Reactive tracking is automatic (via Effect system)
-- Safe mode `{expr}`: no runtime eval() - secure and fast
-- Unsafe mode `!{expr}`: uses `new Function()` - requires `unsafe-eval` CSP
+- Simple property paths `{this.state.name}`: no runtime eval() — secure and fast
+- Complex expressions `{this.state.count > 0}`: auto-detected and evaluated via `new Function()` — may require `unsafe-eval` CSP if complex expressions are used
 
-### Why Two Modes?
+### How Auto-Detection Works
 
-**Safe mode `{expr}` — Security first:**
+The expression parser automatically determines the evaluation strategy for each `{expression}`:
+
+**Simple property paths** (safe traversal):
 - No eval() or Function() constructor
 - Cannot execute arbitrary code
 - CSP-compatible without `unsafe-eval`
-- Safe for user-provided templates
+- Examples: `{this.state.count}`, `{this.user?.name}`, `{this.items.0}`
 
-**Unsafe mode `!{expr}` — Convenience:**
-- Full JavaScript expressions
+**Complex expressions** (auto-detected → `new Function()`):
+- Expressions containing operators, function calls, ternaries, etc.
 - Uses `new Function()` internally
-- Requires `unsafe-eval` in CSP
-- Only for developer-written templates
+- May require `unsafe-eval` in CSP if your templates use complex expressions
+- Only use complex expressions in trusted, developer-written templates
 
-**Recommendation:** Use safe mode `{expr}` with computed properties (getters) for most cases. Use unsafe mode `!{expr}` only when needed for quick inline expressions in trusted templates.
+**Recommendation:** Use simple property paths with computed properties (getters) for most cases. Complex expressions are available inline when needed — the parser handles the distinction automatically.
 
 ---
 

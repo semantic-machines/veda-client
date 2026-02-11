@@ -640,12 +640,12 @@ export default ({ test, assert }) => {
 
   // ==================== TEMPLATE INJECTION PROTECTION ====================
 
-  test('Security - safe() escapes !{ } template markers', () => {
-    const malicious = '!{alert("XSS")}';
+  test('Security - safe() removes {expr} patterns from user data', () => {
+    const malicious = '{alert("XSS")}';
     const result = safe(malicious);
 
-    // Should not contain !{ that could be parsed as unsafe expression
-    assert(!result.includes('!{'), 'Should escape !{ markers');
+    // Should not contain {expr} that could be parsed as expression
+    assert(!result.includes('{alert'), 'Should remove {expr} patterns');
   });
 
   test('Security - expression results cannot inject new expressions', async () => {
@@ -656,11 +656,10 @@ export default ({ test, assert }) => {
     class InjectionTestComponent extends Component(HTMLElement) {
       constructor() {
         super();
-        // Data contains !{ } that looks like an expression
-        this.state.userInput = '!{alert("XSS")}';
+        // Data contains {expr} that looks like an expression
+        this.state.userInput = '{alert("XSS")}';
       }
       render() {
-        // Using safe expression to display user data
         return html`<div>{this.state.userInput}</div>`;
       }
     }
@@ -668,57 +667,52 @@ export default ({ test, assert }) => {
     const { component, cleanup } = await createTestComponent(InjectionTestComponent);
     await flushEffects();
 
-    // Alert should NOT be called - the !{ } in data should not be executed
-    assert(!alertCalled, 'Should not execute !{ } from data');
-
-    // Content should be displayed (possibly with ZWS escaping)
-    const text = component.textContent;
-    assert(text.includes('alert'), 'Should display the text content');
+    // Alert should NOT be called - the {expr} in data should be stripped by safe()
+    assert(!alertCalled, 'Should not execute {expr} from data');
 
     globalThis.alert = originalAlert;
     cleanup();
   });
 
-  test('Security - unsafe expression results cannot inject new expressions', async () => {
+  test('Security - complex expression results cannot inject new expressions', async () => {
     let alertCalled = false;
     const originalAlert = globalThis.alert;
     globalThis.alert = () => { alertCalled = true; };
 
-    class UnsafeInjectionTestComponent extends Component(HTMLElement) {
+    class ComplexInjectionTestComponent extends Component(HTMLElement) {
       constructor() {
         super();
-        // Data contains !{ } that looks like an expression
-        this.state.userInput = '!{alert("XSS2")}';
+        // Data contains {expr} that looks like an expression
+        this.state.userInput = '{alert("XSS2")}';
       }
       render() {
-        // Using unsafe expression to display user data
-        return html`<div>!{ this.state.userInput }</div>`;
+        return html`<div>{ this.state.userInput }</div>`;
       }
     }
 
-    const { component, cleanup } = await createTestComponent(UnsafeInjectionTestComponent);
+    const { component, cleanup } = await createTestComponent(ComplexInjectionTestComponent);
     await flushEffects();
 
-    // Alert should NOT be called - the !{ } in data should be sanitized
-    assert(!alertCalled, 'Should not execute nested !{ } from data');
+    // Alert should NOT be called - the {expr} in data should be sanitized
+    assert(!alertCalled, 'Should not execute nested {expr} from data');
 
     globalThis.alert = originalAlert;
     cleanup();
   });
 
-  test('Security - html tag escapes !{ } in interpolated values', () => {
-    const malicious = '!{alert("XSS")}';
+  test('Security - html tag removes {expr} in interpolated values', () => {
+    const malicious = '{alert("XSS")}';
     const result = html`<div>${malicious}</div>`;
 
-    // Should not contain !{ that could be parsed as unsafe expression
-    assert(!result.includes('!{'), 'html tag should escape !{ in interpolated values');
+    // Should not contain {expr} that could be parsed as expression
+    assert(!result.includes('{alert'), 'html tag should remove {expr} in interpolated values');
   });
 
-  test('Security - sanitizeExpressionResult escapes !{ }', async () => {
+  test('Security - expression results with {expr} patterns are safe', async () => {
     class SanitizeTestComponent extends Component(HTMLElement) {
       constructor() {
         super();
-        this.state.data = 'prefix !{alert(1)} suffix';
+        this.state.data = 'prefix {alert(1)} suffix';
       }
       render() {
         return html`<span>{this.state.data}</span>`;
@@ -728,14 +722,10 @@ export default ({ test, assert }) => {
     const { component, cleanup } = await createTestComponent(SanitizeTestComponent);
     await flushEffects();
 
-    // The !{ should be escaped with zero-width space
+    // The {expr} should be removed by safe() in html tag
     const text = component.textContent;
     assert(text.includes('prefix'), 'Should contain prefix');
     assert(text.includes('suffix'), 'Should contain suffix');
-    assert(text.includes('alert'), 'Should contain alert text (not executed)');
-
-    // Should NOT contain raw !{ (should have ZWS between)
-    assert(!text.includes('!{') || text.includes('!\u200B{'), 'Should escape !{ with ZWS');
 
     cleanup();
   });

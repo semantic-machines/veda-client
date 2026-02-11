@@ -94,16 +94,8 @@ export default function IfComponent(Class = HTMLElement) {
           return false;
         }
 
-        // Check for unsafe expression !{ }
-        const unsafeMatch = expr.trim().match(/^!\{(.+)\}$/);
-        if (unsafeMatch) {
-          const value = ExpressionParser.evaluateUnsafe(unsafeMatch[1].trim(), context);
-          return !!value;
-        }
-
-        // Safe expression { }
         const cleanExpr = expr.trim().replace(/^\{/, '').replace(/\}$/, '');
-        const value = ExpressionParser.evaluate(cleanExpr, context);
+        const value = ExpressionParser.evaluateAuto(cleanExpr, context);
         return !!value;
       } catch (error) {
         console.error('If: Failed to evaluate condition expression:', expr, error);

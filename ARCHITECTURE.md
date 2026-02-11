@@ -171,14 +171,13 @@ effect(() => {
 });
 ```
 
-**Parser (two modes):**
+**Parser (unified `{expr}` syntax with auto-detection):**
 
-*Safe mode `{expr}`:*
+*Simple property paths (auto-detected):*
 - Supports: property access, optional chaining, numeric array access (via dot)
-- Rejects: operators, function calls, ternaries, bracket notation
 - Security: no eval/Function, CSP-compatible
 
-*Unsafe mode `!{expr}`:*
+*Complex expressions (auto-detected):*
 - Supports: full JavaScript expressions (operators, methods, ternary, etc.)
 - Uses: `new Function()` internally
 - Security: requires `unsafe-eval` CSP, sanitizes results to prevent injection

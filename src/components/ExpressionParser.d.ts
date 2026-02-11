@@ -5,29 +5,23 @@ export interface FunctionWithContext {
 
 export default class ExpressionParser {
   /**
-   * Evaluate expression in given context (safe mode - property access only)
+   * Evaluate simple property path expression (no eval, CSP-compatible).
+   * Only supports dot notation with optional chaining.
    */
   static evaluate(expr: string, context: any, preserveContext?: false): any;
   static evaluate(expr: string, context: any, preserveContext: true): FunctionWithContext | any;
 
   /**
-   * Evaluate expression in unsafe mode (full JavaScript)
-   * Use for !{ expr } syntax - allows operators, method calls, etc.
+   * Primary expression evaluator with auto-detection.
+   * Simple property paths use safe traversal (no eval, CSP-compatible).
+   * Complex expressions (operators, method calls, etc.) use new Function().
    */
-  static evaluateUnsafe(expr: string, context: any): any;
+  static evaluateAuto(expr: string, context: any, preserveContext?: false): any;
+  static evaluateAuto(expr: string, context: any, preserveContext: true): FunctionWithContext | any;
 
   /**
-   * Tokenize expression into property chain
-   */
-  static tokenize(expr: string): Array<{ key: string; optional: boolean }>;
-
-  /**
-   * Resolve token chain to get value
-   */
-  static resolve(tokens: Array<{ key: string; optional: boolean }>, context: any, preserveContext?: boolean): any;
-
-  /**
-   * Check if expression is safe (no function calls, no operators)
+   * Check if expression is a simple property path (safe for property traversal).
+   * Returns false for expressions with operators, method calls, brackets, etc.
    */
   static isSafe(expr: string): boolean;
 }

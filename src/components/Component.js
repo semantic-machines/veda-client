@@ -12,8 +12,7 @@ import {reactive, toRaw} from '../Reactive.js';
 // ============================================================================
 
 const MAX_TREE_DEPTH = 20;
-const EXPR_REGEX = /!\{([^}]+)\}|\{([^}]+)\}/g;
-const UNSAFE_MARKER_REGEX = /!\{/g;
+const EXPR_REGEX = /\{([^}]+)\}/g;
 const HTML_ESCAPE_MAP = {
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
   "'": '&#39;', '/': '&#x2F;', '\\': '&#x5C;', '`': '&#x60;',
@@ -57,7 +56,6 @@ export function safe (value) {
   if (typeof value !== 'string' && !(value instanceof String)) return value;
   return value
     .replace(HTML_ESCAPE_REGEX, char => HTML_ESCAPE_MAP[char])
-    .replace(UNSAFE_MARKER_REGEX, '!\u200B{')
     .replace(SAFE_EXPR_REGEX, '');
 }
 
@@ -65,15 +63,13 @@ export function safe (value) {
 // EXPRESSION HELPERS
 // ============================================================================
 
-function evalExpr(unsafeCode, safeCode, context) {
-  return unsafeCode !== undefined
-    ? ExpressionParser.evaluateUnsafe(unsafeCode.trim(), context)
-    : ExpressionParser.evaluate(safeCode.trim(), context);
+function evalExpr(code, context) {
+  return ExpressionParser.evaluateAuto(code.trim(), context);
 }
 
 function sanitizeExpressionResult(value) {
   if (value == null) return '';
-  return String(value).replace(UNSAFE_MARKER_REGEX, '!\u200B{');
+  return String(value);
 }
 
 // ============================================================================
@@ -270,10 +266,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         if (match.index > lastIndex) {
           parts.push({ type: 's', value: text.substring(lastIndex, match.index) });
         }
-        // match[1] = unsafe (!{}), match[2] = safe ({})
-        parts.push(match[1] !== undefined
-          ? { type: 'u', code: match[1].trim() }
-          : { type: 'e', code: match[2].trim() });
+        parts.push({ type: 'e', code: match[1].trim() });
         lastIndex = EXPR_REGEX.lastIndex;
       }
       if (lastIndex < text.length) {
@@ -285,12 +278,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         const nodes = parts.map(part => {
           if (part.type === 's') return document.createTextNode(part.value);
           const node = document.createTextNode('');
-          const isUnsafe = part.type === 'u';
           const cleanup = effect(() => {
-            const value = isUnsafe
-              ? ExpressionParser.evaluateUnsafe(part.code, evalContext)
-              : ExpressionParser.evaluate(part.code, evalContext);
-            node.nodeValue = sanitizeExpressionResult(value);
+            node.nodeValue = sanitizeExpressionResult(
+              ExpressionParser.evaluateAuto(part.code, evalContext)
+            );
           }, { component: this });
           this.#renderEffects.push(cleanup);
           return node;
@@ -304,8 +295,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           insertAfter = node;
         }
       } else {
-        textNode.nodeValue = text.replace(EXPR_REGEX, (_, u, s) =>
-          sanitizeExpressionResult(evalExpr(u, s, this)));
+        textNode.nodeValue = text.replace(EXPR_REGEX, (_, code) =>
+          sanitizeExpressionResult(evalExpr(code, this)));
         textNode.__vedaProcessed = true;
       }
     }
@@ -484,28 +475,23 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       const evalContext = this._currentEvalContext || this;
       const target = node.state || node;
 
-      // Check for pure expression (single {expr} or !{expr})
-      const pureUnsafe = expr.match(/^!\{(.+)\}$/);
-      const pureSafe = !pureUnsafe && expr.match(/^\{([^}]+)\}$/);
+      // Check for pure expression (single {expr} with no surrounding text)
+      const pureExpr = expr.match(/^\{([^}]+)\}$/);
 
       if (this.#isReactive && expr.includes('{')) {
         const cleanup = effect(() => {
-          if (pureUnsafe) {
-            target[propName] = ExpressionParser.evaluateUnsafe(pureUnsafe[1].trim(), evalContext);
-          } else if (pureSafe) {
-            target[propName] = ExpressionParser.evaluate(pureSafe[1].trim(), evalContext);
+          if (pureExpr) {
+            target[propName] = ExpressionParser.evaluateAuto(pureExpr[1].trim(), evalContext);
           } else {
-            target[propName] = expr.replace(EXPR_REGEX, (_, u, s) => evalExpr(u, s, evalContext));
+            target[propName] = expr.replace(EXPR_REGEX, (_, code) => evalExpr(code, evalContext));
           }
         }, { component: this });
         this.#renderEffects.push(cleanup);
       } else {
-        if (pureUnsafe) {
-          target[propName] = ExpressionParser.evaluateUnsafe(pureUnsafe[1].trim(), this);
-        } else if (pureSafe) {
-          target[propName] = ExpressionParser.evaluate(pureSafe[1].trim(), this);
+        if (pureExpr) {
+          target[propName] = ExpressionParser.evaluateAuto(pureExpr[1].trim(), this);
         } else {
-          target[propName] = expr.replace(EXPR_REGEX, (_, u, s) => evalExpr(u, s, this));
+          target[propName] = expr.replace(EXPR_REGEX, (_, code) => evalExpr(code, this));
         }
       }
     }
@@ -572,8 +558,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             const { value, hasNull } = this.#evaluateTemplate(template, ctx);
             this.#setAttributeOrProperty(node, attrName, value, hasNull);
           } else {
-            const value = template.replace(EXPR_REGEX, (_, u, s) =>
-              sanitizeExpressionResult(evalExpr(u, s, ctx)));
+            const value = template.replace(EXPR_REGEX, (_, code) =>
+              sanitizeExpressionResult(evalExpr(code, ctx)));
             if (node.getAttribute(attrName) !== value) node.setAttribute(attrName, value);
           }
         }, { component: this });
@@ -582,15 +568,15 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         const { value, hasNull } = this.#evaluateTemplate(template, this);
         this.#setAttributeOrProperty(node, attrName, value, hasNull, attr);
       } else {
-        attr.nodeValue = template.replace(EXPR_REGEX, (_, u, s) =>
-          sanitizeExpressionResult(evalExpr(u, s, this)));
+        attr.nodeValue = template.replace(EXPR_REGEX, (_, code) =>
+          sanitizeExpressionResult(evalExpr(code, this)));
       }
     }
 
     #evaluateTemplate(template, context) {
       let hasNull = false;
-      const value = template.replace(EXPR_REGEX, (_, u, s) => {
-        const raw = evalExpr(u, s, context);
+      const value = template.replace(EXPR_REGEX, (_, code) => {
+        const raw = evalExpr(code, context);
         if (raw == null) hasNull = true;
         return sanitizeExpressionResult(raw);
       });

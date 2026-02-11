@@ -95,16 +95,8 @@ export default function LoopComponent(Class = HTMLElement) {
           return [];
         }
 
-        // Check for unsafe expression !{ }
-        const unsafeMatch = expr.trim().match(/^!\{(.+)\}$/);
-        if (unsafeMatch) {
-          const items = ExpressionParser.evaluateUnsafe(unsafeMatch[1].trim(), context);
-          return Array.isArray(items) ? items : [];
-        }
-
-        // Safe expression { }
         const cleanExpr = expr.trim().replace(/^\{/, '').replace(/\}$/, '');
-        const items = ExpressionParser.evaluate(cleanExpr, context);
+        const items = ExpressionParser.evaluateAuto(cleanExpr, context);
         return Array.isArray(items) ? items : [];
       } catch (error) {
         console.error('Loop: Failed to evaluate items expression:', expr, error);

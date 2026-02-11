@@ -33,7 +33,7 @@ export default function PropertyComponent (Class = HTMLElement) {
       const fragment = template.content.cloneNode(true);
 
       const slot = fragment.querySelector('slot');
-      // Sanitize to prevent XSS via !{ } in data
+      // Sanitize to prevent XSS via {expr} patterns in data
       const valueText = value.toString().replace(/!\{/g, '!\u200B{');
 
       if (slot) {

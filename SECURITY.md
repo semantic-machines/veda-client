@@ -62,11 +62,11 @@ The `ExpressionParser` allows **only** dot notation, no operators or function ca
 
 This makes XSS via expression injection **impossible**.
 
-#### Unsafe Mode: `!{expression}` - Full JavaScript
+#### Complex Expressions (auto-detected)
 
-`!{ }` enables full JavaScript evaluation for developer convenience.
+When an expression contains operators, method calls, or other complex syntax (e.g., `{this.state.count > 0}`), the system **auto-detects** it and evaluates via `new Function()`. There is no separate syntax — the same `{expression}` braces are used for both simple property paths and complex expressions.
 
-**⚠️ IMPORTANT:** Unsafe mode uses JavaScript `eval` internally.
+**⚠️ IMPORTANT:** Complex expressions use `new Function()` internally (requires `unsafe-eval` in CSP).
 
 **✅ SAFE - Templates written by developers:**
 
@@ -74,8 +74,8 @@ This makes XSS via expression injection **impossible**.
 // Templates in source code are safe
 render() {
   return html`
-    <span>!{ this.state.count * 2 }</span>
-    <span>!{ this.state.name.toUpperCase() }</span>
+    <span>{ this.state.count * 2 }</span>
+    <span>{ this.state.name.toUpperCase() }</span>
   `;
 }
 ```
@@ -87,8 +87,8 @@ render() {
 this.state.userInput = '<script>alert(1)</script>';
 
 // Expression READS the data, doesn't execute it
-<span>!{ this.state.userInput }</span>  // Displays as text
-<span>!{ this.state.userInput.length }</span>  // Shows length: 29
+<span>{ this.state.userInput }</span>  // Displays as text
+<span>{ this.state.userInput.length }</span>  // Shows length: 29
 ```
 
 **❌ DANGEROUS - Templates from untrusted sources:**
@@ -96,7 +96,7 @@ this.state.userInput = '<script>alert(1)</script>';
 ```javascript
 // ❌ DANGEROUS: Template from database/API
 const template = await fetch('/api/template').then(r => r.text());
-this.innerHTML = template;  // If contains !{ alert(1) } - XSS!
+this.innerHTML = template;  // If contains { alert(1) } - XSS!
 
 // ❌ DANGEROUS: Dynamic expression construction
 const field = userInput;  // User entered: name; alert(1);//
@@ -110,23 +110,23 @@ const expr = `this.state.${field}`;
 // ❌ DANGEROUS: Interpolating user data into expression
 const userValue = this.state.userInput;  // User entered: " + alert(1) + "
 
-// This builds: !{ "" + alert(1) + "" } - XSS!
-const template = `<span>!{ "${userValue}" }</span>`;
+// This builds: { "" + alert(1) + "" } - XSS!
+const template = `<span>{ "${userValue}" }</span>`;
 ```
 
-**Security Rules for Unsafe Mode:**
+**Security Rules for Complex Expressions:**
 
 | Source | Safe? | Example |
 |--------|-------|---------|
-| Hardcoded templates | ✅ Yes | `render() { return html\`!{ expr }\` }` |
-| Expression reads user data | ✅ Yes | `!{ this.state.userInput }` |
+| Hardcoded templates | ✅ Yes | `render() { return html\`{ expr }\` }` |
+| Expression reads user data | ✅ Yes | `{ this.state.userInput }` |
 | Template from database | ❌ No | `innerHTML = dbTemplate` |
-| Dynamic expression string | ❌ No | `` `!{ this.${userField} }` `` |
-| User input in expression | ❌ No | `` `!{ "${userInput}" }` `` |
+| Dynamic expression string | ❌ No | `` `{ this.${userField} }` `` |
+| User input in expression | ❌ No | `` `{ "${userInput}" }` `` |
 
 ### CSP (Content Security Policy)
 
-**Safe mode `{expression}`** is CSP-compatible without `unsafe-eval`:
+**Simple property paths** like `{this.model.title}` are CSP-compatible without `unsafe-eval`:
 
 ```http
 Content-Security-Policy:
@@ -135,7 +135,7 @@ Content-Security-Policy:
   style-src 'self' 'unsafe-inline';
 ```
 
-**Unsafe mode `!{expression}`** requires `unsafe-eval`:
+**Complex expressions** like `{this.state.count > 0}` are auto-detected and require `unsafe-eval`:
 
 ```http
 Content-Security-Policy:
@@ -146,12 +146,12 @@ Content-Security-Policy:
 
 **Summary:**
 
-| Mode | CSP Requirement | Why |
-|------|-----------------|-----|
-| Safe `{expr}` | No `unsafe-eval` | Uses safe string parsing, no eval/Function |
-| Unsafe `!{expr}` | Requires `unsafe-eval` | Uses `new Function()` internally |
+| Expression Type | CSP Requirement | Why |
+|-----------------|-----------------|-----|
+| Simple path `{model.title}` | No `unsafe-eval` | Uses safe property traversal, no eval/Function |
+| Complex (auto-detected) `{count > 0}` | Requires `unsafe-eval` | Auto-detected, uses `new Function()` internally |
 
-**Recommendation:** If your application requires strict CSP without `unsafe-eval`, use only safe mode `{expression}` with computed properties for complex logic.
+**Recommendation:** If your application requires strict CSP without `unsafe-eval`, use only simple property path expressions `{expression}` with computed properties for complex logic.
 
 ### Sanitizing HTML
 
