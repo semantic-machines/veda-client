@@ -812,6 +812,220 @@ export default function ({ test, assert }) {
 
   // ==================== STRESS TESTS ====================
 
+  // ==================== SEMANTIC HTML LOOP ====================
+
+  test('Semantic Loop - ul with items renders list items', async () => {
+    class SemanticUlComponent extends Component(HTMLElement) {
+      static tag = 'test-semantic-ul-loop';
+
+      constructor() {
+        super();
+        this.state.todos = [
+          { id: 1, text: 'Buy milk' },
+          { id: 2, text: 'Walk dog' },
+          { id: 3, text: 'Write code' },
+        ];
+      }
+
+      render() {
+        return html`
+          <ul items="{this.state.todos}" as="todo" key="id">
+            <li class="todo">{todo.text}</li>
+          </ul>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-semantic-ul-loop')) {
+      customElements.define('test-semantic-ul-loop', SemanticUlComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-semantic-ul-loop');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    const ul = component.querySelector('ul');
+    assert.ok(ul, 'Should have a <ul> element');
+
+    const items = ul.querySelectorAll('.todo');
+    assert.strictEqual(items.length, 3, 'Should render 3 list items');
+    assert.strictEqual(items[0].textContent, 'Buy milk', 'First item text');
+    assert.strictEqual(items[1].textContent, 'Walk dog', 'Second item text');
+    assert.strictEqual(items[2].textContent, 'Write code', 'Third item text');
+
+    container.remove();
+  });
+
+  test('Semantic Loop - tbody with items renders table rows', async () => {
+    class SemanticTbodyComponent extends Component(HTMLElement) {
+      static tag = 'test-semantic-tbody-loop';
+
+      constructor() {
+        super();
+        this.state.users = [
+          { id: 1, name: 'Alice', email: 'alice@test.com' },
+          { id: 2, name: 'Bob', email: 'bob@test.com' },
+        ];
+      }
+
+      render() {
+        return html`
+          <table>
+            <tbody items="{this.state.users}" as="user" key="id">
+              <tr>
+                <td class="name">{user.name}</td>
+                <td class="email">{user.email}</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-semantic-tbody-loop')) {
+      customElements.define('test-semantic-tbody-loop', SemanticTbodyComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-semantic-tbody-loop');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    const tbody = component.querySelector('tbody');
+    assert.ok(tbody, 'Should have a <tbody> element');
+
+    const rows = tbody.querySelectorAll('tr');
+    assert.strictEqual(rows.length, 2, 'Should render 2 rows');
+
+    const names = tbody.querySelectorAll('.name');
+    assert.strictEqual(names[0].textContent, 'Alice');
+    assert.strictEqual(names[1].textContent, 'Bob');
+
+    const emails = tbody.querySelectorAll('.email');
+    assert.strictEqual(emails[0].textContent, 'alice@test.com');
+    assert.strictEqual(emails[1].textContent, 'bob@test.com');
+
+    container.remove();
+  });
+
+  test('Semantic Loop - reacts to state changes (add/remove)', async () => {
+    class SemanticReactiveComponent extends Component(HTMLElement) {
+      static tag = 'test-semantic-reactive-loop';
+
+      constructor() {
+        super();
+        this.state.items = [
+          { id: 1, label: 'First' },
+        ];
+      }
+
+      render() {
+        return html`
+          <ul items="{this.state.items}" as="item" key="id">
+            <li class="entry">{item.label}</li>
+          </ul>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-semantic-reactive-loop')) {
+      customElements.define('test-semantic-reactive-loop', SemanticReactiveComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-semantic-reactive-loop');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    const ul = component.querySelector('ul');
+    assert.strictEqual(ul.querySelectorAll('.entry').length, 1, 'Initially 1 item');
+
+    // Add item
+    component.state.items.push({ id: 2, label: 'Second' });
+    await flushEffects();
+
+    assert.strictEqual(ul.querySelectorAll('.entry').length, 2, 'Should have 2 items after push');
+    assert.strictEqual(ul.querySelectorAll('.entry')[1].textContent, 'Second');
+
+    // Remove first item
+    component.state.items.splice(0, 1);
+    await flushEffects();
+
+    assert.strictEqual(ul.querySelectorAll('.entry').length, 1, 'Should have 1 item after splice');
+    assert.strictEqual(ul.querySelectorAll('.entry')[0].textContent, 'Second');
+
+    container.remove();
+  });
+
+  test('Semantic Loop - veda-if inside semantic loop accesses loop variables', async () => {
+    class SemanticIfInLoopComponent extends Component(HTMLElement) {
+      static tag = 'test-semantic-if-in-loop';
+
+      constructor() {
+        super();
+        this.state.items = [
+          { id: 1, name: 'Visible', show: true },
+          { id: 2, name: 'Hidden', show: false },
+          { id: 3, name: 'Also Visible', show: true },
+        ];
+      }
+
+      render() {
+        return html`
+          <ul items="{this.state.items}" as="item" key="id">
+            <li class="row">
+              <veda-if condition="{item.show}">
+                <span class="visible-name">{item.name}</span>
+              </veda-if>
+            </li>
+          </ul>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-semantic-if-in-loop')) {
+      customElements.define('test-semantic-if-in-loop', SemanticIfInLoopComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-semantic-if-in-loop');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    const rows = component.querySelectorAll('.row');
+    assert.strictEqual(rows.length, 3, 'Should render 3 rows');
+
+    // Item 1: show=true
+    assert.ok(rows[0].querySelector('.visible-name'), 'First item should be visible');
+    assert.strictEqual(rows[0].querySelector('.visible-name').textContent, 'Visible');
+
+    // Item 2: show=false
+    assert.strictEqual(rows[1].querySelector('.visible-name'), null, 'Second item should be hidden');
+
+    // Item 3: show=true
+    assert.ok(rows[2].querySelector('.visible-name'), 'Third item should be visible');
+    assert.strictEqual(rows[2].querySelector('.visible-name').textContent, 'Also Visible');
+
+    container.remove();
+  });
+
 };
 
 

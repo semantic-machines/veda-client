@@ -7,7 +7,7 @@ export {default as Component, html, safe, raw, reactive, effect} from './compone
 export {Loop} from './components/LoopComponent.js';
 export {If} from './components/IfComponent.js';
 export {Virtual} from './components/VirtualComponent.js';
-export {computed} from './Reactive.js';
+export {computed, toRaw} from './Reactive.js';
 export {flushEffects, trigger, untrack, pauseTracking, resumeTracking} from './Effect.js';
 export {default as Router} from './Router.js';
 export * from './Util.js';

@@ -32,12 +32,13 @@ export default function LoopComponent(Class = HTMLElement) {
       // Extract and store template
       this.#template = document.createDocumentFragment();
       if (this.template) {
-        const temp = document.createElement('div');
+        // Use <template> element for parsing to correctly handle table fragments
+        // (<tr>, <td>, etc.) which would be foster-parented inside a <div>
+        const temp = document.createElement('template');
         temp.innerHTML = this.template;
-        while (temp.firstChild) {
-          this.#template.appendChild(temp.firstChild);
+        while (temp.content.firstChild) {
+          this.#template.appendChild(temp.content.firstChild);
         }
-        temp.innerHTML = ''; // Clear temp to help GC
       }
 
       this.replaceChildren();
@@ -64,24 +65,23 @@ export default function LoopComponent(Class = HTMLElement) {
         this.#loopEffect();
         this.#loopEffect = null;
       }
-      // Cleanup all item effects and release references
-      const itemName = this.getAttribute('as') || 'item';
+      // Cleanup all item effects and release references.
+      // Don't set reactive properties to null (e.g. evalContext[itemName] = null)
+      // because that triggers reactive updates in child components (like IfComponent)
+      // whose effects haven't been cleaned up yet, causing spurious errors.
       for (const [, itemData] of this.#itemsMap) {
         if (itemData.effects) {
           itemData.effects.forEach(cleanup => cleanup());
           itemData.effects = null;
         }
-        if (itemData.evalContext) {
-          itemData.evalContext[itemName] = null;
-          itemData.evalContext.index = null;
-          itemData.evalContext = null;
-        }
+        itemData.evalContext = null;
         itemData.element = null;
         itemData.item = null;
       }
       this.#itemsMap.clear();
       this.#template = null;
       this._vedaParentContext = null;
+      this._vedaEvalContext = null;
       super.disconnectedCallback?.();
     }
 
@@ -139,22 +139,20 @@ export default function LoopComponent(Class = HTMLElement) {
       // Remove items that are no longer in the list
       for (const [key, itemData] of this.#itemsMap) {
         if (!newKeys.has(key)) {
-          // Cleanup effects created by Loop for this item
+          // Remove element first — triggers disconnectedCallback for child custom
+          // elements (e.g. IfComponent), which clean up their own effects before
+          // we release the evalContext reference.
+          if (itemData.element) {
+            itemData.element.remove();
+          }
+          // Cleanup effects created by Loop's _process for this item
           if (itemData.effects) {
             itemData.effects.forEach(cleanup => cleanup());
             itemData.effects = null;
           }
-          // Clear evalContext to release model reference
-          if (itemData.evalContext) {
-            const itemName = this.getAttribute('as') || 'item';
-            itemData.evalContext[itemName] = null;
-            itemData.evalContext.index = null;
-            itemData.evalContext = null;
-          }
-          // Remove element - browser will call disconnectedCallback for custom elements
-          if (itemData.element) {
-            itemData.element.remove();
-          }
+          // Clear references for GC. Don't set reactive properties to null
+          // (evalContext[itemName] = null) to avoid triggering stale effects.
+          itemData.evalContext = null;
           itemData.element = null;
           itemData.item = null;
           this.#itemsMap.delete(key);

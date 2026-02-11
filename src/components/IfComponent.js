@@ -35,12 +35,13 @@ export default function IfComponent(Class = HTMLElement) {
       // Extract and store template
       this.#template = document.createDocumentFragment();
       if (this.template) {
-        const temp = document.createElement('div');
+        // Use <template> element for parsing to correctly handle table fragments
+        // (<tr>, <td>, etc.) which would be foster-parented inside a <div>
+        const temp = document.createElement('template');
         temp.innerHTML = this.template;
-        while (temp.firstChild) {
-          this.#template.appendChild(temp.firstChild);
+        while (temp.content.firstChild) {
+          this.#template.appendChild(temp.content.firstChild);
         }
-        temp.innerHTML = ''; // Clear temp to help GC
       }
 
       this.replaceChildren();
@@ -75,11 +76,16 @@ export default function IfComponent(Class = HTMLElement) {
       this.#currentContent = null;
       this.#template = null;
       this._vedaParentContext = null;
+      this._vedaEvalContext = null;
       super.disconnectedCallback?.();
     }
 
     #evaluateCondition(expr) {
       try {
+        // Skip evaluation if already disconnected — effect may fire during
+        // parent Loop cleanup before this effect is disposed.
+        if (this.#isDisconnected) return false;
+
         // Prefer inherited eval context (e.g. from Loop iteration) over parent component.
         // _vedaEvalContext has loop variables in scope via prototype chain.
         const context = this._vedaEvalContext || this._vedaParentContext;

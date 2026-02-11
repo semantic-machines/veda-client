@@ -1,6 +1,7 @@
 import {effect, track, trigger} from './Effect.js';
 
 const reactiveMap = new WeakMap();
+const RAW = Symbol('raw');
 
 // Dangerous property names that could cause prototype pollution
 const DANGEROUS_PROPS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -31,6 +32,9 @@ export function reactive(target, options = {}) {
     get(target, key, receiver) {
       if (key === '__isReactive') {
         return true;
+      }
+      if (key === RAW) {
+        return target;
       }
 
       track(target, key);
@@ -168,6 +172,16 @@ export function computed(getter) {
   });
 
   return computed;
+}
+
+/**
+ * Returns the raw (non-proxied) target of a reactive object.
+ * Writes to the raw target bypass the reactive system (no tracking, no triggers).
+ * @param {Object} proxy - Reactive proxy or plain object
+ * @returns {Object} - The underlying target object
+ */
+export function toRaw(proxy) {
+  return proxy?.[RAW] || proxy;
 }
 
 export {effect};

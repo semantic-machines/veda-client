@@ -521,4 +521,228 @@ export default ({ test, assert }) => {
 
     container.remove();
   });
+
+  // ==================== SEMANTIC HTML IF ====================
+
+  test('Semantic If - div with condition shows/hides content', async () => {
+    class SemanticIfDivComponent extends Component(HTMLElement) {
+      static tag = 'test-semantic-if-div';
+
+      constructor() {
+        super();
+        this.state.show = true;
+      }
+
+      render() {
+        return html`
+          <div condition="{this.state.show}">
+            <span class="content">Hello World</span>
+          </div>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-semantic-if-div')) {
+      customElements.define('test-semantic-if-div', SemanticIfDivComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-semantic-if-div');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    const wrapper = component.querySelector('div');
+    assert.ok(wrapper, 'Should have a <div> element');
+    assert.ok(wrapper.querySelector('.content'), 'Content should be visible when condition is true');
+    assert.strictEqual(wrapper.querySelector('.content').textContent, 'Hello World');
+
+    // Toggle to false
+    component.state.show = false;
+    await flushEffects();
+
+    assert.strictEqual(wrapper.querySelector('.content'), null, 'Content should be hidden when condition is false');
+
+    // Toggle back to true
+    component.state.show = true;
+    await flushEffects();
+
+    assert.ok(wrapper.querySelector('.content'), 'Content should be visible again');
+
+    container.remove();
+  });
+
+  test('Semantic If - tbody with condition in table', async () => {
+    class SemanticIfTbodyComponent extends Component(HTMLElement) {
+      static tag = 'test-semantic-if-tbody';
+
+      constructor() {
+        super();
+        this.state.showData = true;
+      }
+
+      render() {
+        return html`
+          <table>
+            <tbody condition="{this.state.showData}">
+              <tr><td class="cell">Row 1</td></tr>
+              <tr><td class="cell">Row 2</td></tr>
+            </tbody>
+          </table>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-semantic-if-tbody')) {
+      customElements.define('test-semantic-if-tbody', SemanticIfTbodyComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-semantic-if-tbody');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    const tbody = component.querySelector('tbody');
+    assert.ok(tbody, 'Should have a <tbody> element');
+
+    const cells = tbody.querySelectorAll('.cell');
+    assert.strictEqual(cells.length, 2, 'Should render 2 rows when condition is true');
+    assert.strictEqual(cells[0].textContent, 'Row 1');
+    assert.strictEqual(cells[1].textContent, 'Row 2');
+
+    // Toggle to false
+    component.state.showData = false;
+    await flushEffects();
+
+    assert.strictEqual(tbody.querySelectorAll('.cell').length, 0, 'Rows should be hidden when condition is false');
+
+    // Toggle back to true
+    component.state.showData = true;
+    await flushEffects();
+
+    assert.strictEqual(tbody.querySelectorAll('.cell').length, 2, 'Rows should be visible again');
+
+    container.remove();
+  });
+
+  test('Semantic If - accesses loop variables inside semantic loop', async () => {
+    class SemanticIfInLoopComponent extends Component(HTMLElement) {
+      static tag = 'test-semantic-if-in-sloop';
+
+      constructor() {
+        super();
+        this.state.items = [
+          { id: 1, name: 'Active', active: true },
+          { id: 2, name: 'Inactive', active: false },
+          { id: 3, name: 'Also Active', active: true },
+        ];
+      }
+
+      render() {
+        return html`
+          <ul items="{this.state.items}" as="item" key="id">
+            <li class="row">
+              <span condition="{item.active}" class="badge">
+                <em class="label">{item.name}</em>
+              </span>
+            </li>
+          </ul>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-semantic-if-in-sloop')) {
+      customElements.define('test-semantic-if-in-sloop', SemanticIfInLoopComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-semantic-if-in-sloop');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    const rows = component.querySelectorAll('.row');
+    assert.strictEqual(rows.length, 3, 'Should render 3 rows');
+
+    // Item 1: active=true
+    const badge1 = rows[0].querySelector('.badge');
+    assert.ok(badge1, 'First item badge should be visible');
+    assert.strictEqual(badge1.querySelector('.label').textContent, 'Active');
+
+    // Item 2: active=false
+    const badge2 = rows[1].querySelector('.label');
+    assert.strictEqual(badge2, null, 'Second item label should be hidden');
+
+    // Item 3: active=true
+    const badge3 = rows[2].querySelector('.badge');
+    assert.ok(badge3, 'Third item badge should be visible');
+    assert.strictEqual(badge3.querySelector('.label').textContent, 'Also Active');
+
+    container.remove();
+  });
+
+  test('Semantic If - with expression content inside', async () => {
+    class SemanticIfExprComponent extends Component(HTMLElement) {
+      static tag = 'test-semantic-if-expr';
+
+      constructor() {
+        super();
+        this.state.visible = true;
+        this.state.message = 'Dynamic content';
+      }
+
+      render() {
+        return html`
+          <div condition="{this.state.visible}">
+            <span class="msg">{this.state.message}</span>
+          </div>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-semantic-if-expr')) {
+      customElements.define('test-semantic-if-expr', SemanticIfExprComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-semantic-if-expr');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    assert.strictEqual(component.querySelector('.msg').textContent, 'Dynamic content');
+
+    // Update message while visible
+    component.state.message = 'Updated content';
+    await flushEffects();
+
+    assert.strictEqual(component.querySelector('.msg').textContent, 'Updated content');
+
+    // Hide
+    component.state.visible = false;
+    await flushEffects();
+
+    assert.strictEqual(component.querySelector('.msg'), null, 'Content should be hidden');
+
+    // Show again - should show updated content
+    component.state.visible = true;
+    await flushEffects();
+
+    assert.ok(component.querySelector('.msg'), 'Content should be visible again');
+
+    container.remove();
+  });
 };

@@ -94,6 +94,10 @@ async function flushEffects() {
  */
 export function effect(fn, options = {}) {
   const effectFn = () => {
+    // Don't run if the effect has been stopped (prevents zombie effects
+    // that were queued before stop was called from re-subscribing)
+    if (effectFn.stopped) return;
+
     cleanup(effectFn);
     effectStack.push(effectFn);
     activeEffect = effectFn;
@@ -109,6 +113,7 @@ export function effect(fn, options = {}) {
 
   effectFn.deps = [];
   effectFn.options = options;
+  effectFn.stopped = false;
 
   // DevTools integration: register BEFORE first run to capture dependencies
   if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
@@ -120,7 +125,9 @@ export function effect(fn, options = {}) {
   }
 
   return () => {
+    effectFn.stopped = true;
     cleanup(effectFn);
+    effectQueue.delete(effectFn);
     // DevTools integration: untrack effect on cleanup
     if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
       window.__VEDA_DEVTOOLS_HOOK__.untrackEffect(effectFn);

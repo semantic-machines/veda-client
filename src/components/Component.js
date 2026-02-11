@@ -2,9 +2,10 @@ import Model from '../Model.js';
 import PropertyComponent from './PropertyComponent.js';
 import RelationComponent from './RelationComponent.js';
 import LoopComponent from './LoopComponent.js';
+import IfComponent from './IfComponent.js';
 import ExpressionParser from './ExpressionParser.js';
 import {effect} from '../Effect.js';
-import {reactive} from '../Reactive.js';
+import {reactive, toRaw} from '../Reactive.js';
 
 // ============================================================================
 // CONSTANTS
@@ -142,8 +143,12 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         }
         this.#cleanupEffects();
         this.#cleanupEventListeners();
+        // Clear state properties via the raw target to release references (e.g. Models)
+        // without triggering reactive updates in child components that haven't
+        // disconnected yet.
         if (this.state) {
-          for (const key of Object.keys(this.state)) this.state[key] = null;
+          const raw = toRaw(this.state);
+          for (const key of Object.keys(raw)) raw[key] = null;
         }
         const removed = this.removed();
         if (removed instanceof Promise) await removed;
@@ -332,9 +337,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         const hasProp = node.hasAttribute('property');
         const hasRel = node.hasAttribute('rel');
         const hasAbout = node.hasAttribute('about');
+        const hasItems = node.hasAttribute('items');
+        const hasCondition = !hasItems && node.hasAttribute('condition');
 
         // Plain native element - just process attributes
-        if (!hasDash && !hasIs && !hasAbout && !hasProp && !hasRel) {
+        if (!hasDash && !hasIs && !hasAbout && !hasProp && !hasRel && !hasItems && !hasCondition) {
           this.#processAttributes(node);
           node = walker.nextNode();
           continue;
@@ -378,6 +385,24 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           const is = `${tag}-inline-component`;
           if (!customElements.get(is)) {
             customElements.define(is, Component(node.constructor), {extends: tag});
+          }
+          component = document.createElement(tag, {is});
+          component.setAttribute('is', is);
+          copyAttrs();
+        } else if (hasItems) {
+          // Semantic HTML Loop (e.g., <ul items="...">, <tbody items="...">)
+          const is = `${tag}-loop-component`;
+          if (!customElements.get(is)) {
+            customElements.define(is, LoopComponent(node.constructor), {extends: tag});
+          }
+          component = document.createElement(tag, {is});
+          component.setAttribute('is', is);
+          copyAttrs();
+        } else if (hasCondition) {
+          // Semantic HTML If (e.g., <div condition="...">, <tbody condition="...">)
+          const is = `${tag}-if-component`;
+          if (!customElements.get(is)) {
+            customElements.define(is, IfComponent(node.constructor), {extends: tag});
           }
           component = document.createElement(tag, {is});
           component.setAttribute('is', is);
@@ -436,7 +461,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     #processCustomComponentAttributes(node) {
       const tag = node.tagName.toLowerCase();
-      const isFramework = tag === 'veda-if' || tag === 'veda-loop' || tag === 'veda-virtual';
+      const isAttr = node.getAttribute('is');
+      const isSemanticLoop = isAttr?.endsWith('-loop-component');
+      const isSemanticIf = isAttr?.endsWith('-if-component');
+      const isFramework = tag === 'veda-if' || tag === 'veda-loop' || tag === 'veda-virtual' || isSemanticLoop || isSemanticIf;
       const skip = isFramework ? ['condition', 'items', 'as', 'key', 'item-key', 'height', 'item-height', 'overscan'] : [];
 
       for (const attr of [...node.attributes]) {
@@ -638,7 +666,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       let parent = this.parentElement;
       for (let d = 0; parent && d < MAX_TREE_DEPTH; d++, parent = parent.parentElement) {
         const tag = parent.tagName?.toLowerCase();
-        if ((tag?.includes('-') || parent.hasAttribute('is')) && tag !== 'veda-if' && tag !== 'veda-loop') {
+        const isAttr = parent.getAttribute('is');
+        if ((tag?.includes('-') || parent.hasAttribute('is'))
+            && tag !== 'veda-if' && tag !== 'veda-loop'
+            && !isAttr?.endsWith('-loop-component')
+            && !isAttr?.endsWith('-if-component')) {
           return parent;
         }
       }
