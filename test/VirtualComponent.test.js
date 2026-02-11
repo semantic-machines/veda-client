@@ -357,4 +357,316 @@ export default ({ test, assert }) => {
     assert(true, 'Cleanup should not throw');
   });
 
+  // ==================== SEMANTIC HTML INSIDE VIRTUAL ====================
+
+  test('VirtualComponent - semantic ul with items renders list', async () => {
+    class SemanticUlVirtual extends Component(HTMLElement) {
+      static tag = 'test-virtual-semantic-ul';
+
+      constructor() {
+        super();
+        this.state.items = Array.from({ length: 50 }, (_, i) => ({ id: i, label: `Entry ${i}` }));
+      }
+
+      render() {
+        return html`
+          <${Virtual} items="{this.state.items}" height="200" item-height="40">
+            <ul items="{this.visibleItems}" as="entry" key="id">
+              <li class="semantic-item">{entry.label}</li>
+            </ul>
+          </${Virtual}>
+        `;
+      }
+    }
+
+    const { component, cleanup } = await createTestComponent(SemanticUlVirtual);
+
+    const viewport = component.querySelector('.virtual-viewport');
+    assert(viewport !== null, 'Should render viewport');
+
+    const ul = component.querySelector('ul');
+    assert(ul !== null, 'Should have a <ul> element');
+
+    const items = ul.querySelectorAll('.semantic-item');
+    assert(items.length > 0, 'Should render list items via semantic loop');
+    assert(items[0].textContent === 'Entry 0', 'First item should have correct text');
+
+    cleanup();
+  });
+
+  test('VirtualComponent - semantic tbody with items renders table rows', async () => {
+    class SemanticTbodyVirtual extends Component(HTMLElement) {
+      static tag = 'test-virtual-semantic-tbody';
+
+      constructor() {
+        super();
+        this.state.items = Array.from({ length: 30 }, (_, i) => ({
+          id: i, name: `User ${i}`, email: `user${i}@test.com`
+        }));
+      }
+
+      render() {
+        return html`
+          <${Virtual} items="{this.state.items}" height="200" item-height="40">
+            <table>
+              <tbody items="{this.visibleItems}" as="user" key="id">
+                <tr>
+                  <td class="name">{user.name}</td>
+                  <td class="email">{user.email}</td>
+                </tr>
+              </tbody>
+            </table>
+          </${Virtual}>
+        `;
+      }
+    }
+
+    const { component, cleanup } = await createTestComponent(SemanticTbodyVirtual);
+
+    // In table mode, spacer tbodies are added; find the content tbody (has 'is' attr)
+    const contentBody = component.querySelector('tbody[is]');
+    assert(contentBody !== null, 'Should have a content <tbody> element');
+
+    const rows = contentBody.querySelectorAll('tr');
+    assert(rows.length > 0, 'Should render table rows via semantic loop');
+
+    const names = contentBody.querySelectorAll('.name');
+    assert(names[0].textContent === 'User 0', 'First row name should be correct');
+
+    const emails = contentBody.querySelectorAll('.email');
+    assert(emails[0].textContent === 'user0@test.com', 'First row email should be correct');
+
+    cleanup();
+  });
+
+  test('VirtualComponent - semantic div with condition accesses parent state', async () => {
+    class SemanticIfVirtual extends Component(HTMLElement) {
+      static tag = 'test-virtual-semantic-if';
+
+      constructor() {
+        super();
+        this.state.items = [{ id: 1, name: 'Only item' }];
+        this.state.showInfo = true;
+      }
+
+      render() {
+        return html`
+          <${Virtual} items="{this.state.items}" height="200" item-height="40">
+            <${Loop} items="{this.visibleItems}" key="id" as="item">
+              <div class="row">
+                <span class="name">{item.name}</span>
+              </div>
+            </${Loop}>
+            <div condition="{this.state.showInfo}" class="info-panel">
+              <span class="info-text">Extra info</span>
+            </div>
+          </${Virtual}>
+        `;
+      }
+    }
+
+    const { component, cleanup } = await createTestComponent(SemanticIfVirtual);
+
+    // Semantic If should access the user component's state via merged eval context
+    const infoPanel = component.querySelector('.info-panel');
+    assert(infoPanel !== null, 'Info panel should exist');
+    assert(infoPanel.querySelector('.info-text') !== null, 'Info content should be visible');
+
+    cleanup();
+  });
+
+  // ==================== TABLE MODE ====================
+
+  test('VirtualComponent - table mode: auto-detects table and creates spacer tbodies', async () => {
+    class TableModeBasic extends Component(HTMLElement) {
+      static tag = 'test-virtual-table-mode';
+
+      constructor() {
+        super();
+        this.state.items = Array.from({ length: 50 }, (_, i) => ({ id: i, name: `Row ${i}` }));
+      }
+
+      render() {
+        return html`
+          <${Virtual} items="{this.state.items}" height="200" item-height="40">
+            <table>
+              <thead>
+                <tr><th>ID</th><th>Name</th></tr>
+              </thead>
+              <tbody items="{this.visibleItems}" as="row" key="id">
+                <tr>
+                  <td class="id">{row.id}</td>
+                  <td class="name">{row.name}</td>
+                </tr>
+              </tbody>
+            </table>
+          </${Virtual}>
+        `;
+      }
+    }
+
+    const { component, cleanup } = await createTestComponent(TableModeBasic);
+
+    // Should NOT have the list-mode spacer/content divs
+    const spacerDiv = component.querySelector('.virtual-spacer');
+    assert(spacerDiv === null, 'Should not have list-mode spacer div');
+    const contentDiv = component.querySelector('.virtual-content');
+    assert(contentDiv === null, 'Should not have list-mode content div');
+
+    // Should have the viewport
+    const viewport = component.querySelector('.virtual-viewport');
+    assert(viewport !== null, 'Should have viewport');
+
+    // Should have a single <table> inside viewport
+    const table = viewport.querySelector('table');
+    assert(table !== null, 'Should have table inside viewport');
+
+    // Should have spacer tbodies
+    const spacerTop = table.querySelector('.virtual-spacer-top');
+    assert(spacerTop !== null, 'Should have spacer-top tbody');
+    const spacerBottom = table.querySelector('.virtual-spacer-bottom');
+    assert(spacerBottom !== null, 'Should have spacer-bottom tbody');
+
+    // Should have thead with sticky style
+    const thead = table.querySelector('thead');
+    assert(thead !== null, 'Should have thead');
+    assert(thead.style.position === 'sticky', 'thead should be sticky');
+
+    // Should render content rows
+    const contentBody = table.querySelector('tbody[is]');
+    assert(contentBody !== null, 'Should have content tbody');
+    const rows = contentBody.querySelectorAll('tr');
+    assert(rows.length > 0, 'Should render rows');
+    assert(component.querySelector('.name').textContent === 'Row 0', 'First row should have correct content');
+
+    cleanup();
+  });
+
+  test('VirtualComponent - table mode: semantic tfoot with condition accesses parent state', async () => {
+    class TableModeTfoot extends Component(HTMLElement) {
+      static tag = 'test-virtual-table-tfoot';
+
+      constructor() {
+        super();
+        this.state.items = [{ id: 1, name: 'Item' }];
+        this.state.showFooter = true;
+      }
+
+      get summary() {
+        return 'Total: 1 item';
+      }
+
+      render() {
+        return html`
+          <${Virtual} items="{this.state.items}" height="200" item-height="40">
+            <table>
+              <tbody items="{this.visibleItems}" as="row" key="id">
+                <tr><td>{row.name}</td></tr>
+              </tbody>
+              <tfoot condition="{this.state.showFooter}">
+                <tr><td class="footer-cell">{this.summary}</td></tr>
+              </tfoot>
+            </table>
+          </${Virtual}>
+        `;
+      }
+    }
+
+    const { component, cleanup } = await createTestComponent(TableModeTfoot);
+
+    // tfoot should be rendered (condition is true)
+    const tfoot = component.querySelector('tfoot');
+    assert(tfoot !== null, 'tfoot should exist');
+    assert(tfoot.style.position === 'sticky', 'tfoot should be sticky');
+
+    // tfoot content should access parent state via merged eval context
+    const footerCell = component.querySelector('.footer-cell');
+    assert(footerCell !== null, 'Footer cell should exist');
+    assert(footerCell.textContent === 'Total: 1 item', 'Footer should show parent computed property');
+
+    cleanup();
+  });
+
+  test('VirtualComponent - table mode: spacer heights reflect scroll position', async () => {
+    class TableModeSpacer extends Component(HTMLElement) {
+      static tag = 'test-virtual-table-spacer';
+
+      constructor() {
+        super();
+        this.state.items = Array.from({ length: 100 }, (_, i) => ({ id: i, name: `R${i}` }));
+      }
+
+      render() {
+        return html`
+          <${Virtual} items="{this.state.items}" height="200" item-height="40">
+            <table>
+              <tbody items="{this.visibleItems}" as="row" key="id">
+                <tr><td>{row.name}</td></tr>
+              </tbody>
+            </table>
+          </${Virtual}>
+        `;
+      }
+    }
+
+    const { component, cleanup } = await createTestComponent(TableModeSpacer);
+
+    const table = component.querySelector('table');
+    const spacerTop = table.querySelector('.virtual-spacer-top');
+    const spacerBottom = table.querySelector('.virtual-spacer-bottom');
+
+    assert(spacerTop !== null, 'Spacer top should exist');
+    assert(spacerBottom !== null, 'Spacer bottom should exist');
+
+    // At initial scroll position (0), top spacer should be 0
+    // Total height = 100 * 40 = 4000px
+    // Bottom spacer should account for remaining height
+    const topHeight = parseInt(spacerTop.style.height) || 0;
+    assert(topHeight === 0, 'Top spacer should be 0 at initial scroll');
+
+    const bottomHeight = parseInt(spacerBottom.style.height) || 0;
+    assert(bottomHeight > 0, 'Bottom spacer should have positive height');
+
+    cleanup();
+  });
+
+  test('VirtualComponent - list mode still works (no table child)', async () => {
+    class ListModeCheck extends Component(HTMLElement) {
+      static tag = 'test-virtual-list-mode-check';
+
+      constructor() {
+        super();
+        this.state.items = Array.from({ length: 20 }, (_, i) => ({ id: i, label: `L${i}` }));
+      }
+
+      render() {
+        return html`
+          <${Virtual} items="{this.state.items}" height="200" item-height="40">
+            <${Loop} items="{this.visibleItems}" key="id" as="item">
+              <div class="list-item">{item.label}</div>
+            </${Loop}>
+          </${Virtual}>
+        `;
+      }
+    }
+
+    const { component, cleanup } = await createTestComponent(ListModeCheck);
+
+    // Should use list mode (spacer div + content div)
+    const spacerDiv = component.querySelector('.virtual-spacer');
+    assert(spacerDiv !== null, 'List mode should have spacer div');
+    const contentDiv = component.querySelector('.virtual-content');
+    assert(contentDiv !== null, 'List mode should have content div');
+
+    // Should NOT have table mode elements
+    const spacerTop = component.querySelector('.virtual-spacer-top');
+    assert(spacerTop === null, 'List mode should not have spacer-top tbody');
+
+    // Should render items
+    const items = component.querySelectorAll('.list-item');
+    assert(items.length > 0, 'Should render list items');
+
+    cleanup();
+  });
+
 };

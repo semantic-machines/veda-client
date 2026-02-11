@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Virtual Table Demo - Veda Examples</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <p><a href="index.html">← Back to Examples</a></p>
+  <h1>Virtual Table</h1>
+  <p>A semantic HTML table with virtual scrolling — 5,000 rows rendered efficiently using <code>&lt;tbody items="..."&gt;</code>.</p>
+
+  <virtual-table-demo></virtual-table-demo>
+
+  <div class="info-box">
+    <h3>Key Features Demonstrated</h3>
+    <ul>
+      <li><strong>Sticky <code>&lt;thead&gt;</code>:</strong> Header stays fixed while scrolling — auto-detected table mode applies <code>position: sticky</code></li>
+      <li><strong>Semantic <code>&lt;tbody items="..."&gt;</code>:</strong> Uses native table elements with virtual scrolling via spacer tbody elements</li>
+      <li><strong>Semantic <code>&lt;tfoot condition="..."&gt;</code>:</strong> Conditional sticky footer that accesses parent component state through Virtual</li>
+      <li><strong>Single <code>&lt;table&gt;</code>:</strong> No need for separate header/body tables — everything is one semantic table</li>
+    </ul>
+
+    <h3>Usage</h3>
+    <pre><code>&lt;Virtual items="{this.state.items}" height="400" item-height="42"&gt;
+  &lt;table&gt;
+    &lt;thead&gt;
+      &lt;tr&gt;&lt;th&gt;Name&lt;/th&gt;&lt;th&gt;Dept&lt;/th&gt;&lt;th&gt;Salary&lt;/th&gt;&lt;/tr&gt;
+    &lt;/thead&gt;
+    &lt;tbody items="{this.visibleItems}" as="row" key="id"&gt;
+      &lt;tr&gt;
+        &lt;td&gt;{row.name}&lt;/td&gt;
+        &lt;td&gt;{row.department}&lt;/td&gt;
+        &lt;td&gt;{row.salary}&lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/tbody&gt;
+    &lt;tfoot condition="{this.state.showSummary}"&gt;
+      &lt;tr&gt;&lt;td colspan="3"&gt;Total: {this.totalFormatted}&lt;/td&gt;&lt;/tr&gt;
+    &lt;/tfoot&gt;
+  &lt;/table&gt;
+&lt;/Virtual&gt;</code></pre>
+  </div>
+
+  <script type="module" src="index.js"></script>
+</body>
+</html>
