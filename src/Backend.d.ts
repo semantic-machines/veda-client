@@ -8,7 +8,6 @@ export interface IndividualData {
 
 export interface AuthResult {
   user_uri: string;
-  ticket: string;
   expires: number;
 }
 
@@ -51,7 +50,7 @@ export default class Backend {
 
   static authenticate(login: string, password: string, secret?: string): Promise<AuthResult>;
   static get_ticket_trusted(login: string): Promise<AuthResult>;
-  static is_ticket_valid(ticket?: string): Promise<any>;
+  static is_ticket_valid(): Promise<any>;
   static logout(): Promise<any>;
 
   static get_rights(uri: string, user_id?: string): Promise<IndividualData>;

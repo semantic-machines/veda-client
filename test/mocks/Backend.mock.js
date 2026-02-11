@@ -72,7 +72,7 @@ export class MockBackend {
     return true;
   }
 
-  async query(ticket, query, sort, databases, reopen, top, limit, from) {
+  async query(query, sort, databases, reopen, top, limit, from) {
     await this.#delay();
     // Simple mock query - returns all stored individuals
     const results = Array.from(this.storage.values())

@@ -298,7 +298,6 @@ export default ({test, assert}) => {
 
     try {
       const ticketInfo = await Backend.get_ticket_trusted('veda');
-      assert(ticketInfo.ticket !== undefined);
       assert(ticketInfo.user_uri !== undefined);
       assert(ticketInfo.expires !== undefined);
     } catch (error) {

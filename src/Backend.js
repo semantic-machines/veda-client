@@ -9,7 +9,7 @@ const storage = typeof localStorage !== 'undefined' ? localStorage : {};
  * Handles authentication, data retrieval, and manipulation.
  */
 export default class Backend {
-  static #ticket;
+  static #cookie;
   static user_uri;
   static expires;
   /* c8 ignore next - Browser/Node.js environment check */
@@ -40,30 +40,26 @@ export default class Backend {
    * @param {string} base - Base URL of the backend server (default: current origin or localhost:8080)
    */
   static init (base = this.base) {
-    const {ticket, user_uri, expires} = storage;
-    Backend.#ticket = ticket;
+    const {user_uri, expires} = storage;
     Backend.user_uri = user_uri;
     Backend.expires = expires;
     Backend.base = base;
   }
 
   static #handleTicket (result) {
-    Backend.#ticket = storage.ticket = result.id;
     Backend.user_uri = storage.user_uri = result.user_uri;
     Backend.expires = storage.expires = Math.floor((result.end_time - 621355968000000000) / 10000);
     return {
       user_uri: Backend.user_uri,
-      ticket: Backend.#ticket,
       expires: Backend.expires,
     };
   }
 
   static #removeTicket () {
-    Backend.#ticket = undefined;
+    Backend.#cookie = undefined;
     delete Backend.user_uri;
     delete Backend.expires;
 
-    delete storage.ticket;
     delete storage.user_uri;
     delete storage.expires;
   }
@@ -73,7 +69,7 @@ export default class Backend {
    * @param {string} login - User login
    * @param {string} password - User password
    * @param {string} [secret] - Optional secret
-   * @returns {Promise<{user_uri: string, ticket: string, expires: number}>} Auth result
+   * @returns {Promise<{user_uri: string, expires: number}>} Auth result
    */
   static authenticate (login, password, secret) {
     const params = {
@@ -87,28 +83,25 @@ export default class Backend {
   /**
    * Get trusted ticket for a user (requires admin privileges).
    * @param {string} login - User login
-   * @returns {Promise<{user_uri: string, ticket: string, expires: number}>} Auth result
+   * @returns {Promise<{user_uri: string, expires: number}>} Auth result
    */
   static get_ticket_trusted (login) {
     const params = {
       method: 'GET',
       url: 'get_ticket_trusted',
-      ticket: Backend.#ticket,
       data: {login},
     };
     return Backend.#call_server(params).then(Backend.#handleTicket);
   }
 
   /**
-   * Check if the current or provided ticket is valid.
-   * @param {string} [ticket] - Ticket to check (defaults to current ticket)
+   * Check if the current session ticket (cookie) is valid.
    * @returns {Promise<boolean>} True if valid
    */
-  static is_ticket_valid (ticket = Backend.#ticket) {
+  static is_ticket_valid () {
     const params = {
       method: 'GET',
       url: 'is_ticket_valid',
-      ticket,
     };
     return Backend.#call_server(params);
   }
@@ -121,7 +114,6 @@ export default class Backend {
     const params = {
       method: 'GET',
       url: 'logout',
-      ticket: Backend.#ticket,
     };
     return Backend.#call_server(params).then((result) => {
       Backend.#removeTicket();
@@ -139,7 +131,6 @@ export default class Backend {
     const params = {
       method: 'GET',
       url: 'get_rights',
-      ticket: Backend.#ticket,
       data: {uri, user_id},
     };
     return Backend.#call_server(params);
@@ -154,7 +145,6 @@ export default class Backend {
     const params = {
       method: 'GET',
       url: 'get_rights_origin',
-      ticket: Backend.#ticket,
       data: {uri},
     };
     return Backend.#call_server(params);
@@ -169,7 +159,6 @@ export default class Backend {
     const params = {
       method: 'GET',
       url: 'get_membership',
-      ticket: Backend.#ticket,
       data: {uri},
     };
     return Backend.#call_server(params);
@@ -229,7 +218,6 @@ export default class Backend {
     const params = {
       method: 'POST',
       url: 'query',
-      ticket: Backend.#ticket,
       data: isObj ? {...queryStr} : {query: queryStr, sort, databases, top, limit, from, sql},
       signal,
     };
@@ -252,7 +240,6 @@ export default class Backend {
     const params = {
       method: 'POST',
       url: 'stored_query',
-      ticket: Backend.#ticket,
       data,
       signal,
     };
@@ -270,7 +257,6 @@ export default class Backend {
     const params = {
       method: 'GET',
       url: 'get_individual',
-      ticket: Backend.#ticket,
       data: {uri, ...(!cache && {'vsn': Date.now()})},
       signal,
     };
@@ -287,7 +273,6 @@ export default class Backend {
     const params = {
       method: 'POST',
       url: 'get_individuals',
-      ticket: Backend.#ticket,
       data: {uris},
       signal,
     };
@@ -304,7 +289,6 @@ export default class Backend {
     const params = {
       method: 'PUT',
       url: 'remove_individual',
-      ticket: Backend.#ticket,
       data: {uri},
       signal,
     };
@@ -321,7 +305,6 @@ export default class Backend {
     const params = {
       method: 'PUT',
       url: 'put_individual',
-      ticket: Backend.#ticket,
       data: {individual},
       signal,
     };
@@ -339,7 +322,6 @@ export default class Backend {
     const params = {
       method: 'PUT',
       url: 'add_to_individual',
-      ticket: Backend.#ticket,
       data: {individual},
       signal,
     };
@@ -357,7 +339,6 @@ export default class Backend {
     const params = {
       method: 'PUT',
       url: 'set_in_individual',
-      ticket: Backend.#ticket,
       data: {individual},
       signal,
     };
@@ -375,7 +356,6 @@ export default class Backend {
     const params = {
       method: 'PUT',
       url: 'remove_from_individual',
-      ticket: Backend.#ticket,
       data: {individual},
       signal,
     };
@@ -392,11 +372,23 @@ export default class Backend {
     const params = {
       method: 'PUT',
       url: 'put_individuals',
-      ticket: Backend.#ticket,
       data: {individuals},
       signal,
     };
     return Backend.#call_server(params);
+  }
+
+  /**
+   * Extract ticket cookie from Set-Cookie response header (for Node.js compatibility).
+   * In browsers Cookie header is a forbidden header, so credentials: 'include' handles cookies.
+   * @param {Response} response - Fetch response
+   */
+  static #extractCookie (response) {
+    const setCookie = response.headers?.get('set-cookie');
+    if (setCookie) {
+      const match = setCookie.match(/\bticket=[^;]+/);
+      if (match) Backend.#cookie = match[0];
+    }
   }
 
   /**
@@ -414,12 +406,12 @@ export default class Backend {
       }
       url.search = new URLSearchParams(params.data).toString();
     }
-    if (params.ticket) {
-      url.searchParams.append('ticket', params.ticket);
-    }
+    const headers = { 'Content-Type': 'application/json' };
+    if (Backend.#cookie) headers['Cookie'] = Backend.#cookie;
     const fetchOptions = {
       method: params.method,
-      headers: { 'Content-Type': 'application/json' },
+      headers,
+      credentials: 'include',
       body: params.method !== 'GET' ? JSON.stringify(params.data) : undefined,
       signal: params.signal,
     };
@@ -427,6 +419,7 @@ export default class Backend {
     try {
       response = await fetch(url, fetchOptions);
       if (!response.ok) throw new BackendError(response.status);
+      Backend.#extractCookie(response);
       return await response.json();
     } catch (error) {
       if (error.name === 'AbortError') {
@@ -464,13 +457,15 @@ export default class Backend {
     }
 
     const url = new URL('files', Backend.base);
-    url.searchParams.append('ticket', Backend.#ticket);
+    const headers = {};
+    if (Backend.#cookie) headers['Cookie'] = Backend.#cookie;
 
     const params = {
       method: 'POST',
       mode: 'same-origin',
       cache: 'no-cache',
-      credentials: 'same-origin',
+      credentials: 'include',
+      headers,
       body: form,
       signal,
     };

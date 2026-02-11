@@ -11,7 +11,6 @@ import Value, { ValueData } from '../src/Value.js';
 async function testBackend() {
   // Auth
   const authResult = await Backend.authenticate('user', 'pass');
-  const ticket: string = authResult.ticket;
   const userUri: string = authResult.user_uri;
 
   // Get individual
