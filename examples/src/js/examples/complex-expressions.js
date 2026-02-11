@@ -104,7 +104,7 @@ class ComplexExpressions extends Component(HTMLElement) {
           <h3>Ternary & Conditions</h3>
           <p>Status: {this.state.status}</p>
           <p>
-            Badge: 
+            Badge:
             <span style="padding: 4px 8px; border-radius: 4px; background: { this.state.status === 'active' ? '#4caf50' : '#f44336' }; color: white;">
               { this.state.status === 'active' ? 'Active' : 'Inactive' }
             </span>
@@ -121,7 +121,7 @@ class ComplexExpressions extends Component(HTMLElement) {
           <p>Active items: { this.state.items.filter(i => i.active).length }</p>
           <p>All names: { this.state.items.map(i => i.name).join(', ') }</p>
           <p>Active names: { this.state.items.filter(i => i.active).map(i => i.name).join(', ') || 'None' }</p>
-          
+
           <div style="margin-top: 10px;">
             <veda-loop items="{this.state.items}" key="id" as="item">
               <div style="display: flex; gap: 10px; align-items: center; padding: 8px; border-bottom: 1px solid #eee;">

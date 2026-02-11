@@ -179,14 +179,14 @@ export default ({test, assert}) => {
   });
 
   test('ExpressionParser - выражение "this"', () => {
-    const context = { 
+    const context = {
       model: { id: 'test' },
-      count: 42 
+      count: 42
     };
 
     // 'this' должно вернуть весь контекст
     assert(ExpressionParser.evaluate('this', context) === context);
-    
+
     // Проверяем что это действительно тот же объект
     const result = ExpressionParser.evaluate('this', context);
     assert(result.model.id === 'test');

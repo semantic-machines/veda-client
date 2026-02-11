@@ -108,7 +108,7 @@ export default ({ test, assert }) => {
 
     // Simulate scroll to 2000px (item 50)
     viewport.scrollTop = 2000;
-    virtual.handleScroll({ target: viewport });
+    virtual.handleScroll();
     await flushEffects();
 
     const items = component.querySelectorAll('.item');
@@ -280,7 +280,7 @@ export default ({ test, assert }) => {
     // Scroll down
     const viewport = component.querySelector('.virtual-viewport');
     viewport.scrollTop = 2000;
-    virtual.handleScroll({ target: viewport });
+    virtual.handleScroll();
     await flushEffects();
 
     // Offset should match virtualStart * itemHeight
@@ -423,7 +423,7 @@ export default ({ test, assert }) => {
 
     const { component, cleanup } = await createTestComponent(SemanticTbodyVirtual);
 
-    // In table mode, spacer tbodies are added; find the content tbody (has 'is' attr)
+    // In table mode, table is inside content div; find the content tbody (has 'is' attr)
     const contentBody = component.querySelector('tbody[is]');
     assert(contentBody !== null, 'Should have a content <tbody> element');
 
@@ -477,7 +477,7 @@ export default ({ test, assert }) => {
 
   // ==================== TABLE MODE ====================
 
-  test('VirtualComponent - table mode: auto-detects table and creates spacer tbodies', async () => {
+  test('VirtualComponent - table mode: auto-detects table and uses transform-based positioning', async () => {
     class TableModeBasic extends Component(HTMLElement) {
       static tag = 'test-virtual-table-mode';
 
@@ -507,30 +507,30 @@ export default ({ test, assert }) => {
 
     const { component, cleanup } = await createTestComponent(TableModeBasic);
 
-    // Should NOT have the list-mode spacer/content divs
-    const spacerDiv = component.querySelector('.virtual-spacer');
-    assert(spacerDiv === null, 'Should not have list-mode spacer div');
-    const contentDiv = component.querySelector('.virtual-content');
-    assert(contentDiv === null, 'Should not have list-mode content div');
-
     // Should have the viewport
     const viewport = component.querySelector('.virtual-viewport');
     assert(viewport !== null, 'Should have viewport');
 
-    // Should have a single <table> inside viewport
-    const table = viewport.querySelector('table');
-    assert(table !== null, 'Should have table inside viewport');
+    // Table mode now uses same spacer+content div structure as list mode
+    const spacerDiv = component.querySelector('.virtual-spacer');
+    assert(spacerDiv !== null, 'Should have spacer div');
+    const contentDiv = component.querySelector('.virtual-content');
+    assert(contentDiv !== null, 'Should have content div');
 
-    // Should have spacer tbodies
+    // Table should be inside the content div
+    const table = contentDiv.querySelector('table');
+    assert(table !== null, 'Should have table inside content div');
+
+    // Should NOT have spacer tbodies (old approach)
     const spacerTop = table.querySelector('.virtual-spacer-top');
-    assert(spacerTop !== null, 'Should have spacer-top tbody');
+    assert(spacerTop === null, 'Should not have spacer-top tbody');
     const spacerBottom = table.querySelector('.virtual-spacer-bottom');
-    assert(spacerBottom !== null, 'Should have spacer-bottom tbody');
+    assert(spacerBottom === null, 'Should not have spacer-bottom tbody');
 
-    // Should have thead with sticky style
+    // thead should have relative position for counter-transform sticky simulation
     const thead = table.querySelector('thead');
     assert(thead !== null, 'Should have thead');
-    assert(thead.style.position === 'sticky', 'thead should be sticky');
+    assert(thead.style.position === 'relative', 'thead should have relative position for sticky simulation');
 
     // Should render content rows
     const contentBody = table.querySelector('tbody[is]');
@@ -577,7 +577,7 @@ export default ({ test, assert }) => {
     // tfoot should be rendered (condition is true)
     const tfoot = component.querySelector('tfoot');
     assert(tfoot !== null, 'tfoot should exist');
-    assert(tfoot.style.position === 'sticky', 'tfoot should be sticky');
+    assert(tfoot.style.position === 'relative', 'tfoot should have relative position for sticky simulation');
 
     // tfoot content should access parent state via merged eval context
     const footerCell = component.querySelector('.footer-cell');
@@ -587,7 +587,7 @@ export default ({ test, assert }) => {
     cleanup();
   });
 
-  test('VirtualComponent - table mode: spacer heights reflect scroll position', async () => {
+  test('VirtualComponent - table mode: spacer and transform reflect scroll position', async () => {
     class TableModeSpacer extends Component(HTMLElement) {
       static tag = 'test-virtual-table-spacer';
 
@@ -611,21 +611,31 @@ export default ({ test, assert }) => {
 
     const { component, cleanup } = await createTestComponent(TableModeSpacer);
 
-    const table = component.querySelector('table');
-    const spacerTop = table.querySelector('.virtual-spacer-top');
-    const spacerBottom = table.querySelector('.virtual-spacer-bottom');
+    // Table mode now uses spacer div + content div with transform (same as list mode)
+    const spacer = component.querySelector('.virtual-spacer');
+    const content = component.querySelector('.virtual-content');
 
-    assert(spacerTop !== null, 'Spacer top should exist');
-    assert(spacerBottom !== null, 'Spacer bottom should exist');
+    assert(spacer !== null, 'Should have spacer div');
+    assert(content !== null, 'Should have content div');
 
-    // At initial scroll position (0), top spacer should be 0
-    // Total height = 100 * 40 = 4000px
-    // Bottom spacer should account for remaining height
-    const topHeight = parseInt(spacerTop.style.height) || 0;
-    assert(topHeight === 0, 'Top spacer should be 0 at initial scroll');
+    // Spacer should have total height = 100 * 40 = 4000px
+    assert(spacer.style.height === '4000px', 'Spacer should have total height');
 
-    const bottomHeight = parseInt(spacerBottom.style.height) || 0;
-    assert(bottomHeight > 0, 'Bottom spacer should have positive height');
+    // At initial scroll position (0), content transform should be translateY(0px)
+    assert(content.style.transform === 'translateY(0px)', 'Initial transform should be 0');
+
+    // Scroll down and verify transform updates
+    const viewport = component.querySelector('.virtual-viewport');
+    const virtual = component.querySelector('veda-virtual');
+    viewport.scrollTop = 2000;
+    virtual.handleScroll();
+    await flushEffects();
+
+    const expectedOffset = virtual.virtualStart * 40;
+    assert(
+      content.style.transform === `translateY(${expectedOffset}px)`,
+      `Transform should be ${expectedOffset}px after scroll`
+    );
 
     cleanup();
   });
@@ -658,9 +668,9 @@ export default ({ test, assert }) => {
     const contentDiv = component.querySelector('.virtual-content');
     assert(contentDiv !== null, 'List mode should have content div');
 
-    // Should NOT have table mode elements
-    const spacerTop = component.querySelector('.virtual-spacer-top');
-    assert(spacerTop === null, 'List mode should not have spacer-top tbody');
+    // Should NOT have table inside content div
+    const table = component.querySelector('table');
+    assert(table === null, 'List mode should not have a table');
 
     // Should render items
     const items = component.querySelectorAll('.list-item');
