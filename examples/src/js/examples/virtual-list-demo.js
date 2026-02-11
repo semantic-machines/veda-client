@@ -104,7 +104,7 @@ class VirtualListDemo extends Component(HTMLElement) {
         <div style="border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden;">
           <${Virtual} items="{this.state.items}" height="400" item-height="50" overscan="3">
             <${Loop} items="{this.visibleItems}" key="id" as="item">
-              <div style="display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid #eee;">
+              <div style="display: flex; align-items: center; padding: 0 16px; height: 50px; box-sizing: border-box; box-shadow: inset 0 -1px 0 #eee;">
                 <span style="color: #999; font-size: 12px; width: 60px;">#{item.id}</span>
                 <span style="flex: 1; font-weight: 500;">{item.name}</span>
                 <span style="color: #2196F3; font-weight: bold;">{item.value}</span>

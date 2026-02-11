@@ -29,7 +29,7 @@ export default function VirtualComponent(Class = HTMLElement) {
     static tag = 'veda-virtual';
 
     #itemsEffect = null;
-    #scrollEffect = null;
+    #boundsEffect = null;
     #resizeObserver = null;
     #viewportElement = null;
     #spacerElement = null;
@@ -38,14 +38,30 @@ export default function VirtualComponent(Class = HTMLElement) {
     #isDisconnected = false;
     #isTableMode = false;
     #tableElement = null;
-    #spacerTopBody = null;
-    #spacerBottomBody = null;
+    #theadEl = null;
+    #tfootEl = null;
+    #theadHeight = 0;
+    #tfootHeight = 0;
+
+    // Non-reactive scroll position — updated every pixel in handleScroll.
+    // NOT stored in state to avoid triggering LoopComponent on every pixel.
+    #scrollTop = 0;
+
+    // Non-reactive cache for bounds comparison (avoids reading reactive state
+    // in #syncVirtualBounds, which would leak dependencies into callers).
+    #boundStart = 0;
+    #boundEnd = 0;
+    #lastOffsetY = -1;
+    #lastStickyTop = -1;
 
     constructor() {
       super();
-      this.state.scrollTop = 0;
       this.state.measuredHeight = 0;
       this.state._items = []; // Reactive items storage
+      // Reactive virtual window bounds — only change when the visible
+      // item range actually shifts, NOT on every scroll pixel.
+      this.state._virtualStart = 0;
+      this.state._virtualEnd = 0;
     }
 
     // === Attribute getters ===
@@ -69,15 +85,17 @@ export default function VirtualComponent(Class = HTMLElement) {
 
     // === Computed properties (available to children via parent context) ===
 
+    // Number of visible rows that fit in the viewport
+    get #visibleCount() {
+      return Math.ceil(this.viewportHeight / this.itemHeight);
+    }
+
     get virtualStart() {
-      const start = Math.floor(this.state.scrollTop / this.itemHeight);
-      return Math.max(0, start - this.overscan);
+      return this.state._virtualStart;
     }
 
     get virtualEnd() {
-      const visibleCount = Math.ceil(this.viewportHeight / this.itemHeight);
-      const end = this.virtualStart + visibleCount + this.overscan * 2;
-      return Math.min(this.state._items.length, end);
+      return this.state._virtualEnd;
     }
 
     get visibleItems() {
@@ -138,16 +156,31 @@ export default function VirtualComponent(Class = HTMLElement) {
         this.state._items = this.#evaluateItems(itemsExpr);
       }
 
+      // Compute initial virtual bounds
+      this.#syncVirtualBounds();
+
       // Build wrapper DOM structure
       this.#buildDOM();
 
       // Set template on child custom elements before adding to DOM
       // This mimics what Component._process does for custom elements
       if (this.#isTableMode) {
-        // In table mode: first upgrade semantic elements (tbody[items] → Loop component),
-        // then insert spacer tbodies around the upgraded content tbody, then append to DOM.
+        // In table mode: upgrade semantic elements, then put table into content div.
+        // Sticky thead/tfoot are simulated via counter-transforms in #updateStickyHeaders.
         this.#prepareChildTemplates(this.#tableElement);
-        this.#insertTableSpacers();
+        this.#contentElement.appendChild(this.#tableElement);
+
+        // Cache thead/tfoot elements and apply styles for sticky simulation
+        this.#theadEl = this.#tableElement.querySelector('thead');
+        this.#tfootEl = this.#tableElement.querySelector('tfoot');
+        if (this.#theadEl) {
+          this.#theadEl.style.cssText += '; position: relative; z-index: 2; will-change: transform;';
+          this.#theadHeight = this.#theadEl.offsetHeight || this.itemHeight;
+        }
+        if (this.#tfootEl) {
+          this.#tfootEl.style.cssText += '; position: relative; z-index: 2; will-change: transform;';
+          this.#tfootHeight = this.#tfootEl.offsetHeight || this.itemHeight;
+        }
       } else {
         this.#prepareChildTemplates(this.#childrenFragment);
         // Add children to DOM - custom elements will initialize via connectedCallback
@@ -164,15 +197,21 @@ export default function VirtualComponent(Class = HTMLElement) {
           this.state._items = this.#evaluateItems(itemsExpr);
           this.#updateSpacer();
           this.#checkHeightLimit();
+          // Recalculate bounds — items count may have changed,
+          // clamping virtualStart to the new range.
+          this.#syncVirtualBounds();
         }, { component: this._vedaParentContext });
       }
 
-      // Set up effect for scroll position changes
-      this.#scrollEffect = effect(() => {
-        // Access scrollTop to track it reactively
-        const scrollTop = this.state.scrollTop;
-        if (scrollTop >= 0) {
-          this.#updateContentPosition();
+      // Effect for content transform and sticky headers — runs only when
+      // bounds change, NOT on every scroll pixel. Ensures correct positioning
+      // on initial render and when items change (no scroll event fires).
+      this.#boundsEffect = effect(() => {
+        const start = this.state._virtualStart;
+        const end = this.state._virtualEnd;
+        if (start >= 0) {
+          this.#updateContentTransform();
+          this.#updateStickyHeaders();
         }
       }, { component: this });
 
@@ -189,9 +228,9 @@ export default function VirtualComponent(Class = HTMLElement) {
         this.#itemsEffect = null;
       }
 
-      if (this.#scrollEffect) {
-        this.#scrollEffect();
-        this.#scrollEffect = null;
+      if (this.#boundsEffect) {
+        this.#boundsEffect();
+        this.#boundsEffect = null;
       }
 
       if (this.#resizeObserver) {
@@ -205,8 +244,15 @@ export default function VirtualComponent(Class = HTMLElement) {
       this.#childrenFragment = null;
       this.#childEvalContext = null;
       this.#tableElement = null;
-      this.#spacerTopBody = null;
-      this.#spacerBottomBody = null;
+      this.#theadEl = null;
+      this.#tfootEl = null;
+      this.#theadHeight = 0;
+      this.#tfootHeight = 0;
+      this.#scrollTop = 0;
+      this.#boundStart = 0;
+      this.#boundEnd = 0;
+      this.#lastOffsetY = -1;
+      this.#lastStickyTop = -1;
       this._vedaParentContext = null;
       this._vedaEvalContext = null;
 
@@ -224,7 +270,7 @@ export default function VirtualComponent(Class = HTMLElement) {
       this.#viewportElement = document.createElement('div');
       this.#viewportElement.className = 'virtual-viewport';
       this.#viewportElement.style.cssText = `${heightStyle}; overflow-y: auto; position: relative;`;
-      this.#viewportElement.addEventListener('scroll', (e) => this.handleScroll(e));
+      this.#viewportElement.addEventListener('scroll', (e) => this.handleScroll(e), { passive: true });
 
       if (this.#isTableMode) {
         this.#buildTableDOM();
@@ -244,7 +290,7 @@ export default function VirtualComponent(Class = HTMLElement) {
       // Create content container (moves via transform)
       this.#contentElement = document.createElement('div');
       this.#contentElement.className = 'virtual-content';
-      this.#contentElement.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; transform: translateY(0px);';
+      this.#contentElement.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; will-change: transform; contain: layout; transform: translateY(0px);';
 
       // Assemble
       this.#spacerElement.appendChild(this.#contentElement);
@@ -262,70 +308,26 @@ export default function VirtualComponent(Class = HTMLElement) {
       }
       if (!this.#tableElement) return;
 
-      // Apply sticky positioning to thead and tfoot
-      const thead = this.#tableElement.querySelector('thead');
-      if (thead) {
-        thead.style.cssText += '; position: sticky; top: 0; z-index: 1;';
-      }
-      const tfoot = this.#tableElement.querySelector('tfoot');
-      if (tfoot) {
-        tfoot.style.cssText += '; position: sticky; bottom: 0; z-index: 1;';
-      }
+      // table-layout:fixed prevents column width recalculation when rows change
+      this.#tableElement.style.cssText += '; width: 100%; border-collapse: collapse; table-layout: fixed;';
 
-      // Table width should fill the viewport
-      this.#tableElement.style.cssText += '; width: 100%; border-collapse: collapse;';
+      // Use same spacer+content div structure as list mode.
+      // Transform-based positioning causes zero layout shifts (CLS=0).
+      this.#spacerElement = document.createElement('div');
+      this.#spacerElement.className = 'virtual-spacer';
+      this.#spacerElement.style.cssText = `height: ${this.totalHeight}px; position: relative;`;
 
-      // Set contentElement to table for prepareChildTemplates
-      this.#contentElement = this.#tableElement;
-    }
+      // contain:layout limits the scope of layout recalculations to this subtree
+      this.#contentElement = document.createElement('div');
+      this.#contentElement.className = 'virtual-content';
+      this.#contentElement.style.cssText = 'position: absolute; top: 0; left: 0; right: 0; will-change: transform; contain: layout; transform: translateY(0px);';
 
-    // Insert spacer tbodies around the content tbody.
-    // Must be called AFTER #prepareChildTemplates, because the semantic upgrade
-    // replaces the original <tbody items="..."> with a new component element.
-    #insertTableSpacers() {
-      if (!this.#tableElement) return;
-
-      // Find the content tbody: look for the upgraded semantic Loop tbody
-      // (has 'is' attribute ending with '-loop-component') or any tbody
-      const contentBody = this.#tableElement.querySelector('tbody[is]')
-                       || this.#tableElement.querySelector('tbody');
-      if (!contentBody) return;
-
-      // Create spacer tbodies with display:block to keep them out of table
-      // column layout. Empty block elements with explicit height act as spacers
-      // without interfering with column widths defined by thead/content rows.
-      this.#spacerTopBody = document.createElement('tbody');
-      this.#spacerTopBody.className = 'virtual-spacer-top';
-      this.#spacerTopBody.style.cssText = `display: block; height: ${this.offsetY}px; padding: 0; border: 0;`;
-
-      this.#spacerBottomBody = document.createElement('tbody');
-      this.#spacerBottomBody.className = 'virtual-spacer-bottom';
-      const bottomHeight = this.totalHeight - this.offsetY;
-      this.#spacerBottomBody.style.cssText = `display: block; height: ${Math.max(0, bottomHeight)}px; padding: 0; border: 0;`;
-
-      // Insert spacers around the content tbody
-      contentBody.parentNode.insertBefore(this.#spacerTopBody, contentBody);
-      if (contentBody.nextSibling) {
-        contentBody.parentNode.insertBefore(this.#spacerBottomBody, contentBody.nextSibling);
-      } else {
-        contentBody.parentNode.appendChild(this.#spacerBottomBody);
-      }
-
-      // Move tfoot after spacer-bottom (must be last for sticky bottom)
-      const tfoot = this.#tableElement.querySelector('tfoot');
-      if (tfoot) {
-        this.#tableElement.appendChild(tfoot);
-      }
-
-      // Append table to viewport (now fully assembled)
-      this.#viewportElement.appendChild(this.#tableElement);
+      this.#spacerElement.appendChild(this.#contentElement);
+      this.#viewportElement.appendChild(this.#spacerElement);
     }
 
     #updateSpacer() {
-      if (this.#isTableMode) {
-        // In table mode, total height is distributed via spacer tbodies
-        this.#updateContentPosition();
-      } else if (this.#spacerElement) {
+      if (this.#spacerElement) {
         this.#spacerElement.style.height = `${this.totalHeight}px`;
       }
     }
@@ -340,26 +342,97 @@ export default function VirtualComponent(Class = HTMLElement) {
       }
     }
 
-    #updateContentPosition() {
-      if (this.#isTableMode) {
-        // Update spacer tbody heights to position visible rows correctly
-        if (this.#spacerTopBody) {
-          this.#spacerTopBody.style.height = `${this.offsetY}px`;
+    // Recalculate virtual window bounds from current scroll position.
+    // Updates reactive state._virtualStart/End ONLY when bounds actually change.
+    // Uses non-reactive #boundStart/End for comparison to avoid leaking
+    // reactive dependencies into the caller (e.g. itemsEffect).
+    #syncVirtualBounds() {
+      const scrollRow = Math.floor(this.#scrollTop / this.itemHeight);
+      const maxStart = Math.max(0, this.state._items.length - 1);
+      const newStart = Math.min(Math.max(0, scrollRow - this.overscan), maxStart);
+      const newEnd = Math.min(
+        this.state._items.length,
+        newStart + this.#visibleCount + this.overscan * 2,
+      );
+
+      if (newStart !== this.#boundStart || newEnd !== this.#boundEnd) {
+        this.#boundStart = newStart;
+        this.#boundEnd = newEnd;
+        this.state._virtualStart = newStart;
+        this.state._virtualEnd = newEnd;
+      }
+    }
+
+    // Current offsetY derived from non-reactive #boundStart.
+    // Always up-to-date after #syncVirtualBounds, safe to call from
+    // both handleScroll (synchronous) and effects (microtask).
+    get #currentOffsetY() {
+      return this.#boundStart * this.itemHeight;
+    }
+
+    // Update content div transform. Called from boundsEffect (atomic with
+    // LoopComponent) and from handleScroll (immediate on bounds change).
+    #updateContentTransform() {
+      if (!this.#contentElement) return;
+
+      const oy = this.#currentOffsetY;
+      if (oy !== this.#lastOffsetY) {
+        this.#lastOffsetY = oy;
+        this.#contentElement.style.transform = `translateY(${oy}px)`;
+      }
+    }
+
+    // Update thead/tfoot counter-transforms for sticky simulation.
+    // Called directly from handleScroll — runs every pixel for smooth headers.
+    // Uses #currentOffsetY (from #boundStart) so it's always in sync,
+    // even before boundsEffect runs.
+    #updateStickyHeaders() {
+      if (!this.#isTableMode) return;
+
+      const oy = this.#currentOffsetY;
+
+      if (this.#theadEl) {
+        const stickyTop = Math.max(0, this.#scrollTop - oy);
+        if (stickyTop !== this.#lastStickyTop) {
+          this.#lastStickyTop = stickyTop;
+          this.#theadEl.style.transform = `translateY(${stickyTop}px)`;
         }
-        if (this.#spacerBottomBody) {
-          const visibleHeight = (this.virtualEnd - this.virtualStart) * this.itemHeight;
-          const bottomHeight = this.totalHeight - this.offsetY - visibleHeight;
-          this.#spacerBottomBody.style.height = `${Math.max(0, bottomHeight)}px`;
+      }
+
+      if (this.#tfootEl) {
+        const bodyH = this.#boundEnd > this.#boundStart
+          ? (this.#boundEnd - this.#boundStart) * this.itemHeight
+          : 0;
+        const naturalBottom = oy + this.#theadHeight + bodyH + this.#tfootHeight;
+        const viewportBottom = this.#scrollTop + this.viewportHeight;
+
+        if (naturalBottom > viewportBottom) {
+          const offset = (viewportBottom - this.#tfootHeight) - (oy + this.#theadHeight + bodyH);
+          this.#tfootEl.style.transform = `translateY(${offset}px)`;
+        } else {
+          this.#tfootEl.style.transform = '';
         }
-      } else if (this.#contentElement) {
-        this.#contentElement.style.transform = `translateY(${this.offsetY}px)`;
       }
     }
 
     // === Event handlers ===
 
-    handleScroll(e) {
-      this.state.scrollTop = e.target.scrollTop;
+    handleScroll() {
+      if (!this.#viewportElement) return;
+
+      // Round to integer to prevent subpixel boundary oscillation.
+      this.#scrollTop = Math.round(this.#viewportElement.scrollTop);
+
+      // Update reactive bounds only when the visible window shifts.
+      // This is the ONLY place that triggers LoopComponent re-evaluation.
+      this.#syncVirtualBounds();
+
+      // Update content transform and sticky headers synchronously.
+      // Both use #boundStart/#boundEnd (always current after #syncVirtualBounds).
+      // LoopComponent runs later in microtask, but transform + headers are
+      // already correct — all three updates happen before the next paint.
+      this.#updateContentTransform();
+      this.#updateStickyHeaders();
     }
 
     // === Private methods ===
