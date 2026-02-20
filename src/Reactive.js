@@ -23,9 +23,10 @@ export function reactive(target, options = {}) {
     return target;
   }
 
-  const existingProxy = reactiveMap.get(target);
-  if (existingProxy) {
-    return existingProxy;
+  const existingRef = reactiveMap.get(target);
+  if (existingRef) {
+    const proxy = existingRef.deref();
+    if (proxy) return proxy;
   }
 
   const proxy = new Proxy(target, {
@@ -132,7 +133,7 @@ export function reactive(target, options = {}) {
     }
   });
 
-  reactiveMap.set(target, proxy);
+  reactiveMap.set(target, new WeakRef(proxy));
 
   return proxy;
 }

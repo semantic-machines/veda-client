@@ -7,6 +7,7 @@ import Model from '../src/Model.js';
 import Backend from '../src/Backend.js';
 import Subscription from '../src/Subscription.js';
 import { MockBackend, getMockBackend, resetMockBackend } from './mocks/Backend.mock.js';
+import {timeout} from '../src/Util.js';
 import {
   waitForCondition,
   waitForValue,
@@ -68,6 +69,40 @@ export default ({ test, assert }) => {
     assert(m1 === m2, 'Models with same id should return same instance');
 
     clearModelCache();
+  });
+
+  test('Model (improved) - cache GC setup', () => {
+    clearModelCache();
+    const obj = {};
+    Model.cache.set('d:gc_cache_key', obj);
+    assert(Model.cache.get('d:gc_cache_key') === obj, 'Object should be in cache');
+  });
+
+  test('Model (improved) - Model instance GC setup', () => {
+    clearModelCache();
+    const model = new Model('d:gc_model_key');
+    model['rdfs:label'] = ['Test'];
+    assert(Model.cache.get('d:gc_model_key') === model, 'Model should be in cache');
+  });
+
+  test('Model (improved) - Model instance removed from cache after GC', async () => {
+    if (typeof globalThis.gc !== 'function') return;
+
+    await timeout();
+    globalThis.gc();
+
+    const cached = Model.cache.get('d:gc_model_key');
+    assert(typeof cached === 'undefined', 'GC\'d Model should be removed from cache');
+  });
+
+  test('Model (improved) - cache removes GC\'d values when no references remain', async () => {
+    if (typeof globalThis.gc !== 'function') return;
+
+    await timeout();
+    globalThis.gc();
+
+    const cached = Model.cache.get('d:gc_cache_key');
+    assert(typeof cached === 'undefined', 'GC\'d value should be removed from cache');
   });
 
   test('Model (improved) - hasValue checks property existence', () => {
