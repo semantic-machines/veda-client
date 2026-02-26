@@ -45,11 +45,13 @@ export default function IfComponent(Class = HTMLElement) {
       }
 
       this.replaceChildren();
+      this._deferRendered();
       await super.connectedCallback();
 
       const conditionExpr = this.getAttribute('condition');
       if (!conditionExpr) {
         console.warn('If component requires "condition" attribute');
+        this._resolveDeferred();
         return;
       }
 
@@ -57,6 +59,7 @@ export default function IfComponent(Class = HTMLElement) {
         const condition = this.#evaluateCondition(this.getAttribute('condition'));
         this.#updateVisibility(condition);
       }, { component: this._vedaParentContext });
+      this._resolveDeferred();
     }
 
     disconnectedCallback() {

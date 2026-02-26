@@ -84,6 +84,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     // ---------- Private Fields ----------
     #resolveRendered;
     #childrenRendered = [];
+    #deferredRendered = null;
+    #resolveDeferredFn = null;
     #effects = [];
     #renderEffects = [];
     #eventListeners = [];
@@ -109,6 +111,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     renderedCallback () {}
 
     async #setRendered() {
+      if (this.#deferredRendered) {
+        await this.#deferredRendered;
+        this.#deferredRendered = null;
+      }
       await Promise.all(this.#childrenRendered);
       this.#resolveRendered?.();
       this.renderedCallback();
@@ -151,6 +157,9 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       } catch (error) {
         console.log(this, 'Component remove error', error);
       } finally {
+        this.#resolveDeferredFn?.();
+        this.#resolveDeferredFn = null;
+        this.#deferredRendered = null;
         this.#setRendered();
       }
     }
@@ -180,6 +189,17 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     _cleanupAllEventListeners() { this.#cleanupEventListeners(); }
     _getRenderEffectsCount() { return this.#renderEffects.length; }
     _extractRenderEffects(startIndex) { return this.#renderEffects.splice(startIndex); }
+
+    _deferRendered() {
+      this.#deferredRendered = new Promise(resolve => {
+        this.#resolveDeferredFn = resolve;
+      });
+    }
+
+    _resolveDeferred() {
+      this.#resolveDeferredFn?.();
+      this.#resolveDeferredFn = null;
+    }
 
     // ---------- Render Pipeline ----------
     async update () {

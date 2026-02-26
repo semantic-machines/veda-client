@@ -42,11 +42,13 @@ export default function LoopComponent(Class = HTMLElement) {
       }
 
       this.replaceChildren();
+      this._deferRendered();
       await super.connectedCallback();
 
       const itemsExpr = this.getAttribute('items');
       if (!itemsExpr) {
         console.warn('Loop component requires "items" attribute');
+        this._resolveDeferred();
         return;
       }
 
@@ -54,6 +56,7 @@ export default function LoopComponent(Class = HTMLElement) {
         const items = this.#evaluateItems(itemsExpr);
         this.#reconcile(items);
       }, { component: this._vedaParentContext });
+      this._resolveDeferred();
     }
 
     disconnectedCallback() {
