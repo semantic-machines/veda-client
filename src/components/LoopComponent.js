@@ -100,10 +100,7 @@ export default function LoopComponent(Class = HTMLElement) {
 
         const cleanExpr = expr.trim().replace(/^\{/, '').replace(/\}$/, '');
         const items = ExpressionParser.evaluateAuto(cleanExpr, context);
-        if (!Array.isArray(items)) return [];
-        // Array.from() normalizes Proxy iteration (fixes Firefox Proxy+forEach quirks).
-        // Filter null/undefined to avoid "Cannot read property X of undefined" in templates.
-        return Array.from(items).filter((item) => item != null);
+        return Array.isArray(items) ? items : [];
       } catch (error) {
         console.error('Loop: Failed to evaluate items expression:', expr, error);
         return [];
