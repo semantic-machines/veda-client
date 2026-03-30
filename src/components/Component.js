@@ -4,7 +4,7 @@ import RelationComponent from './RelationComponent.js';
 import LoopComponent from './LoopComponent.js';
 import IfComponent from './IfComponent.js';
 import ExpressionParser from './ExpressionParser.js';
-import {effect} from '../Effect.js';
+import {effect, untrack} from '../Effect.js';
 import {reactive, toRaw} from '../Reactive.js';
 
 // ============================================================================
@@ -100,7 +100,9 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         onSet: () => {
           if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
             const c = componentRef.deref();
-            if (c) window.__VEDA_DEVTOOLS_HOOK__.trackComponentStateChange(c);
+            // untrack prevents extractComponentState reads from registering
+            // spurious reactive dependencies on the currently running effect
+            if (c) untrack(() => window.__VEDA_DEVTOOLS_HOOK__.trackComponentStateChange(c));
           }
         }
       });
