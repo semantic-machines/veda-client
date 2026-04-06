@@ -402,6 +402,7 @@ export default class Model extends Emitter(Object) {
     this[REMOVE_PROMISE] = (async () => {
       try {
         await Backend.remove_individual(this.id);
+        Model.cache.delete(this.id);
         this.isNew(true);
         this.isSync(false);
         this.isLoaded(false);
