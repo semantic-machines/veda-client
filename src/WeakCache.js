@@ -1,31 +1,55 @@
 export default class WeakCache {
   #map = new Map();
 
-  get (key) {
-    if (this.#map.has(key)) {
-      const cachedRef = this.#map.get(key);
-      const cached = cachedRef.deref();
-      if (cached) {
-        return cached;
-      } else {
-        this.#map.delete(key);
-      }
+  #registry = new FinalizationRegistry((key) => {
+    const entry = this.#map.get(key);
+    if (!entry) return;
+    if (entry.weakRef.deref() === undefined) {
+      this.#map.delete(key);
     }
-  }
+  });
 
-  set (key, value) {
-    this.#map.set(key, new WeakRef(value));
-  }
+  get (key) {
+    const entry = this.#map.get(key);
+    if (!entry) return;
 
-  delete (key) {
+    const cached = entry.weakRef.deref();
+    if (cached) {
+      return cached;
+    }
+
+    this.#registry.unregister(entry.unregisterToken);
     this.#map.delete(key);
   }
 
-  clear() {
+  set (key, value) {
+    const prev = this.#map.get(key);
+    if (prev) {
+      this.#registry.unregister(prev.unregisterToken);
+    }
+
+    const weakRef = new WeakRef(value);
+    const unregisterToken = {};
+    this.#registry.register(value, key, unregisterToken);
+    this.#map.set(key, {weakRef, unregisterToken});
+  }
+
+  delete (key) {
+    const entry = this.#map.get(key);
+    if (entry) {
+      this.#registry.unregister(entry.unregisterToken);
+    }
+    this.#map.delete(key);
+  }
+
+  clear () {
+    for (const entry of this.#map.values()) {
+      this.#registry.unregister(entry.unregisterToken);
+    }
     this.#map.clear();
   }
 
-  _getSize() {
+  _getSize () {
     return this.#map.size;
   }
 }

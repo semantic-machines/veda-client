@@ -1,5 +1,6 @@
 import WeakCache from '../src/WeakCache.js';
 import {timeout} from '../src/Util.js';
+import {waitForCondition} from './helpers.js';
 
 const cache = new WeakCache();
 
@@ -64,5 +65,25 @@ export default ({test, assert}) => {
 
     cache2.clear();
     assert(cache2._getSize() === 0);
+  });
+
+  test('WeakCache - FinalizationRegistry drops key after GC (no get)', async () => {
+    if (typeof globalThis.gc !== 'function') return;
+
+    const c = new WeakCache();
+    (function () {
+      const o = {};
+      c.set('orphan-key', o);
+    })();
+
+    assert(c._getSize() === 1, 'entry should exist while value is reachable');
+
+    await timeout();
+    globalThis.gc();
+
+    await waitForCondition(
+      () => c._getSize() === 0,
+      {timeout: 5000, message: 'map key should be removed when value is collected'}
+    );
   });
 };
