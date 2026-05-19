@@ -9,41 +9,24 @@ import {effect} from '../Effect.js';
  * <veda-if condition="{this.state.showDetails}">
  *   <div>Details content</div>
  * </veda-if>
- *
- * Multiple children:
- * <veda-if condition="{this.state.isLoggedIn}">
- *   <h1>Welcome</h1>
- *   <user-profile></user-profile>
- * </veda-if>
  */
 export default function IfComponent(Class = HTMLElement) {
   return class IfComponentClass extends Component(Class) {
     static tag = 'veda-if';
 
     #ifEffect = null;
-    #template = null;
+    #templateEl = null;  // <template> parsed once; clone via .content; cleared on disconnect
     #currentContent = null;
-    #contentEffects = null;  // Effects for current content
+    #contentEffects = null;
     #placeholder = null;
-    #isDisconnected = false;  // Prevent double disconnectedCallback
+    #isDisconnected = false;
 
     async connectedCallback() {
-      this.#isDisconnected = false;  // Reset on reconnect
+      this.#isDisconnected = false;
       this.#placeholder = document.createComment('veda-if');
       this._vedaParentContext = this._findParentComponent();
 
-      // Extract and store template
-      this.#template = document.createDocumentFragment();
-      if (this.template) {
-        // Use <template> element for parsing to correctly handle table fragments
-        // (<tr>, <td>, etc.) which would be foster-parented inside a <div>
-        const temp = document.createElement('template');
-        temp.innerHTML = this.template;
-        while (temp.content.firstChild) {
-          this.#template.appendChild(temp.content.firstChild);
-        }
-      }
-
+      this.#parseTemplate();
       this.replaceChildren();
       this._deferRendered();
       await super.connectedCallback();
@@ -58,12 +41,11 @@ export default function IfComponent(Class = HTMLElement) {
       this.#ifEffect = effect(() => {
         const condition = this.#evaluateCondition(this.getAttribute('condition'));
         this.#updateVisibility(condition);
-      }, { component: this._vedaParentContext });
+      }, { component: this });
       this._resolveDeferred();
     }
 
     disconnectedCallback() {
-      // Prevent double disconnectedCallback calls
       if (this.#isDisconnected) return;
       this.#isDisconnected = true;
 
@@ -71,13 +53,10 @@ export default function IfComponent(Class = HTMLElement) {
         this.#ifEffect();
         this.#ifEffect = null;
       }
-      // Cleanup content effects
-      if (this.#contentEffects) {
-        this.#contentEffects.forEach(cleanup => cleanup());
-        this.#contentEffects = null;
-      }
-      this.#currentContent = null;
-      this.#template = null;
+      this.#teardownContent();
+      this.replaceChildren();
+      this.#placeholder = null;
+      this.#templateEl = null;
       this._vedaParentContext = null;
       this._vedaEvalContext = null;
       super.disconnectedCallback?.();
@@ -85,81 +64,79 @@ export default function IfComponent(Class = HTMLElement) {
 
     #evaluateCondition(expr) {
       try {
-        // Skip evaluation if already disconnected — effect may fire during
-        // parent Loop cleanup before this effect is disposed.
         if (this.#isDisconnected) return false;
 
-        // Prefer inherited eval context (e.g. from Loop iteration) over parent component.
-        // _vedaEvalContext has loop variables in scope via prototype chain.
         const context = this._vedaEvalContext || this._vedaParentContext;
-
-        if (!context) {
-          return false;
-        }
+        if (!context) return false;
 
         const cleanExpr = expr.trim().replace(/^\{/, '').replace(/\}$/, '');
-        const value = ExpressionParser.evaluateAuto(cleanExpr, context);
-        return !!value;
+        return !!ExpressionParser.evaluateAuto(cleanExpr, context);
       } catch (error) {
         console.error('If: Failed to evaluate condition expression:', expr, error);
         return false;
       }
     }
 
-  #updateVisibility(show) {
-    const hasContent = this.#currentContent?.length > 0;
-
-    if (show && !hasContent) {
-      const tempContainer = document.createElement('div');
-      tempContainer.appendChild(this.#template.cloneNode(true));
-
-      const evalContext = this.#createEvalContext();
-
-      // Capture effects created during _process for this content
-      const effectsStartIndex = this._getRenderEffectsCount();
-      this._process(tempContainer, evalContext);
-      this.#contentEffects = this._extractRenderEffects(effectsStartIndex);
-
-      const fragment = document.createDocumentFragment();
-      while (tempContainer.firstChild) {
-        fragment.appendChild(tempContainer.firstChild);
-      }
-      tempContainer.innerHTML = ''; // Clear temp to help GC
-
-      this.appendChild(fragment);
-      this.#currentContent = Array.from(this.childNodes).filter(n => n !== this.#placeholder);
-
-    } else if (!show && hasContent) {
-      // First cleanup effects created by If itself
+    #teardownContent() {
       if (this.#contentEffects) {
         this.#contentEffects.forEach(cleanup => cleanup());
         this.#contentEffects = null;
       }
-      // Remove DOM nodes - browser will call disconnectedCallback for custom elements
-      this.#currentContent.forEach(node => {
-        if (node.parentNode) {
-          node.parentNode.removeChild(node);
+      if (this.#currentContent) {
+        for (const node of this.#currentContent) {
+          node.remove?.();
         }
-      });
-      this.#currentContent = null;
-      this.appendChild(this.#placeholder);
-    }
-  }
-
-  #createEvalContext() {
-    // If inherited eval context exists (e.g. from enclosing Loop), use it directly.
-    // It already has the correct prototype chain: { item, index } -> parent.state -> parent
-    if (this._vedaEvalContext) {
-      return this._vedaEvalContext;
+        this.#currentContent = null;
+      }
     }
 
-    const parent = this._vedaParentContext;
-    if (!parent?.state) return parent;
+    #updateVisibility(show) {
+      if (this.#isDisconnected) return;
 
-    const evalContext = parent.state;
-    Object.setPrototypeOf(evalContext, parent);
-    return evalContext;
-  }
+      const hasContent = this.#currentContent?.length > 0;
+
+      if (show && !hasContent) {
+        if (!this.#templateEl) return;
+
+        const tempContainer = document.createElement('div');
+        tempContainer.appendChild(this.#templateEl.content.cloneNode(true));
+
+        const evalContext = this.#createEvalContext();
+        const effectsStartIndex = this._getRenderEffectsCount();
+        this._process(tempContainer, evalContext);
+        this.#contentEffects = this._extractRenderEffects(effectsStartIndex);
+
+        const contentNodes = [];
+        let node;
+        while ((node = tempContainer.firstChild)) {
+          this.appendChild(node);
+          contentNodes.push(node);
+        }
+        this.#currentContent = contentNodes;
+
+      } else if (!show && hasContent) {
+        this.#teardownContent();
+        this.appendChild(this.#placeholder);
+      }
+    }
+
+    #parseTemplate() {
+      this.#templateEl = null;
+      if (!this.template) return;
+      this.#templateEl = document.createElement('template');
+      this.#templateEl.innerHTML = this.template;
+    }
+
+    #createEvalContext() {
+      if (this._vedaEvalContext) return this._vedaEvalContext;
+
+      const parent = this._vedaParentContext;
+      if (!parent?.state) return parent;
+
+      const evalContext = parent.state;
+      Object.setPrototypeOf(evalContext, parent);
+      return evalContext;
+    }
 
     render() {
       return '';
@@ -167,7 +144,6 @@ export default function IfComponent(Class = HTMLElement) {
   };
 }
 
-// Define the component only if running in browser
 const If = (() => {
   if (typeof customElements !== 'undefined') {
     const IfComponentClass = IfComponent(HTMLElement);
@@ -178,5 +154,3 @@ const If = (() => {
 })();
 
 export { If };
-
-

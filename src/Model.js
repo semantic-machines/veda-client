@@ -174,15 +174,17 @@ export default class Model extends Emitter(Object) {
 
   /**
    * Subscribe to server-side updates for this individual.
+   * @param {object} [holder] - Object whose lifetime tracks this subscription (e.g. a Component).
+   *   Defaults to the model itself (GC-based cleanup only).
    */
-  subscribe () {
+  subscribe (holder = this) {
     const updater = (id) => {
       const model = new Model(id);
       model.reset().catch((error) => {
         console.error(`Error resetting model ${id}`, error);
       });
     };
-    Subscription.subscribe(this, [this.id, this.hasValue('v-s:updateCounter') ? this['v-s:updateCounter'][0] : 0, updater]);
+    Subscription.subscribe(holder, [this.id, this.hasValue('v-s:updateCounter') ? this['v-s:updateCounter'][0] : 0, updater]);
   }
 
   /**

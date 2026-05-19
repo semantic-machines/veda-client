@@ -17,7 +17,7 @@ export default class Model implements EmitterInstance {
   toJSON(): IndividualData;
   toString(): string;
 
-  subscribe(): void;
+  subscribe(holder?: object): void;
   unsubscribe(): void;
 
   isNew(value?: boolean): boolean;

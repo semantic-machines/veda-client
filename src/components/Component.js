@@ -1,4 +1,5 @@
 import Model from '../Model.js';
+import Subscription from '../Subscription.js';
 import PropertyComponent from './PropertyComponent.js';
 import RelationComponent from './RelationComponent.js';
 import LoopComponent from './LoopComponent.js';
@@ -90,6 +91,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     #renderEffects = [];
     #eventListeners = [];
     #isReactive = false;
+    #holdsSubscription = false;
     template;
 
     // ---------- Constructor & Lifecycle ----------
@@ -147,6 +149,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         }
         this.#cleanupEffects();
         this.#cleanupEventListeners();
+        if (this.#holdsSubscription) {
+          Subscription.release(this);
+          this.#holdsSubscription = false;
+        }
+        this.#childrenRendered = [];
         // Clear state properties via the raw target to release references (e.g. Models)
         // without triggering reactive updates in child components that haven't
         // disconnected yet.
@@ -260,7 +267,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       }
       if (this.state.model) {
         try { await this.state.model.load?.(); } catch { /* Backend not configured */ }
-        if (this.isConnected && this.state.model) this.state.model.subscribe?.();
+        if (this.isConnected && this.state.model && !this.#holdsSubscription) {
+          this.state.model.subscribe?.(this);
+          this.#holdsSubscription = true;
+        }
       }
     }
 

@@ -22,8 +22,10 @@ export default class Subscription {
   static _socket;
   static _buffer = [];
   static _subscriptions = new Map();
+  static _refCounts = new Map();
+  static _refEntries = new WeakMap();
   static _registry = new FinalizationRegistry((id) => {
-    Subscription.unsubscribe(id);
+    Subscription._decrement(id);
   });
 
   // Injectable WebSocket class for testing
@@ -71,30 +73,77 @@ export default class Subscription {
       const [id, updateCounter] = pair;
       const subscription = Subscription._subscriptions.get(id);
       if (!subscription) {
-        Subscription.unsubscribe(id);
+        Subscription._drop(id);
       } else {
-        const [callback] = subscription.slice(-1);
+        const callback = subscription[2];
         callback(id, Number(updateCounter));
       }
     }
   }
 
+  /**
+   * Register interest in server updates for an individual.
+   * @param {object} ref - Holder kept alive while subscribed (typically a Component).
+   *   FinalizationRegistry decrements when ref is GC'd unless release() was called first.
+   */
   static subscribe (ref, subscription) {
     const [id, updateCounter] = subscription;
-    if (Subscription._subscriptions.has(id)) return;
-    Subscription._subscriptions.set(id, subscription);
-    Subscription._registry.register(ref, id);
-    Subscription._send(`+${id}=${updateCounter || 0}`);
+    if (Subscription._refEntries.has(ref)) return;
+
+    const count = Subscription._refCounts.get(id) || 0;
+    Subscription._refCounts.set(id, count + 1);
+
+    const token = {};
+    Subscription._refEntries.set(ref, { id, token });
+    Subscription._registry.register(ref, id, token);
+
+    if (count === 0) {
+      Subscription._subscriptions.set(id, subscription);
+      Subscription._send(`+${id}=${updateCounter || 0}`);
+    }
   }
 
-  static unsubscribe (id) {
+  /**
+   * Release one holder registered via subscribe(ref, …).
+   * Sends unsubscribe to the server when the last holder is released.
+   */
+  static release (ref) {
+    const entry = Subscription._refEntries.get(ref);
+    if (!entry) return;
+    Subscription._refEntries.delete(ref);
+    Subscription._registry.unregister(entry.token);
+    Subscription._decrement(entry.id);
+  }
+
+  static _decrement (id) {
+    const count = Subscription._refCounts.get(id);
+    if (count == null) return;
+    if (count <= 1) {
+      Subscription._refCounts.delete(id);
+      Subscription._drop(id);
+    } else {
+      Subscription._refCounts.set(id, count - 1);
+    }
+  }
+
+  static _drop (id) {
     if (!Subscription._subscriptions.has(id)) return;
     Subscription._subscriptions.delete(id);
     Subscription._send(`-${id}`);
   }
 
+  /** Force-unsubscribe regardless of holder count (Model.unsubscribe). */
+  static unsubscribe (id) {
+    Subscription._refCounts.delete(id);
+    Subscription._drop(id);
+  }
+
   static _getSubscriptionCount() {
     return Subscription._subscriptions.size;
+  }
+
+  static _getRefCount(id) {
+    return Subscription._refCounts.get(id) || 0;
   }
 }
 

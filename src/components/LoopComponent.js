@@ -22,25 +22,14 @@ export default function LoopComponent(Class = HTMLElement) {
 
     #loopEffect = null;
     #itemsMap = new Map(); // key → {element, item, index, evalContext}
-    #template = null;
+    #templateEl = null;  // <template> parsed once; clone via .content; cleared on disconnect
     #isDisconnected = false;  // Prevent double disconnectedCallback
 
     async connectedCallback() {
       this.#isDisconnected = false;  // Reset on reconnect
       this._vedaParentContext = this._findParentComponent();
 
-      // Extract and store template
-      this.#template = document.createDocumentFragment();
-      if (this.template) {
-        // Use <template> element for parsing to correctly handle table fragments
-        // (<tr>, <td>, etc.) which would be foster-parented inside a <div>
-        const temp = document.createElement('template');
-        temp.innerHTML = this.template;
-        while (temp.content.firstChild) {
-          this.#template.appendChild(temp.content.firstChild);
-        }
-      }
-
+      this.#parseTemplate();
       this.replaceChildren();
       this._deferRendered();
       await super.connectedCallback();
@@ -55,7 +44,7 @@ export default function LoopComponent(Class = HTMLElement) {
       this.#loopEffect = effect(() => {
         const items = this.#evaluateItems(itemsExpr);
         this.#reconcile(items);
-      }, { component: this._vedaParentContext });
+      }, { component: this });
       this._resolveDeferred();
     }
 
@@ -77,12 +66,16 @@ export default function LoopComponent(Class = HTMLElement) {
           itemData.effects.forEach(cleanup => cleanup());
           itemData.effects = null;
         }
+        if (itemData.element) {
+          itemData.element.remove();
+          itemData.element = null;
+        }
         itemData.evalContext = null;
-        itemData.element = null;
         itemData.item = null;
       }
       this.#itemsMap.clear();
-      this.#template = null;
+      this.#templateEl = null;
+      this.replaceChildren();
       this._vedaParentContext = null;
       this._vedaEvalContext = null;
       super.disconnectedCallback?.();
@@ -108,6 +101,8 @@ export default function LoopComponent(Class = HTMLElement) {
     }
 
     #reconcile(newItems) {
+      if (this.#isDisconnected) return;
+
       // Support both 'key' (new) and 'item-key' (backward compatibility)
       const keyAttr = this.getAttribute('key') || this.getAttribute('item-key') || 'id';
       const newKeys = new Set();
@@ -325,8 +320,15 @@ export default function LoopComponent(Class = HTMLElement) {
       return `__value_${fallbackIndex}_${item}`;
     }
 
+    #parseTemplate () {
+      this.#templateEl = null;
+      if (!this.template) return;
+      this.#templateEl = document.createElement('template');
+      this.#templateEl.innerHTML = this.template;
+    }
+
     #createItemElement(item, index) {
-      const fragment = this.#template.cloneNode(true);
+      const fragment = this.#templateEl?.content.cloneNode(true) ?? document.createDocumentFragment();
       let element = fragment.firstElementChild;
 
       if (!element) {

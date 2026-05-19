@@ -160,6 +160,37 @@ export default ({ test, assert }) => {
     clearModelCache();
   });
 
+  test('Subscription (improved) - release decrements ref count and unsubscribes last holder', async () => {
+    clearModelCache();
+
+    Subscription.init('ws://mock-server:8088', MockWebSocket);
+
+    const model = new Model(generateTestId('test:release'));
+    const holderA = {};
+    const holderB = {};
+
+    Subscription.subscribe(holderA, [model.id, 0, () => {}]);
+    Subscription.subscribe(holderB, [model.id, 0, () => {}]);
+
+    await waitForCondition(
+      () => Subscription._getSubscriptionCount() === 1,
+      { timeout: 1000, message: 'One WS subscription for shared id' }
+    );
+    assert(Subscription._getRefCount(model.id) === 2, 'Two holders for same id');
+
+    Subscription.release(holderA);
+    assert(Subscription._getSubscriptionCount() === 1, 'Still subscribed with one holder');
+    assert(Subscription._getRefCount(model.id) === 1, 'Ref count decremented');
+
+    Subscription.release(holderB);
+    await waitForCondition(
+      () => Subscription._getSubscriptionCount() === 0,
+      { timeout: 1000, message: 'Unsubscribed when last holder released' }
+    );
+
+    clearModelCache();
+  });
+
   test('Subscription (improved) - duplicate subscribe is idempotent', async () => {
     clearModelCache();
 
