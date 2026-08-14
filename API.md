@@ -41,6 +41,12 @@ class MyComponent extends Component(HTMLElement) {
 - [Component](#component)
   - [Automatic State](#automatic-state)
   - [Property Binding](#property-binding)
+  - [Event Handlers](#event-handlers)
+  - [Context](#context)
+  - [Slots](#slots)
+  - [Refs](#refs)
+  - [Place](#place)
+  - [Two-way bind](#two-way-bind)
 - [Reactivity](#reactivity)
 - [Reactivity Edge Cases](#reactivity-edge-cases)
 - [Built-in Components](#built-in-components)
@@ -239,6 +245,137 @@ With `:value="{expr}"`, the property is set **after** evaluation via JavaScript:
 <input :value="{this.state.text}">
 <button :disabled="{this.state.isLoading}">Submit</button>
 ```
+
+### Event Handlers
+
+`on*` attributes on native and custom elements bind a listener. The inline attribute is removed.
+
+Handler signature is always `(event, node)`:
+- `event` — the DOM event
+- `node` — the element that had the `on*` attribute
+- `this` — the component that owns the method (see below)
+
+**Method names** — `{handleClick}` and `{this.handleClick}` are the same. The method is looked up on this component, then on ancestor components (skipping `veda-if` / `veda-loop` / `veda-virtual` / `veda-context` / `veda-slot` / `veda-place`), including across Shadow DOM. Lookup runs on the event, so a method added after render still works.
+
+```javascript
+class AppShell extends Component(HTMLElement) {
+  toggleTheme() {
+    this.state.theme = this.state.theme === 'light' ? 'dark' : 'light';
+  }
+  render() {
+    return html`<theme-toggle></theme-toggle>`;
+  }
+}
+
+class ThemeToggle extends Component(HTMLElement) {
+  render() {
+    // Finds AppShell.toggleTheme; this === AppShell
+    return html`<button onclick="{this.toggleTheme}">Toggle</button>`;
+  }
+}
+```
+
+**Property paths** — a dotted expression is JS property access, not method search. `this` is the object to the left of the last key (`handlers` in `{this.handlers.click}`).
+
+```html
+<button onclick="{this.handlers.click}">Click</button>
+```
+
+Do not use `{this.handleClick}` vs `{handleClick}` as different features — they are not. To pass a callback into one child, use `:on-toggle="{this.toggleTheme}"` and call `this.state.onToggle` from the child (prefer an arrow so `this` stays the parent).
+
+### Context
+
+Share values with descendants without passing `:prop` through every layer.
+
+```javascript
+import Component, { html, Context } from 'veda-client';
+
+class AppShell extends Component(HTMLElement) {
+  constructor() {
+    super();
+    this.state.theme = 'light';
+    this.state.locale = 'ru';
+  }
+  render() {
+    return html`
+      <${Context}
+        :theme="{this.state.theme}"
+        :locale="{this.state.locale}">
+        <app-layout></app-layout>
+      </${Context}>
+    `;
+  }
+}
+
+class ThemeToggle extends Component(HTMLElement) {
+  render() {
+    return html`<span>{this.context.theme} · {this.context.locale}</span>`;
+  }
+}
+```
+
+Nearest `<veda-context>` that has the key wins; other keys fall through to outer providers. Missing keys are `undefined` (one warning per component). Use Context for subtree data (`theme`, `documentContext`, `documentMode`). Methods still use `onclick="{this.toggleTheme}"`.
+
+### Slots
+
+Project named children from the host's original template into placeholders in `render()`:
+
+```javascript
+import Component, { html, Slot } from 'veda-client';
+
+class Popup extends Component(HTMLElement) {
+  static tag = 'veda-popup';
+  render() {
+    return html`
+      <span>
+        <${Slot} name="trigger"></${Slot}>
+        <div class="body"><${Slot} name="content"></${Slot}></div>
+      </span>
+    `;
+  }
+}
+
+// Usage
+<${Popup}>
+  <button slot="trigger">Open</button>
+  <p slot="content">Hello</p>
+</${Popup}>
+```
+
+Nodes without `slot` go to `<${Slot}>` (default), including non-empty text nodes. Slotted expressions, `onclick`, and `ref` belong to the parent that authored the content (`this.refs.open` on that parent, not on `<veda-slot>`). `name="{this.state.hole}"` is interpolated.
+
+### Refs
+
+```html
+<input ref="query">
+```
+
+After render: `this.refs.query` is that element. Refs are rebuilt on each `update()`. A `ref` inside slotted content is stored on the parent that wrote the slot, not on the layout host.
+
+### Place
+
+Place rendered nodes into another container (dropdowns, overlays):
+
+```html
+<${Place} to="body">
+  <div class="menu">{this.state.title}</div>
+</${Place}>
+```
+
+`to` is `body` or a `document.querySelector` selector (`to="{this.state.target}"` is interpolated). Nodes are removed when the place disconnects.
+
+### Two-way bind
+
+Native `input` / `textarea` / `select` / checkbox / radio. `bind` is a directive, not a `:prop` and not a native property.
+
+```html
+<input bind="{this.state.q}">
+<input type="checkbox" bind="{this.state.done}">
+<input type="radio" name="kind" value="open" bind="{this.state.kind}">
+<input type="radio" name="kind" value="closed" bind="{this.state.kind}">
+```
+
+The path must be a simple property path (`?.` is allowed). Checkbox stores a boolean; radio stores the selected `value` string. Same as `:value` + `oninput` (or `:checked` + `onchange`) for local state. Model fields on document controls stay in application code.
 
 ### Lifecycle Methods
 
@@ -1358,6 +1495,8 @@ console.log(date instanceof Date); // false ❌
 ---
 
 ## Built-in Components
+
+`veda-if`, `veda-loop`, `veda-context`, `veda-slot`, and `veda-place` use `display: contents`, so they do not create a CSS box. `veda-virtual` keeps a box — it is a scroll viewport. Semantic Loop/If (`<ul items>`, `<div condition>`) keep the native element's box.
 
 ### Loop
 

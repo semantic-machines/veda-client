@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slots & Place - Veda Examples</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <p><a href="index.html">← Back to Examples</a></p>
+  <h1>Slots & Place</h1>
+  <p>Named content projection and placing nodes into another container.</p>
+
+  <slot-demo></slot-demo>
+  <place-demo></place-demo>
+
+  <div class="info-box">
+    <h3>Slots</h3>
+    <p>Two sides:</p>
+    <ul>
+      <li><strong>Layout</strong> draws holes: <code>&lt;${Slot} name="trigger"&gt;</code></li>
+      <li><strong>Parent</strong> fills them: <code>&lt;button slot="trigger"&gt;</code></li>
+    </ul>
+    <p>A child without <code>slot</code> (and non-empty text) goes into the unnamed <code>&lt;${Slot}&gt;</code>. Click Ping or edit the title — handlers, <code>{this.state.title}</code>, and <code>ref="ping"</code> belong to the parent (<code>this.refs.ping</code>), not to the layout.</p>
+    <pre><code>class SlotLayout extends Component(HTMLElement) {
+  render() {
+    return html`
+      &lt;${Slot} name="trigger"&gt;&lt;/${Slot}&gt;
+      &lt;${Slot} name="content"&gt;&lt;/${Slot}&gt;
+      &lt;${Slot}&gt;&lt;/${Slot}&gt;
+    `;
+  }
+}
+
+&lt;${SlotLayout}&gt;
+  &lt;button slot="trigger" onclick="{this.ping}"&gt;Ping&lt;/button&gt;
+  &lt;p slot="content"&gt;{this.state.title}&lt;/p&gt;
+  &lt;span&gt;default&lt;/span&gt;
+&lt;/${SlotLayout}&gt;</code></pre>
+
+    <h3>Place</h3>
+    <pre><code>&lt;${Place} to="body"&gt;
+  &lt;div class="menu"&gt;{this.state.title}&lt;/div&gt;
+&lt;/${Place}&gt;</code></pre>
+    <p><code>to</code> is <code>body</code> or a <code>querySelector</code> selector (<code>to="{this.state.target}"</code> is interpolated). Nodes are removed when the place disconnects. Close on the overlay finds the parent method (<code>this.close</code>).</p>
+  </div>
+
+  <script type="module" src="index.js"></script>
+</body>
+</html>

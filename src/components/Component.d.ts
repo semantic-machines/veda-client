@@ -14,6 +14,8 @@ export interface ComponentInstance<M extends Model = Model> {
   model?: M; // Direct model access (alternative to state.model)
   template?: string;
   rendered: Promise<void>;
+  refs: Record<string, Element | undefined>;
+  context: Record<string, any>;
 
   connectedCallback(): Promise<void>;
   disconnectedCallback(): Promise<void>;

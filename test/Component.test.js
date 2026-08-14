@@ -1,5 +1,10 @@
 import './setup-dom.js';
 import Component, { html, raw, safe, reactive, effect } from '../src/components/Component.js';
+import { Loop } from '../src/components/LoopComponent.js';
+import { If } from '../src/components/IfComponent.js';
+import { Context } from '../src/components/ContextComponent.js';
+import { Slot } from '../src/components/SlotComponent.js';
+import { Place } from '../src/components/PlaceComponent.js';
 import { flushEffects } from '../src/Effect.js';
 import Model from '../src/Model.js';
 import { createTestComponent, createTestContainer, assertAttribute, createSpy, captureConsole } from './helpers.js';
@@ -1104,6 +1109,201 @@ export default ({ test, assert }) => {
     container.remove();
   });
 
+  test('Component - this.methodName finds parent method like a bare name', async () => {
+    let receivedThis = null;
+    let receivedEvent = null;
+    let receivedNode = null;
+
+    class ParentWithThisMethod extends Component(HTMLElement) {
+      static tag = 'test-parent-this-method';
+
+      handleFromChild(event, node) {
+        receivedThis = this;
+        receivedEvent = event;
+        receivedNode = node;
+      }
+
+      render() {
+        return html`
+          <button id="bare" onclick="{handleFromChild}">bare</button>
+          <test-child-this-caller></test-child-this-caller>
+        `;
+      }
+    }
+
+    class ChildThisCaller extends Component(HTMLElement) {
+      static tag = 'test-child-this-caller';
+
+      render() {
+        return html`<button id="dotted" onclick="{this.handleFromChild}">this</button>`;
+      }
+    }
+
+    customElements.define('test-parent-this-method', ParentWithThisMethod);
+    customElements.define('test-child-this-caller', ChildThisCaller);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const parent = document.createElement('test-parent-this-method');
+    container.appendChild(parent);
+    await parent.rendered;
+
+    const child = parent.querySelector('test-child-this-caller');
+    await child.rendered;
+
+    const dotted = child.querySelector('#dotted');
+    dotted.click();
+
+    assert(receivedThis === parent, 'this.methodName should call the parent method with this = parent');
+    assert(receivedEvent?.type === 'click', 'Should pass the DOM event');
+    assert(receivedNode === dotted, 'Should pass the element with the handler');
+
+    receivedThis = null;
+    parent.querySelector('#bare').click();
+    assert(receivedThis === parent, 'Bare method name should use the same this');
+
+    container.remove();
+  });
+
+  test('Component - method search skips Loop and If wrappers', async () => {
+    let receivedThis = null;
+
+    class ParentSkipLoop extends Component(HTMLElement) {
+      static tag = 'test-parent-skip-loop';
+
+      constructor() {
+        super();
+        this.state.items = [{ id: 1 }];
+      }
+
+      handleFromItem(event, node) {
+        receivedThis = this;
+      }
+
+      render() {
+        return html`
+          <${Loop} items="{this.state.items}" as="item" key="id">
+            <test-child-skip-loop></test-child-skip-loop>
+          </${Loop}>
+        `;
+      }
+    }
+
+    class ChildSkipLoop extends Component(HTMLElement) {
+      static tag = 'test-child-skip-loop';
+
+      render() {
+        return html`<button onclick="{this.handleFromItem}">x</button>`;
+      }
+    }
+
+    customElements.define('test-parent-skip-loop', ParentSkipLoop);
+    customElements.define('test-child-skip-loop', ChildSkipLoop);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const parent = document.createElement('test-parent-skip-loop');
+    container.appendChild(parent);
+    await parent.rendered;
+
+    const child = parent.querySelector('test-child-skip-loop');
+    await child.rendered;
+    child.querySelector('button').click();
+
+    assert(receivedThis === parent, 'Should skip veda-loop and call the parent method');
+
+    container.remove();
+  });
+
+  test('Component - wrapper tags use display contents', async () => {
+    class SlotHost extends Component(HTMLElement) {
+      static tag = `test-wrap-slot-host-${Math.random().toString(36).slice(2, 8)}`;
+      render() {
+        return html`<${Slot}></${Slot}>`;
+      }
+    }
+    customElements.define(SlotHost.tag, SlotHost);
+
+    class WrapApp extends Component(HTMLElement) {
+      constructor() {
+        super();
+        this.state.items = [];
+        this.state.show = true;
+      }
+      render() {
+        return html`
+          <${Context} :theme="{'light'}">
+            <${If} condition="{this.state.show}"><span>ok</span></${If}>
+            <${Loop} items="{this.state.items}" as="item"></${Loop}>
+            <${SlotHost}><span>s</span></${SlotHost}>
+            <${Place} to="body"><div class="tp-wrap">t</div></${Place}>
+          </${Context}>
+        `;
+      }
+    }
+
+    const {component, cleanup} = await createTestComponent(WrapApp);
+    const host = component.querySelector(SlotHost.tag);
+    await Promise.all([
+      component.querySelector('veda-context').rendered,
+      component.querySelector('veda-if').rendered,
+      component.querySelector('veda-loop').rendered,
+      host.rendered,
+      component.querySelector('veda-place').rendered,
+    ]);
+
+    assert(component.querySelector('veda-context').style.display === 'contents', 'veda-context should not create a CSS box');
+    assert(component.querySelector('veda-if').style.display === 'contents', 'veda-if should not create a CSS box');
+    assert(component.querySelector('veda-loop').style.display === 'contents', 'veda-loop should not create a CSS box');
+    assert(host.querySelector('veda-slot').style.display === 'contents', 'veda-slot should not create a CSS box');
+    assert(component.querySelector('veda-place').style.display === 'contents', 'veda-place should not create a CSS box');
+    cleanup();
+  });
+
+  test('Component - onclick on custom element binds a listener', async () => {
+    let clicked = false;
+
+    class HostWithChildClick extends Component(HTMLElement) {
+      static tag = 'test-host-child-click';
+
+      handleHostClick() {
+        clicked = true;
+      }
+
+      render() {
+        return html`<test-click-target onclick="{handleHostClick}"></test-click-target>`;
+      }
+    }
+
+    class ClickTarget extends Component(HTMLElement) {
+      static tag = 'test-click-target';
+      render() {
+        return html`<span>target</span>`;
+      }
+    }
+
+    customElements.define('test-host-child-click', HostWithChildClick);
+    customElements.define('test-click-target', ClickTarget);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const host = document.createElement('test-host-child-click');
+    container.appendChild(host);
+    await host.rendered;
+
+    const target = host.querySelector('test-click-target');
+    await target.rendered;
+    target.click();
+
+    assert(clicked === true, 'onclick on a custom element should addEventListener on the host');
+    assert(target.getAttribute('onclick') === null, 'Should not leave an inline onclick attribute');
+
+    container.remove();
+  });
+
   test('Component - method not found warning', async () => {
     const warnings = [];
     const originalWarn = console.warn;
@@ -1641,8 +1841,7 @@ export default ({ test, assert }) => {
       }
 
       render() {
-        // Use this.handleClick so expression evaluates to function (lines 536-539)
-        // versus just handleClick which uses #findMethod
+        // this.handleClick and handleClick both use method lookup
         return html`<button onclick="{this.handleClick}">Click</button>`;
       }
     }

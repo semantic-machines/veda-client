@@ -679,4 +679,38 @@ export default ({ test, assert }) => {
     cleanup();
   });
 
+  test('VirtualComponent - child _findParentComponent returns the Virtual host', async () => {
+    class VirtualParentProbe extends Component(HTMLElement) {
+      static tag = `test-virtual-parent-probe-${Math.random().toString(36).slice(2, 8)}`;
+      added() {
+        this.foundParent = this._findParentComponent();
+      }
+      render() {
+        return html`<span class="probe">x</span>`;
+      }
+    }
+    customElements.define(VirtualParentProbe.tag, VirtualParentProbe);
+
+    class VirtualParentApp extends Component(HTMLElement) {
+      constructor() {
+        super();
+        this.state.items = [{id: 1}];
+      }
+      render() {
+        return html`
+          <${Virtual} items="{this.state.items}" height="80" item-height="40">
+            <${VirtualParentProbe}></${VirtualParentProbe}>
+          </${Virtual}>
+        `;
+      }
+    }
+
+    const {component, cleanup} = await createTestComponent(VirtualParentApp);
+    const probe = component.querySelector(VirtualParentProbe.tag);
+    await probe.rendered;
+
+    assert(probe.foundParent === component.querySelector('veda-virtual'), 'Parent of a Virtual child should be the Virtual host');
+    cleanup();
+  });
+
 };

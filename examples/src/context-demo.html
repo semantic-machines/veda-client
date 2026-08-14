@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Context - Veda Examples</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <p><a href="index.html">← Back to Examples</a></p>
+  <h1>Context</h1>
+  <p>Share values with descendants without passing <code>:prop</code> through every layer.</p>
+
+  <context-demo></context-demo>
+
+  <div class="info-box">
+    <h3>Usage</h3>
+    <pre><code>import Component, { html, Context } from 'veda-client';
+
+class AppShell extends Component(HTMLElement) {
+  constructor() {
+    super();
+    this.state.theme = 'light';
+    this.state.locale = 'ru';
+  }
+  toggleTheme() {
+    this.state.theme = this.state.theme === 'light' ? 'dark' : 'light';
+  }
+  render() {
+    return html`
+      &lt;${Context} :theme="{this.state.theme}" :locale="{this.state.locale}"&gt;
+        &lt;status-bar&gt;&lt;/status-bar&gt;
+        &lt;button onclick="{this.toggleTheme}"&gt;Toggle&lt;/button&gt;
+      &lt;/${Context}&gt;
+    `;
+  }
+}
+
+class StatusBar extends Component(HTMLElement) {
+  render() {
+    return html`&lt;span&gt;{this.context.theme} · {this.context.locale}&lt;/span&gt;`;
+  }
+}</code></pre>
+    <ul>
+      <li>Provide with <code>&lt;Context :key="{...}"&gt;</code></li>
+      <li>Read with <code>this.context.key</code></li>
+      <li>Nearest provider that has the key wins; other keys fall through</li>
+      <li>Methods use <code>onclick="{this.toggleTheme}"</code>, not Context</li>
+    </ul>
+  </div>
+
+  <script type="module" src="index.js"></script>
+</body>
+</html>

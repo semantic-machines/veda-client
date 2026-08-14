@@ -187,10 +187,10 @@ this.watch(() => state.items.length, callback);
 **Issue:** Component method search and parent context search have hard-coded depth limits to prevent infinite loops and performance issues.
 
 **Limits:**
-- **Method search depth:** 20 levels (Component.js line 460)
-  - For event handler method lookup (e.g., `onclick="{handleClick}"`)
-  - Why 20? Covers deeply nested component hierarchies while preventing infinite loops
-  - Typical apps use 3-8 levels, max reasonable depth is ~15 levels
+- **Method search depth:** 20 levels (`#findMethod` in Component.js)
+  - For event handler method lookup (`onclick="{handleClick}"` and `onclick="{this.handleClick}"` are the same)
+  - Skips `veda-if` / `veda-loop` / `veda-virtual` / `veda-context` / `veda-slot` / `veda-place` wrappers
+  - Crosses Shadow DOM via `getRootNode().host`
 
 - **Loop parent context depth:** 10 levels (LoopComponent.js line 237)
   - For finding parent component context in Loop/If components

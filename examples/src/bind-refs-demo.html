@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>bind & refs - Veda Examples</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <p><a href="index.html">← Back to Examples</a></p>
+  <h1>bind & refs</h1>
+  <p>Two-way bind on native controls, and named DOM refs after render.</p>
+
+  <bind-refs-demo></bind-refs-demo>
+
+  <div class="info-box">
+    <h3>Usage</h3>
+    <pre><code>&lt;input ref="query" bind="{this.state.q}"&gt;
+&lt;input type="checkbox" bind="{this.state.done}"&gt;
+&lt;select bind="{this.state.kind}"&gt;...&lt;/select&gt;
+&lt;input type="radio" name="via" value="open" bind="{this.state.via}"&gt;
+&lt;input type="radio" name="via" value="closed" bind="{this.state.via}"&gt;
+
+this.refs.query.focus();</code></pre>
+    <ul>
+      <li><code>bind</code> is a directive, not <code>:prop</code> and not a native property</li>
+      <li>Simple path only: <code>{this.state.q}</code> (<code>?.</code> is allowed)</li>
+      <li>Text / textarea use <code>input</code>; checkbox / radio / select use <code>change</code></li>
+      <li>Checkbox stores a boolean; radio stores the selected <code>value</code> string</li>
+      <li><code>this.refs</code> is rebuilt on each <code>update()</code></li>
+      <li>Same as <code>:value</code> + <code>oninput</code> if you prefer a method</li>
+    </ul>
+  </div>
+
+  <script type="module" src="index.js"></script>
+</body>
+</html>

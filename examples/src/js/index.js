@@ -10,3 +10,6 @@ import './examples/array-index-reactivity.js';
 import './examples/virtual-list-demo.js';
 import './examples/virtual-table-demo.js';
 import './examples/complex-expressions.js';
+import './examples/context-demo.js';
+import './examples/slot-place-demo.js';
+import './examples/bind-refs-demo.js';

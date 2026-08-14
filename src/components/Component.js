@@ -7,12 +7,14 @@ import IfComponent from './IfComponent.js';
 import ExpressionParser from './ExpressionParser.js';
 import {effect, untrack} from '../Effect.js';
 import {reactive, toRaw} from '../Reactive.js';
+import {createContextProxy} from './contextLookup.js';
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
 const MAX_TREE_DEPTH = 20;
+const METHOD_NAME_RE = /^(?:this\.)?([A-Za-z_$][\w$]*)$/;
 const EXPR_REGEX = /\{([^}]+)\}/g;
 const HTML_ESCAPE_MAP = {
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
@@ -20,6 +22,24 @@ const HTML_ESCAPE_MAP = {
 };
 const HTML_ESCAPE_REGEX = /[&<>"'/\\`]/g;
 const SAFE_EXPR_REGEX = /\{[^}]*\}/g;
+const LAYOUT_TRANSPARENT_TAGS = new Set([
+  'veda-if', 'veda-loop', 'veda-context', 'veda-slot', 'veda-place',
+]);
+
+function assignExprPath(context, expr, value) {
+  let path = expr.trim();
+  if (path === 'this') return;
+  if (path.startsWith('this.')) path = path.slice(5);
+  path = path.replace(/\?\./g, '.');
+  const parts = path.split('.').filter(Boolean);
+  let obj = context;
+  for (let i = 0; i < parts.length - 1; i++) {
+    obj = obj?.[parts[i]];
+    if (obj == null) return;
+  }
+  const last = parts[parts.length - 1];
+  if (obj && last) obj[last] = value;
+}
 
 // ============================================================================
 // TEMPLATE ENGINE (html, raw, safe)
@@ -109,6 +129,8 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         }
       });
       this.#isReactive = true;
+      this.refs = {};
+      this.context = createContextProxy(this);
       this.rendered = new Promise((resolve) => { this.#resolveRendered = resolve; });
     }
 
@@ -126,6 +148,9 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
 
     async connectedCallback () {
       try {
+        if (LAYOUT_TRANSPARENT_TAGS.has(this.tagName?.toLowerCase())) {
+          this.style.display = 'contents';
+        }
         if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
           window.__VEDA_DEVTOOLS_HOOK__.trackComponent(this);
         }
@@ -205,6 +230,11 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       });
     }
 
+    // Context/Place render parent-authored templates; override to pass host eval context.
+    _processEvalContext() {
+      return null;
+    }
+
     _resolveDeferred() {
       this.#resolveDeferredFn?.();
       this.#resolveDeferredFn = null;
@@ -215,6 +245,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       const _renderStart = performance.now();
       try {
         this.#childrenRendered = [];
+        this.refs = {};
         this.#renderEffects.forEach(c => c());
         this.#renderEffects = [];
 
@@ -234,7 +265,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         template.innerHTML = html;
         let fragment = template.content;
 
-        this._process(fragment);
+        this._process(fragment, this._processEvalContext());
 
         const container = this.hasAttribute('shadow')
           ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
@@ -457,17 +488,32 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       this._currentEvalContext = previousContext;
     }
 
+    #isComponentElement(el) {
+      return !!(el?.tagName?.includes('-') || el?.hasAttribute?.('is'));
+    }
+
+    #isFrameworkElement(el) {
+      const tag = el.tagName?.toLowerCase();
+      const isAttr = el.getAttribute?.('is');
+      return tag === 'veda-if' || tag === 'veda-loop' || tag === 'veda-virtual'
+        || tag === 'veda-context' || tag === 'veda-slot' || tag === 'veda-place'
+        || !!isAttr?.endsWith('-loop-component')
+        || !!isAttr?.endsWith('-if-component');
+    }
+
+    #ancestorElement(el) {
+      return el.parentElement || el.getRootNode?.()?.host || null;
+    }
+
     #findMethod (name) {
       if (typeof this[name] === 'function') {
         return { method: this[name], context: this };
       }
-      // Search up the component tree
-      let el = this.parentElement || this.getRootNode?.()?.host;
-      for (let i = 0; el && i < MAX_TREE_DEPTH; i++) {
-        if ((el.tagName?.includes('-') || el.hasAttribute?.('is')) && typeof el[name] === 'function') {
+      let el = this.#ancestorElement(this);
+      for (let i = 0; el && i < MAX_TREE_DEPTH; i++, el = this.#ancestorElement(el)) {
+        if (this.#isComponentElement(el) && !this.#isFrameworkElement(el) && typeof el[name] === 'function') {
           return { method: el[name], context: el };
         }
-        el = el.parentElement || el.getRootNode?.()?.host;
       }
       console.warn(`Method '${name}' not found in component tree`);
       return null;
@@ -483,17 +529,19 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     }
 
     #processCustomComponentAttributes(node) {
-      const tag = node.tagName.toLowerCase();
-      const isAttr = node.getAttribute('is');
-      const isSemanticLoop = isAttr?.endsWith('-loop-component');
-      const isSemanticIf = isAttr?.endsWith('-if-component');
-      const isFramework = tag === 'veda-if' || tag === 'veda-loop' || tag === 'veda-virtual' || isSemanticLoop || isSemanticIf;
-      const skip = isFramework ? ['condition', 'items', 'as', 'key', 'item-key', 'height', 'item-height', 'overscan'] : [];
+      const skip = this.#isFrameworkElement(node)
+        ? ['condition', 'items', 'as', 'key', 'item-key', 'height', 'item-height', 'overscan']
+        : [];
 
       for (const attr of [...node.attributes]) {
-        if (attr.nodeName.startsWith(':')) {
+        const hasExpr = attr.value?.includes('{');
+        if (attr.name === 'ref') {
+          this.#processRef(node, attr);
+        } else if (attr.nodeName.startsWith(':')) {
           this.#processPropertyBinding(node, attr);
-        } else if (!skip.includes(attr.name) && attr.value?.includes('{')) {
+        } else if (attr.name.startsWith('on') && attr.name.length > 2 && hasExpr) {
+          this.#processEventAttribute(node, attr);
+        } else if (!skip.includes(attr.name) && hasExpr) {
           this.#processAttrExpr(node, attr, false);
         }
       }
@@ -528,11 +576,68 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       }
     }
 
+    #processRef(node, attr) {
+      const name = attr.value.trim();
+      node.removeAttribute('ref');
+      if (!name) return;
+      const target = this._vedaRefsTarget || this;
+      if (!target.refs) target.refs = {};
+      target.refs[name] = node;
+    }
+
+    #processBind(node, attr) {
+      const expr = attr.value.match(/^\{([^}]+)\}$/)?.[1]?.trim();
+      node.removeAttribute(attr.nodeName);
+      if (!expr || !ExpressionParser.isSafe(expr)) {
+        console.warn(`bind expects a simple path, got '${attr.value}'`);
+        return;
+      }
+
+      const evalContext = this._currentEvalContext || this;
+      const isCheckbox = node.type === 'checkbox';
+      const isRadio = node.type === 'radio';
+
+      const applyValue = (value) => {
+        if (isRadio) {
+          node.checked = String(value ?? '') === String(node.value);
+        } else if (isCheckbox) {
+          node.checked = !!value;
+        } else if (node.value !== String(value ?? '')) {
+          node.value = value ?? '';
+        }
+      };
+
+      if (this.#isReactive) {
+        const cleanup = effect(() => {
+          applyValue(ExpressionParser.evaluate(expr, evalContext));
+        }, { component: this });
+        this.#renderEffects.push(cleanup);
+      } else {
+        applyValue(ExpressionParser.evaluate(expr, evalContext));
+      }
+
+      const handler = (e) => {
+        if (isRadio) {
+          if (e.target.checked) assignExprPath(evalContext, expr, e.target.value);
+          return;
+        }
+        const value = isCheckbox ? e.target.checked : e.target.value;
+        assignExprPath(evalContext, expr, value);
+      };
+      const eventName = isCheckbox || isRadio || node.tagName === 'SELECT' ? 'change' : 'input';
+      node.addEventListener(eventName, handler);
+      this.#eventListeners.push({ node, eventName, handler });
+    }
+
     #processNativeElementAttributes(node) {
       for (const attr of [...node.attributes]) {
         const name = attr.name;
         const hasExpr = attr.value?.includes('{');
-        if (name.startsWith(':')) {
+        if (name === 'bind') {
+          this.#processBind(node, attr);
+        } else if (name === 'ref') {
+          this.#processRef(node, attr);
+        } else if (name.startsWith(':')) {
           this.#processPropertyBinding(node, attr);
         } else if (name.startsWith('on') && name.length > 2 && hasExpr) {
           this.#processEventAttribute(node, attr);
@@ -547,20 +652,28 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       const expr = attr.value.replace(/[{}]/g, '').trim();
       node.removeAttribute(attr.name);
 
+      const methodMatch = expr.match(METHOD_NAME_RE);
+      const evalContext = this._currentEvalContext || this;
+
       let handler;
-      try {
-        const result = ExpressionParser.evaluate(expr, this, true);
-        if (result && typeof result.value === 'function') {
-          handler = (e) => result.value.call(result.context, e, node);
-        } else if (/^\w+$/.test(expr)) {
-          handler = (e) => {
-            const found = this.#findMethod(expr);
-            if (found) found.method.call(found.context, e, node);
-          };
+      if (methodMatch) {
+        const methodName = methodMatch[1];
+        handler = (e) => {
+          const found = this.#findMethod(methodName);
+          if (found) found.method.call(found.context, e, node);
+        };
+      } else {
+        try {
+          const result = ExpressionParser.evaluate(expr, evalContext, true);
+          if (result && typeof result.value === 'function') {
+            const fn = result.value;
+            const ctx = result.context;
+            handler = (e) => fn.call(ctx, e, node);
+          }
+        } catch (error) {
+          console.warn(`Invalid event handler '${expr}':`, error.message);
+          return;
         }
-      } catch (error) {
-        console.warn(`Invalid event handler '${expr}':`, error.message);
-        return;
       }
 
       if (handler) {
@@ -680,15 +793,19 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       return cleanup;
     }
 
+    #isTransparentParent(el) {
+      const tag = el.tagName?.toLowerCase();
+      const isAttr = el.getAttribute?.('is');
+      return tag === 'veda-if' || tag === 'veda-loop'
+        || tag === 'veda-context' || tag === 'veda-slot' || tag === 'veda-place'
+        || !!isAttr?.endsWith('-loop-component')
+        || !!isAttr?.endsWith('-if-component');
+    }
+
     _findParentComponent() {
-      let parent = this.parentElement;
-      for (let d = 0; parent && d < MAX_TREE_DEPTH; d++, parent = parent.parentElement) {
-        const tag = parent.tagName?.toLowerCase();
-        const isAttr = parent.getAttribute('is');
-        if ((tag?.includes('-') || parent.hasAttribute('is'))
-            && tag !== 'veda-if' && tag !== 'veda-loop'
-            && !isAttr?.endsWith('-loop-component')
-            && !isAttr?.endsWith('-if-component')) {
+      let parent = this.#ancestorElement(this);
+      for (let d = 0; parent && d < MAX_TREE_DEPTH; d++, parent = this.#ancestorElement(parent)) {
+        if (this.#isComponentElement(parent) && !this.#isTransparentParent(parent)) {
           return parent;
         }
       }
