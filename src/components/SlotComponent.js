@@ -24,7 +24,7 @@ export default function SlotComponent(Class = HTMLElement) {
 
     async connectedCallback() {
       this.#isDisconnected = false;
-      this.#host = this._findParentComponent();
+      this.#host = this.#host || this.#resolveHost();
       this.replaceChildren();
       this._deferRendered();
       await super.connectedCallback();
@@ -35,7 +35,8 @@ export default function SlotComponent(Class = HTMLElement) {
       if (this.#isDisconnected) return;
       this.#isDisconnected = true;
       this.replaceChildren();
-      this.#host = null;
+      // Keep #host. Place may move this node to another parent and reconnect;
+      // the layout host is no longer an ancestor after the move.
       super.disconnectedCallback?.();
     }
 
@@ -75,6 +76,18 @@ export default function SlotComponent(Class = HTMLElement) {
       this._process(fragment, evalContext);
       this._vedaRefsTarget = null;
       this.append(fragment);
+    }
+
+    #resolveHost() {
+      const fromTree = this._findParentComponent();
+      if (fromTree) return fromTree;
+
+      let obj = this._vedaEvalContext || this._vedaParentContext;
+      for (let i = 0; obj && i < MAX_TREE_DEPTH; i++) {
+        if (typeof obj.template === 'string') return obj;
+        obj = Object.getPrototypeOf(obj);
+      }
+      return null;
     }
 
     #refsOwner(evalContext, fallback) {

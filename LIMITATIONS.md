@@ -184,59 +184,44 @@ this.watch(() => state.items.length, callback);
 
 ### 5. Component Tree Depth Limits
 
-**Issue:** Component method search and parent context search have hard-coded depth limits to prevent infinite loops and performance issues.
+**Issue:** Owned-function lookup and Loop parent context search have hard-coded depth limits to prevent infinite loops.
 
 **Limits:**
-- **Method search depth:** 20 levels (`#findMethod` in Component.js)
-  - For event handler method lookup (`onclick="{handleClick}"` and `onclick="{this.handleClick}"` are the same)
-  - Skips `veda-if` / `veda-loop` / `veda-virtual` / `veda-context` / `veda-slot` / `veda-place` wrappers
-  - Crosses Shadow DOM via `getRootNode().host`
+- **Owned function proto depth:** 20 levels (`findOwnedFunction` in Component.js)
+  - Walks the eval-context prototype chain for `onclick="{handleClick}"` / `onclick="{this.handleClick}"` and for `:prop` / Context function values
+  - Does not walk the DOM. A child component does not search ancestors.
 
 - **Loop parent context depth:** 10 levels (LoopComponent.js line 237)
   - For finding parent component context in Loop/If components
   - Why 10? Lower limit because Loop should be close to its data source component
-  - Why different from 20? Loop context search is more performance-critical (runs per item)
 
 **What happens at limit:**
-- Method search: Handler silently fails, console warning logged
+- Owned function lookup: Handler does not run, console warning logged
 - Context search: Returns null, Loop/If may not have access to parent data
 
 **Impact:**
-- Method handlers won't work if component is nested >20 levels deep
+- A child `onclick="{this.save}"` never finds a parent `save` — pass `:on-save` or put `save` on Context
 - Loop components won't find parent context if nested >10 levels deep
 
-**Example of problem:**
-```javascript
-// 21 levels deep - method search fails
-<div>
-  <component-1>
-    <component-2>
-      <!-- ... 18 more levels ... -->
-      <component-21>
-        <button onclick="{handleClick}">
-          <!-- ❌ Won't find handleClick (depth > 20) -->
-        </button>
-      </component-21>
-    </component-2>
-  </component-1>
-</div>
-```
-
 **Workaround:**
-- Keep component nesting shallow (< 10-15 levels)
-- For deep trees, pass methods explicitly via props:
+- Keep Loop nesting shallow
+- For a shared subtree action:
   ```javascript
-  <deep-child :onClick="{this.handleClick}"></deep-child>
+  <${Context} :save="{this.save}">
+    <deep-child></deep-child>
+  </${Context}>
   ```
-- Refactor deeply nested structures (usually indicates design issues)
+- For one child:
+  ```javascript
+  <deep-child :on-save="{this.save}"></deep-child>
+  ```
 
 **Why these specific limits:**
-1. **Prevent infinite loops:** Circular DOM structures (rare but possible with Shadow DOM/slots)
-2. **Performance:** Limit DOM tree traversal cost (O(n) search per lookup)
-3. **Design smell:** Deep nesting >15 levels usually indicates architectural problems
-4. **Different use cases:** Method search is less common (20 is generous), context search is per-item (10 is safer)
+1. **Prevent infinite loops** on a prototype chain or a circular parent walk
+2. **Performance:** Loop context search runs per item
+3. **Design smell:** Deep Loop nesting usually indicates architectural problems
 
-**Status:** Documented limitation (intentional safeguard). If you hit these limits, your component architecture likely needs refactoring.
+**Status:** Documented limitation (intentional safeguard). If you hit the Loop limit, the component tree likely needs flattening.
 
 ---
 

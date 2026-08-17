@@ -25,6 +25,76 @@ const SAFE_EXPR_REGEX = /\{[^}]*\}/g;
 const LAYOUT_TRANSPARENT_TAGS = new Set([
   'veda-if', 'veda-loop', 'veda-context', 'veda-slot', 'veda-place',
 ]);
+const componentInstances = new WeakSet();
+
+function isComponentInstance(obj) {
+  if (obj == null) return false;
+  return componentInstances.has(toRaw(obj)) || componentInstances.has(obj);
+}
+
+function rawFunction(obj, name) {
+  if (obj == null || typeof name !== 'string') return undefined;
+  const raw = toRaw(obj);
+  if (raw && typeof raw[name] === 'function') return raw[name];
+  if (typeof obj[name] === 'function') return obj[name];
+  return undefined;
+}
+
+function* protoChain(start) {
+  const seen = new Set();
+  let obj = start;
+  for (let i = 0; obj && i < MAX_TREE_DEPTH; i++) {
+    if (seen.has(obj)) break;
+    seen.add(obj);
+    yield obj;
+    const raw = toRaw(obj);
+    if (raw && raw !== obj && !seen.has(raw)) {
+      seen.add(raw);
+      yield raw;
+    }
+    const nextRaw = raw ? Object.getPrototypeOf(raw) : null;
+    const nextObj = Object.getPrototypeOf(obj);
+    obj = (nextRaw && nextRaw !== Object.prototype) ? nextRaw : nextObj;
+    if (obj === Object.prototype) break;
+  }
+}
+
+function findOwnedFunction(start, name) {
+  let fallback = null;
+  for (const obj of protoChain(start)) {
+    const fn = rawFunction(obj, name);
+    if (typeof fn !== 'function') continue;
+    const raw = toRaw(obj);
+    if (isComponentInstance(raw)) return {fn: rawFunction(raw, name) || fn, owner: raw};
+    if (isComponentInstance(obj)) return {fn, owner: obj};
+    if (!fallback && raw && Object.prototype.hasOwnProperty.call(raw, name)) {
+      fallback = {fn, owner: raw};
+    }
+  }
+  return fallback;
+}
+
+function resolveOwnedFromExpr(expr, evalContext) {
+  const methodMatch = expr.match(METHOD_NAME_RE);
+  if (methodMatch) return findOwnedFunction(evalContext, methodMatch[1]);
+  const result = ExpressionParser.evaluate(expr, evalContext, true);
+  if (!result || typeof result.value !== 'function') return null;
+  const key = expr.split(/[?.]/).filter(Boolean).pop();
+  const ctx = result.context;
+  const rawOwner = toRaw(ctx);
+  if (isComponentInstance(rawOwner)) {
+    return {fn: rawFunction(rawOwner, key) || result.value, owner: rawOwner};
+  }
+  if (isComponentInstance(ctx)) {
+    return {fn: rawFunction(ctx, key) || result.value, owner: ctx};
+  }
+  return {fn: rawFunction(ctx, key) || result.value, owner: ctx};
+}
+
+function bindOwned(fn, owner) {
+  if (typeof fn !== 'function' || !owner) return fn;
+  return fn.bind(owner);
+}
 
 function assignExprPath(context, expr, value) {
   let path = expr.trim();
@@ -117,6 +187,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     // ---------- Constructor & Lifecycle ----------
     constructor() {
       super();
+      componentInstances.add(this);
       const componentRef = new WeakRef(this);
       this.state = reactive({}, {
         onSet: () => {
@@ -505,20 +576,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       return el.parentElement || el.getRootNode?.()?.host || null;
     }
 
-    #findMethod (name) {
-      if (typeof this[name] === 'function') {
-        return { method: this[name], context: this };
-      }
-      let el = this.#ancestorElement(this);
-      for (let i = 0; el && i < MAX_TREE_DEPTH; i++, el = this.#ancestorElement(el)) {
-        if (this.#isComponentElement(el) && !this.#isFrameworkElement(el) && typeof el[name] === 'function') {
-          return { method: el[name], context: el };
-        }
-      }
-      console.warn(`Method '${name}' not found in component tree`);
-      return null;
-    }
-
     #processAttributes (node) {
       if (node.tagName && (node.tagName.includes('-') || node.hasAttribute('is'))) {
         this.#processCustomComponentAttributes(node);
@@ -558,10 +615,18 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       // Check for pure expression (single {expr} with no surrounding text)
       const pureExpr = expr.match(/^\{([^}]+)\}$/);
 
+      const assignValue = (code, context) => {
+        try {
+          const owned = resolveOwnedFromExpr(code, context);
+          if (owned) return bindOwned(owned.fn, owned.owner);
+        } catch { /* not a function path */ }
+        return ExpressionParser.evaluateAuto(code, context);
+      };
+
       if (this.#isReactive && expr.includes('{')) {
         const cleanup = effect(() => {
           if (pureExpr) {
-            target[propName] = ExpressionParser.evaluateAuto(pureExpr[1].trim(), evalContext);
+            target[propName] = assignValue(pureExpr[1].trim(), evalContext);
           } else {
             target[propName] = expr.replace(EXPR_REGEX, (_, code) => evalExpr(code, evalContext));
           }
@@ -569,7 +634,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         this.#renderEffects.push(cleanup);
       } else {
         if (pureExpr) {
-          target[propName] = ExpressionParser.evaluateAuto(pureExpr[1].trim(), this);
+          target[propName] = assignValue(pureExpr[1].trim(), this);
         } else {
           target[propName] = expr.replace(EXPR_REGEX, (_, code) => evalExpr(code, this));
         }
@@ -659,16 +724,21 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       if (methodMatch) {
         const methodName = methodMatch[1];
         handler = (e) => {
-          const found = this.#findMethod(methodName);
-          if (found) found.method.call(found.context, e, node);
+          const found = findOwnedFunction(evalContext, methodName);
+          if (!found) {
+            console.warn(`Method '${methodName}' not found`);
+            return;
+          }
+          found.fn.call(found.owner, e, node);
         };
       } else {
         try {
-          const result = ExpressionParser.evaluate(expr, evalContext, true);
-          if (result && typeof result.value === 'function') {
-            const fn = result.value;
-            const ctx = result.context;
-            handler = (e) => fn.call(ctx, e, node);
+          const owned = resolveOwnedFromExpr(expr, evalContext);
+          if (owned) {
+            handler = (e) => owned.fn.call(owned.owner, e, node);
+          } else {
+            console.warn(`Handler '${expr}' did not resolve to a function`);
+            return;
           }
         } catch (error) {
           console.warn(`Invalid event handler '${expr}':`, error.message);

@@ -54,8 +54,8 @@ class ContextThemedBox extends Component(HTMLElement) {
         <p style="margin: 0 0 8px;">Outer provider</p>
         <context-status-bar></context-status-bar>
         <div style="display: flex; gap: 10px; margin: 14px 0;">
-          <button onclick="{this.toggleTheme}" style="{this.buttonStyle}">Toggle theme</button>
-          <button onclick="{this.toggleLocale}" style="{this.buttonStyle}">Toggle locale</button>
+          <button onclick="{this.context.toggleTheme}" style="{this.buttonStyle}">Toggle theme</button>
+          <button onclick="{this.context.toggleLocale}" style="{this.buttonStyle}">Toggle locale</button>
         </div>
         <context-nested-panel></context-nested-panel>
       </div>
@@ -86,7 +86,11 @@ class ContextDemo extends Component(HTMLElement) {
         <h2>Context</h2>
         <p>Descendants read <code>this.context</code>. Toggle theme to recolor the outer panel. The inner panel stays dark.</p>
 
-        <${Context} :theme="{this.state.theme}" :locale="{this.state.locale}">
+        <${Context}
+          :theme="{this.state.theme}"
+          :locale="{this.state.locale}"
+          :toggle-theme="{this.toggleTheme}"
+          :toggle-locale="{this.toggleLocale}">
           <context-themed-box></context-themed-box>
         </${Context}>
       </div>

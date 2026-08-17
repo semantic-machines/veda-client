@@ -255,33 +255,26 @@ Handler signature is always `(event, node)`:
 - `node` — the element that had the `on*` attribute
 - `this` — the component that owns the method (see below)
 
-**Method names** — `{handleClick}` and `{this.handleClick}` are the same. The method is looked up on this component, then on ancestor components (skipping `veda-if` / `veda-loop` / `veda-virtual` / `veda-context` / `veda-slot` / `veda-place`), including across Shadow DOM. Lookup runs on the event, so a method added after render still works.
+**Method names** — `{handleClick}` and `{this.handleClick}` are the same. The method is looked up on this component (and on the eval context of Loop / If / Place / Slot). Lookup runs on the event, so a method added after render still works. A child component does not search ancestors.
 
 ```javascript
-class AppShell extends Component(HTMLElement) {
-  toggleTheme() {
-    this.state.theme = this.state.theme === 'light' ? 'dark' : 'light';
+class Card extends Component(HTMLElement) {
+  save() {
+    this.state.saved = true;
   }
   render() {
-    return html`<theme-toggle></theme-toggle>`;
-  }
-}
-
-class ThemeToggle extends Component(HTMLElement) {
-  render() {
-    // Finds AppShell.toggleTheme; this === AppShell
-    return html`<button onclick="{this.toggleTheme}">Toggle</button>`;
+    return html`<button onclick="{this.save}">Save</button>`;
   }
 }
 ```
 
-**Property paths** — a dotted expression is JS property access, not method search. `this` is the object to the left of the last key (`handlers` in `{this.handlers.click}`).
+**Property paths** — a dotted expression is JS property access. `this` is the object to the left of the last key (`handlers` in `{this.handlers.click}`).
 
 ```html
 <button onclick="{this.handlers.click}">Click</button>
 ```
 
-Do not use `{this.handleClick}` vs `{handleClick}` as different features — they are not. To pass a callback into one child, use `:on-toggle="{this.toggleTheme}"` and call `this.state.onToggle` from the child (prefer an arrow so `this` stays the parent).
+Do not use `{this.handleClick}` vs `{handleClick}` as different features — they are not. To pass a callback into one child, use `:on-toggle="{this.toggleTheme}"` and call `this.state.onToggle` from the child. A class method is bound to the component that owns it. For an action many nested children share, put it on Context (`:save="{this.save}"`, then `onclick="{this.context.save}"`).
 
 ### Context
 
@@ -314,7 +307,7 @@ class ThemeToggle extends Component(HTMLElement) {
 }
 ```
 
-Nearest `<veda-context>` that has the key wins; other keys fall through to outer providers. Missing keys are `undefined` (one warning per component). Use Context for subtree data (`theme`, `documentContext`, `documentMode`). Methods still use `onclick="{this.toggleTheme}"`.
+Nearest `<veda-context>` that has the key wins; other keys fall through to outer providers. Missing keys are `undefined` (one warning per component). Use Context for subtree data (`theme`, `documentContext`, `documentMode`) and for ambient actions (`:save="{this.save}"`, then `onclick="{this.context.save}"`). A class method stays bound to the component that provided it.
 
 ### Slots
 

@@ -104,6 +104,7 @@ class TodoList extends Component(HTMLElement) {
 - **[Reactivity Guide](./REACTIVITY.md)** - Comprehensive reactivity tutorial
 - **[FAQ](./FAQ.md)** - Frequently asked questions and solutions
 - **[Performance Benchmarks](./BENCHMARKS.md)** - Measured performance metrics
+- **[Cookbook](./COOKBOOK.md)** - How to do (and not do) typical UI work
 - **[Style Guide](./STYLE_GUIDE.md)** - Best practices and coding patterns
 - **[Changelog](./CHANGELOG.md)** - Version history and breaking changes
 - **[Troubleshooting](./TROUBLESHOOTING.md)** - Common issues and solutions

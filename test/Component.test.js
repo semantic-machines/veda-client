@@ -1064,13 +1064,13 @@ export default ({ test, assert }) => {
     container.remove();
   });
 
-  test('Component - findMethod searches up component tree', async () => {
+  test('Component - child onclick does not find ancestor method', async () => {
     let clickedInParent = false;
 
     class ParentWithMethod extends Component(HTMLElement) {
       static tag = 'test-parent-method';
 
-      handleChildClick = () => {
+      handleChildClick() {
         clickedInParent = true;
       }
 
@@ -1083,7 +1083,7 @@ export default ({ test, assert }) => {
       static tag = 'test-child-caller';
 
       render() {
-        return html`<button onclick="{handleChildClick}">Click</button>`;
+        return html`<button onclick="{this.handleChildClick}">Click</button>`;
       }
     }
 
@@ -1101,15 +1101,19 @@ export default ({ test, assert }) => {
     const child = parent.querySelector('test-child-caller');
     await child.rendered;
 
-    const button = child.querySelector('button');
-    button.click();
+    const warnings = [];
+    const originalWarn = console.warn;
+    console.warn = (...args) => warnings.push(args.join(' '));
+    child.querySelector('button').click();
+    console.warn = originalWarn;
 
-    assert(clickedInParent === true, 'Should find method in parent component');
+    assert(clickedInParent === false, 'Child render must not walk to the parent method');
+    assert(warnings.some(w => w.includes('handleChildClick')), 'Missing method should warn');
 
     container.remove();
   });
 
-  test('Component - this.methodName finds parent method like a bare name', async () => {
+  test('Component - this.methodName and bare name resolve on the author', async () => {
     let receivedThis = null;
     let receivedEvent = null;
     let receivedNode = null;
@@ -1126,6 +1130,7 @@ export default ({ test, assert }) => {
       render() {
         return html`
           <button id="bare" onclick="{handleFromChild}">bare</button>
+          <button id="dotted-own" onclick="{this.handleFromChild}">this</button>
           <test-child-this-caller></test-child-this-caller>
         `;
       }
@@ -1152,21 +1157,63 @@ export default ({ test, assert }) => {
     const child = parent.querySelector('test-child-this-caller');
     await child.rendered;
 
-    const dotted = child.querySelector('#dotted');
-    dotted.click();
-
-    assert(receivedThis === parent, 'this.methodName should call the parent method with this = parent');
+    const ownDotted = parent.querySelector('#dotted-own');
+    ownDotted.click();
+    assert(receivedThis === parent, 'this.methodName on the author should call the author method');
     assert(receivedEvent?.type === 'click', 'Should pass the DOM event');
-    assert(receivedNode === dotted, 'Should pass the element with the handler');
+    assert(receivedNode === ownDotted, 'Should pass the element with the handler');
 
     receivedThis = null;
     parent.querySelector('#bare').click();
     assert(receivedThis === parent, 'Bare method name should use the same this');
 
+    receivedThis = null;
+    child.querySelector('#dotted').click();
+    assert(receivedThis === null, 'Child render must not find the parent method');
+
     container.remove();
   });
 
-  test('Component - method search skips Loop and If wrappers', async () => {
+  test('Component - Loop template {this.method} uses the parent', async () => {
+    let receivedThis = null;
+
+    class ParentLoopMethod extends Component(HTMLElement) {
+      static tag = 'test-parent-loop-method';
+
+      constructor() {
+        super();
+        this.state.items = [{ id: 1 }];
+      }
+
+      handleFromItem(event, node) {
+        receivedThis = this;
+      }
+
+      render() {
+        return html`
+          <${Loop} items="{this.state.items}" as="item" key="id">
+            <button id="loop-own" onclick="{this.handleFromItem}">own</button>
+          </${Loop}>
+        `;
+      }
+    }
+
+    customElements.define('test-parent-loop-method', ParentLoopMethod);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const parent = document.createElement('test-parent-loop-method');
+    container.appendChild(parent);
+    await parent.rendered;
+
+    parent.querySelector('#loop-own').click();
+    assert(receivedThis === parent, 'Loop template should call the parent method');
+
+    container.remove();
+  });
+
+  test('Component - child custom element inside Loop does not find the parent method', async () => {
     let receivedThis = null;
 
     class ParentSkipLoop extends Component(HTMLElement) {
@@ -1194,7 +1241,7 @@ export default ({ test, assert }) => {
       static tag = 'test-child-skip-loop';
 
       render() {
-        return html`<button onclick="{this.handleFromItem}">x</button>`;
+        return html`<button id="loop-child" onclick="{this.handleFromItem}">x</button>`;
       }
     }
 
@@ -1210,9 +1257,172 @@ export default ({ test, assert }) => {
 
     const child = parent.querySelector('test-child-skip-loop');
     await child.rendered;
+    child.querySelector('#loop-child').click();
+    assert(receivedThis === null, 'Child custom element must not find the parent method');
+
+    container.remove();
+  });
+
+  test('Component - :on-save class method keeps this as the parent', async () => {
+    let owner = null;
+    let lastRow = null;
+
+    const Child = class extends Component(HTMLElement) {
+      static tag = 'test-on-save-child';
+      handleClick() {
+        this.state.onSave?.(this.state.row);
+      }
+      render() {
+        return html`<button onclick="{this.handleClick}">save</button>`;
+      }
+    };
+
+    class Parent extends Component(HTMLElement) {
+      static tag = 'test-on-save-parent';
+      constructor() {
+        super();
+        this.state.row = {id: 7};
+      }
+      save(row) {
+        owner = this;
+        lastRow = row;
+      }
+      render() {
+        return html`<${Child} :on-save="{this.save}" :row="{this.state.row}"></${Child}>`;
+      }
+    }
+
+    customElements.define(Child.tag, Child);
+    customElements.define(Parent.tag, Parent);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const parent = document.createElement(Parent.tag);
+    container.appendChild(parent);
+    await parent.rendered;
+
+    const child = parent.querySelector(Child.tag);
+    await child.rendered;
     child.querySelector('button').click();
 
-    assert(receivedThis === parent, 'Should skip veda-loop and call the parent method');
+    assert(owner === parent, 'Class method passed as :on-save should keep this = parent');
+    assert(lastRow?.id === 7, 'Child should pass its row into the parent method');
+
+    container.remove();
+  });
+
+  test('Component - Context :save class method keeps this as the provider', async () => {
+    let owner = null;
+
+    const Child = class extends Component(HTMLElement) {
+      static tag = 'test-ctx-save-child';
+      render() {
+        return html`<button onclick="{this.context.save}">save</button>`;
+      }
+    };
+
+    class App extends Component(HTMLElement) {
+      static tag = 'test-ctx-save-app';
+      save() {
+        owner = this;
+      }
+      render() {
+        return html`
+          <${Context} :save="{this.save}">
+            <${Child}></${Child}>
+          </${Context}>
+        `;
+      }
+    }
+
+    customElements.define(Child.tag, Child);
+    customElements.define(App.tag, App);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const app = document.createElement(App.tag);
+    container.appendChild(app);
+    await app.rendered;
+
+    const child = app.querySelector(Child.tag);
+    await child.rendered;
+    child.querySelector('button').click();
+
+    assert(owner === app, 'Context-provided class method should keep this = provider');
+
+    container.remove();
+  });
+
+  test('Component - If template {this.save} uses the card', async () => {
+    let owner = null;
+
+    class Card extends Component(HTMLElement) {
+      static tag = 'test-if-save-card';
+      constructor() {
+        super();
+        this.state.open = true;
+      }
+      save() {
+        owner = this;
+      }
+      render() {
+        return html`
+          <${If} condition="{this.state.open}">
+            <button onclick="{this.save}">save</button>
+          </${If}>
+        `;
+      }
+    }
+
+    customElements.define(Card.tag, Card);
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const card = document.createElement(Card.tag);
+    container.appendChild(card);
+    await card.rendered;
+
+    card.querySelector('button').click();
+    assert(owner === card, 'If template should call the card method with this = card');
+
+    container.remove();
+  });
+
+  test('Component - Loop row.remove keeps this reactive', async () => {
+    class App extends Component(HTMLElement) {
+      static tag = 'test-row-remove-reactive';
+      constructor() {
+        super();
+        this.state.rows = [{
+          id: 1,
+          label: 'A',
+          remove() {
+            this.label = 'gone';
+          },
+        }];
+      }
+      render() {
+        return html`
+          <${Loop} items="{this.state.rows}" as="row" key="id">
+            <div>
+              <span class="lbl">{row.label}</span>
+              <button class="rm" onclick="{row.remove}">x</button>
+            </div>
+          </${Loop}>
+        `;
+      }
+    }
+
+    customElements.define(App.tag, App);
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const app = document.createElement(App.tag);
+    container.appendChild(app);
+    await app.rendered;
+
+    app.querySelector('.rm').click();
+    await flushEffects();
+    assert(app.querySelector('.lbl').textContent === 'gone', 'row.remove should mutate through the reactive item');
 
     container.remove();
   });
@@ -1855,7 +2065,7 @@ export default ({ test, assert }) => {
     cleanup();
   });
 
-  test('Component - findMethod finds method in current component', async () => {
+  test('Component - method name finds method on the current component', async () => {
     let foundMethodCalled = false;
 
     class FindMethodComponent extends Component(HTMLElement) {
@@ -1865,7 +2075,6 @@ export default ({ test, assert }) => {
       }
 
       render() {
-        // Use simple name to trigger #findMethod lookup (lines 443-444)
         return html`<button onclick="{myLocalMethod}">Click</button>`;
       }
     }
@@ -2067,29 +2276,17 @@ export default ({ test, assert }) => {
     container.remove();
   });
 
-  test('Component - findMethod returns method from current component', async () => {
-    // Tests lines 443-444: finding method directly in this[name]
-    // ATTEMPT: This test tries to create conditions where:
-    // 1. evaluate() returns undefined (method not found during render)
-    // 2. But this[name] exists as function (method added after render but before click)
-
+  test('Component - method added after render is found on click', async () => {
     let methodCalled = false;
 
     class MethodInThisComponent extends Component(HTMLElement) {
 
       render() {
-        // At render time, dynamicHandler doesn't exist
-        // So evaluate() will return undefined
-        // And we'll go to the /^\w+$/ branch that calls #findMethod
         return html`<button onclick="{dynamicHandler}">Click</button>`;
       }
 
       async connectedCallback() {
         await super.connectedCallback();
-
-        // Add method AFTER render, but BEFORE click
-        // This way evaluate() returned undefined during render,
-        // but this[name] exists when #findMethod is called
         this.dynamicHandler = function() {
           methodCalled = true;
         };
@@ -2098,13 +2295,12 @@ export default ({ test, assert }) => {
 
     const { component, container, cleanup } = await createTestComponent(MethodInThisComponent);
 
-    // Verify method was added
     assert(typeof component.dynamicHandler === 'function', 'Method should be added after render');
 
     const button = component.querySelector('button');
     button.click();
 
-    assert(methodCalled === true, 'Should find method via #findMethod even if added after render');
+    assert(methodCalled === true, 'Should find a method added after render on click');
     cleanup();
   });
 

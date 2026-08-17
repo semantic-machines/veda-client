@@ -70,6 +70,10 @@ class SlotDemo extends Component(HTMLElement) {
 class DemoModal extends Component(HTMLElement) {
   static tag = 'demo-modal';
 
+  close() {
+    this.state.open = false;
+  }
+
   render() {
     return html`
       <${Slot} name="trigger"></${Slot}>

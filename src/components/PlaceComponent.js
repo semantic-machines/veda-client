@@ -1,5 +1,7 @@
 import Component from './Component.js';
 
+const MAX_TREE_DEPTH = 20;
+
 /**
  * Places children into a target node (default: document.body).
  *
@@ -45,17 +47,32 @@ export default function PlaceComponent(Class = HTMLElement) {
 
     pre() {
       this.#clearMoved();
+      const evalContext = this._vedaEvalContext || this._vedaParentContext;
+      this._vedaRefsTarget = this.#refsOwner(evalContext, this._vedaParentContext);
     }
 
     post() {
-      if (this.#isDisconnected) return;
-      const target = this.#resolveTarget();
-      if (!target) return;
-      while (this.firstChild) {
-        const node = this.firstChild;
-        target.appendChild(node);
-        this.#moved.push(node);
+      try {
+        if (this.#isDisconnected) return;
+        const target = this.#resolveTarget();
+        if (!target) return;
+        while (this.firstChild) {
+          const node = this.firstChild;
+          target.appendChild(node);
+          this.#moved.push(node);
+        }
+      } finally {
+        this._vedaRefsTarget = null;
       }
+    }
+
+    #refsOwner(evalContext, fallback) {
+      let obj = evalContext;
+      for (let i = 0; obj && i < MAX_TREE_DEPTH; i++) {
+        if (obj.refs && typeof obj.refs === 'object' && !Array.isArray(obj.refs)) return obj;
+        obj = Object.getPrototypeOf(obj);
+      }
+      return fallback;
     }
 
     #clearMoved() {

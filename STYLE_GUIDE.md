@@ -2,6 +2,8 @@
 
 Best practices and coding patterns for Veda Client Framework.
 
+For typical UI scenarios (Context, Slot, Place, bind, refs, events) see [COOKBOOK.md](./COOKBOOK.md).
+
 ## Table of Contents
 
 - [Component Patterns](#component-patterns)
