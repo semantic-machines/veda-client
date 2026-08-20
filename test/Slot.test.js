@@ -112,6 +112,96 @@ export default ({test, assert}) => {
     cleanup();
   });
 
+  test('Slot - renders fallback content in the layout context', async () => {
+    let handlerOwner = null;
+
+    class FallbackSlotHost extends Component(HTMLElement) {
+      static tag = `test-slot-fallback-host-${Math.random().toString(36).slice(2, 8)}`;
+      handleFallback() {
+        handlerOwner = this;
+      }
+      render() {
+        return html`
+          <div class="trigger">
+            <${Slot} name="trigger">
+              <button class="fallback-trigger" ref="fallbackTrigger" onclick="{this.handleFallback}">
+                Open by default
+              </button>
+            </${Slot}>
+          </div>
+          <div class="content">
+            <${Slot} name="content"><p class="fallback-content">Default content</p></${Slot}>
+          </div>
+          <div class="content-copy">
+            <${Slot} name="content"><p class="fallback-content-copy">Default content copy</p></${Slot}>
+          </div>
+          <div class="default">
+            <${Slot}><p class="fallback-default">Default slot content</p></${Slot}>
+          </div>
+        `;
+      }
+    }
+    customElements.define(FallbackSlotHost.tag, FallbackSlotHost);
+
+    class FallbackSlotApp extends Component(HTMLElement) {
+      render() {
+        return html`<${FallbackSlotHost}></${FallbackSlotHost}>`;
+      }
+    }
+
+    const {component, cleanup} = await createTestComponent(FallbackSlotApp);
+    const host = component.querySelector(FallbackSlotHost.tag);
+    await host.rendered;
+
+    const button = host.querySelector('.fallback-trigger');
+    assert(button?.textContent.trim() === 'Open by default', 'Named slot should render fallback');
+    assert(host.querySelector('.fallback-content'), 'Each empty named slot should render its fallback');
+    assert(host.querySelector('.fallback-content-copy'), 'Repeated empty named slot should render its fallback');
+    assert(host.querySelector('.fallback-default'), 'Empty default slot should render fallback');
+    assert(host.refs.fallbackTrigger === button, 'Fallback ref should belong to the layout');
+    button.click();
+    assert(handlerOwner === host, 'Fallback handler should belong to the layout');
+    cleanup();
+  });
+
+  test('Slot - assigned content replaces fallback, including an empty element', async () => {
+    class FallbackOverrideHost extends Component(HTMLElement) {
+      static tag = `test-slot-fallback-override-${Math.random().toString(36).slice(2, 8)}`;
+      render() {
+        return html`
+          <div class="named">
+            <${Slot} name="content"><p class="fallback-named">Default content</p></${Slot}>
+          </div>
+          <div class="default">
+            <${Slot}><p class="fallback-default">Default slot content</p></${Slot}>
+          </div>
+        `;
+      }
+    }
+    customElements.define(FallbackOverrideHost.tag, FallbackOverrideHost);
+
+    class FallbackOverrideApp extends Component(HTMLElement) {
+      render() {
+        return html`
+          <${FallbackOverrideHost}>
+            <div slot="content" class="empty-content"></div>
+            <strong class="assigned-default">Assigned default content</strong>
+          </${FallbackOverrideHost}>
+        `;
+      }
+    }
+
+    const {component, cleanup} = await createTestComponent(FallbackOverrideApp);
+    const host = component.querySelector(FallbackOverrideHost.tag);
+    await host.rendered;
+
+    assert(host.querySelector('.empty-content'), 'Empty assigned element should be rendered');
+    assert(!host.querySelector('.fallback-named'), 'Empty assigned element should suppress named fallback');
+    assert(host.querySelector('.assigned-default'), 'Assigned default content should be rendered');
+    assert(!host.querySelector('.fallback-default'), 'Assigned default content should suppress fallback');
+    cleanup();
+  });
+
   test('Slot - ref on slotted content is stored on the authoring parent', async () => {
     class RefSlotHost extends Component(HTMLElement) {
       static tag = `test-slot-ref-host-${Math.random().toString(36).slice(2, 8)}`;

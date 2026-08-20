@@ -250,6 +250,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           this.#holdsSubscription = false;
         }
         this.#childrenRendered = [];
+        this.refs = {};
         // Clear state properties via the raw target to release references (e.g. Models)
         // without triggering reactive updates in child components that haven't
         // disconnected yet.
@@ -294,6 +295,14 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     _cleanupAllEventListeners() { this.#cleanupEventListeners(); }
     _getRenderEffectsCount() { return this.#renderEffects.length; }
     _extractRenderEffects(startIndex) { return this.#renderEffects.splice(startIndex); }
+    _getEventListenersCount() { return this.#eventListeners.length; }
+    _extractEventListeners(startIndex) { return this.#eventListeners.splice(startIndex); }
+    _stopEventListeners(listeners) {
+      if (!listeners) return;
+      for (const { node, eventName, handler } of listeners) {
+        node.removeEventListener(eventName, handler);
+      }
+    }
 
     _deferRendered() {
       this.#deferredRendered = new Promise(resolve => {
@@ -319,6 +328,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         this.refs = {};
         this.#renderEffects.forEach(c => c());
         this.#renderEffects = [];
+        this.#cleanupEventListeners();
 
         const pre = this.pre();
         if (pre instanceof Promise) await pre;

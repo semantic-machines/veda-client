@@ -21,13 +21,15 @@
       <li><strong>Layout</strong> draws holes: <code>&lt;${Slot} name="trigger"&gt;</code></li>
       <li><strong>Parent</strong> fills them: <code>&lt;button slot="trigger"&gt;</code></li>
     </ul>
-    <p>A child without <code>slot</code> (and non-empty text) goes into the unnamed <code>&lt;${Slot}&gt;</code>. Click Ping or edit the title — handlers, <code>{this.state.title}</code>, and <code>ref="ping"</code> belong to the parent (<code>this.refs.ping</code>), not to the layout.</p>
+    <p>A child without <code>slot</code> (and non-empty text) goes into the unnamed <code>&lt;${Slot}&gt;</code>. Content inside a Slot is fallback content: it is shown only when the parent did not pass a matching node. Click Ping or edit the title — handlers, <code>{this.state.title}</code>, and <code>ref="ping"</code> on passed content belong to the parent (<code>this.refs.ping</code>), not to the layout.</p>
     <pre><code>class SlotLayout extends Component(HTMLElement) {
   render() {
     return html`
-      &lt;${Slot} name="trigger"&gt;&lt;/${Slot}&gt;
-      &lt;${Slot} name="content"&gt;&lt;/${Slot}&gt;
-      &lt;${Slot}&gt;&lt;/${Slot}&gt;
+      &lt;${Slot} name="trigger"&gt;
+        &lt;button&gt;Default trigger&lt;/button&gt;
+      &lt;/${Slot}&gt;
+      &lt;${Slot} name="content"&gt;&lt;p&gt;Default content&lt;/p&gt;&lt;/${Slot}&gt;
+      &lt;${Slot}&gt;&lt;span&gt;Default slot content&lt;/span&gt;&lt;/${Slot}&gt;
     `;
   }
 }

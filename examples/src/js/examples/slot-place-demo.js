@@ -11,15 +11,15 @@ class SlotLayout extends Component(HTMLElement) {
       <div style="display: grid; gap: 10px;">
         <div style="border: 2px dashed #1976d2; border-radius: 6px; padding: 10px; background: #e3f2fd;">
           <div style="font-size: 0.75em; color: #1565c0; margin-bottom: 6px;">layout hole: name="trigger"</div>
-          <${Slot} name="trigger"></${Slot}>
+          <${Slot} name="trigger"><button type="button">Default trigger</button></${Slot}>
         </div>
         <div style="border: 2px dashed #2e7d32; border-radius: 6px; padding: 10px; background: #e8f5e9;">
           <div style="font-size: 0.75em; color: #2e7d32; margin-bottom: 6px;">layout hole: name="content"</div>
-          <${Slot} name="content"></${Slot}>
+          <${Slot} name="content"><p style="margin: 0;">Default content</p></${Slot}>
         </div>
         <div style="border: 2px dashed #757575; border-radius: 6px; padding: 10px; background: #f5f5f5;">
           <div style="font-size: 0.75em; color: #616161; margin-bottom: 6px;">layout hole: default (no name)</div>
-          <${Slot}></${Slot}>
+          <${Slot}><span>Default slot content</span></${Slot}>
         </div>
       </div>
     `;
@@ -62,6 +62,11 @@ class SlotDemo extends Component(HTMLElement) {
           <span>No slot attribute → default</span>
           and plain text
         </${SlotLayout}>
+
+        <p style="font-size: 0.9em; color: #555; margin-top: 16px;">
+          Without passed children, the layout renders the fallback inside each Slot.
+        </p>
+        <${SlotLayout}></${SlotLayout}>
       </div>
     `;
   }

@@ -48,6 +48,9 @@ export default function ValueComponent (Class = HTMLElement) {
       ? (Array.isArray(modelValue) ? modelValue : [modelValue])
       : [];
 
+    this._cleanupAllEventListeners();
+    this._extractRenderEffects(0).forEach(cleanup => cleanup());
+
     container.replaceChildren();
     this.#valueNodes.clear();
 

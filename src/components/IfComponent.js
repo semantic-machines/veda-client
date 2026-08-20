@@ -18,6 +18,7 @@ export default function IfComponent(Class = HTMLElement) {
     #templateEl = null;  // <template> parsed once; clone via .content; cleared on disconnect
     #currentContent = null;
     #contentEffects = null;
+    #contentListeners = null;
     #placeholder = null;
     #isDisconnected = false;
 
@@ -82,11 +83,29 @@ export default function IfComponent(Class = HTMLElement) {
         this.#contentEffects.forEach(cleanup => cleanup());
         this.#contentEffects = null;
       }
+      if (this.#contentListeners) {
+        this._stopEventListeners(this.#contentListeners);
+        this.#contentListeners = null;
+      }
+      this.#dropContentRefs();
       if (this.#currentContent) {
         for (const node of this.#currentContent) {
           node.remove?.();
         }
         this.#currentContent = null;
+      }
+    }
+
+    #dropContentRefs() {
+      const nodes = this.#currentContent;
+      if (!nodes?.length) return;
+      for (const owner of [this, this._vedaParentContext]) {
+        if (!owner?.refs) continue;
+        for (const [name, node] of Object.entries(owner.refs)) {
+          if (nodes.some(root => root === node || root.contains?.(node))) {
+            delete owner.refs[name];
+          }
+        }
       }
     }
 
@@ -101,10 +120,14 @@ export default function IfComponent(Class = HTMLElement) {
         const tempContainer = document.createElement('div');
         tempContainer.appendChild(this.#templateEl.content.cloneNode(true));
 
+        this.#placeholder?.remove();
+
         const evalContext = this.#createEvalContext();
         const effectsStartIndex = this._getRenderEffectsCount();
+        const listenersStartIndex = this._getEventListenersCount();
         this._process(tempContainer, evalContext);
         this.#contentEffects = this._extractRenderEffects(effectsStartIndex);
+        this.#contentListeners = this._extractEventListeners(listenersStartIndex);
 
         const contentNodes = [];
         let node;
