@@ -36,6 +36,12 @@ export interface ComponentInstance<M extends Model = Model> {
 
   // Internal helper method
   _findParentComponent(): HTMLElement | null;
+  _cleanupAllEventListeners(): void;
+  _getRenderEffectsCount(): number;
+  _extractRenderEffects(startIndex: number): Array<() => void>;
+  _getEventListenersCount(): number;
+  _extractEventListeners(startIndex: number): Array<{node: EventTarget; eventName: string; handler: EventListener}>;
+  _stopEventListeners(listeners?: Array<{node: EventTarget; eventName: string; handler: EventListener}>): void;
 }
 
 export interface ComponentConstructor {

@@ -32,6 +32,7 @@ export default function VirtualComponent(Class = HTMLElement) {
     #boundsEffect = null;
     #resizeObserver = null;
     #viewportElement = null;
+    #scrollHandler = null;
     #spacerElement = null;
     #contentElement = null;
     #childrenFragment = null;
@@ -238,6 +239,11 @@ export default function VirtualComponent(Class = HTMLElement) {
         this.#resizeObserver = null;
       }
 
+      if (this.#viewportElement && this.#scrollHandler) {
+        this.#viewportElement.removeEventListener('scroll', this.#scrollHandler);
+      }
+      this.#scrollHandler = null;
+      this.replaceChildren();
       this.#viewportElement = null;
       this.#spacerElement = null;
       this.#contentElement = null;
@@ -270,7 +276,8 @@ export default function VirtualComponent(Class = HTMLElement) {
       this.#viewportElement = document.createElement('div');
       this.#viewportElement.className = 'virtual-viewport';
       this.#viewportElement.style.cssText = `${heightStyle}; overflow-y: auto; position: relative;`;
-      this.#viewportElement.addEventListener('scroll', (e) => this.handleScroll(e), { passive: true });
+      this.#scrollHandler = (e) => this.handleScroll(e);
+      this.#viewportElement.addEventListener('scroll', this.#scrollHandler, { passive: true });
 
       if (this.#isTableMode) {
         this.#buildTableDOM();

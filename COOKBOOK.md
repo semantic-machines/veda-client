@@ -132,12 +132,18 @@ import Component, { html, Slot } from 'veda-client';
 class Popup extends Component(HTMLElement) {
   static tag = 'veda-popup';
 
+  open() {
+    this.state.open = true;
+  }
+
   render() {
     return html`
       <span class="popup">
-        <${Slot} name="trigger"></${Slot}>
+        <${Slot} name="trigger">
+          <button onclick="{this.open}">Open</button>
+        </${Slot}>
         <div class="popup-body" condition="{this.state.open}">
-          <${Slot} name="content"></${Slot}>
+          <${Slot} name="content"><p>No content</p></${Slot}>
         </div>
       </span>
     `;
@@ -152,6 +158,14 @@ class Popup extends Component(HTMLElement) {
 ```
 
 Expressions, `onclick`, and `ref` on slotted nodes belong to the **parent that wrote them**, not to the layout. `this.refs.open` is on that parent, not on `<veda-slot>`.
+
+Content inside `<${Slot}>` is fallback content. It renders only when the parent did not pass a matching node. Its expressions, handlers, and refs belong to the layout that wrote the Slot. An assigned empty element suppresses fallback:
+
+```javascript
+<${Popup}>
+  <div slot="content"></div>
+</${Popup}>
+```
 
 Nodes without `slot` go to `<${Slot}>` (default), including non-empty text.
 

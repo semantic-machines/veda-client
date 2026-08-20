@@ -30,6 +30,7 @@ export default function PlaceComponent(Class = HTMLElement) {
     disconnectedCallback() {
       if (this.#isDisconnected) return;
       this.#isDisconnected = true;
+      this.#dropMovedRefs();
       this.#clearMoved();
       this.#placeholder?.remove();
       this.#placeholder = null;
@@ -46,6 +47,8 @@ export default function PlaceComponent(Class = HTMLElement) {
     }
 
     pre() {
+      this._cleanupAllEventListeners();
+      this.#dropMovedRefs();
       this.#clearMoved();
       const evalContext = this._vedaEvalContext || this._vedaParentContext;
       this._vedaRefsTarget = this.#refsOwner(evalContext, this._vedaParentContext);
@@ -73,6 +76,24 @@ export default function PlaceComponent(Class = HTMLElement) {
         obj = Object.getPrototypeOf(obj);
       }
       return fallback;
+    }
+
+    #dropMovedRefs() {
+      if (!this.#moved.length) return;
+      const evalContext = this._vedaEvalContext || this._vedaParentContext;
+      const owners = [
+        this._vedaRefsTarget,
+        this._vedaParentContext,
+        this.#refsOwner(evalContext, this._vedaParentContext),
+      ];
+      for (const owner of owners) {
+        if (!owner?.refs) continue;
+        for (const [name, node] of Object.entries(owner.refs)) {
+          if (this.#moved.some(root => root === node || root.contains?.(node))) {
+            delete owner.refs[name];
+          }
+        }
+      }
     }
 
     #clearMoved() {

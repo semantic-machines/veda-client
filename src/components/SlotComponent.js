@@ -34,6 +34,7 @@ export default function SlotComponent(Class = HTMLElement) {
     disconnectedCallback() {
       if (this.#isDisconnected) return;
       this.#isDisconnected = true;
+      this.#dropChildRefs();
       this.replaceChildren();
       // Keep #host. Place may move this node to another parent and reconnect;
       // the layout host is no longer an ancestor after the move.
@@ -48,19 +49,23 @@ export default function SlotComponent(Class = HTMLElement) {
     }
 
     #mount() {
+      this._cleanupAllEventListeners();
+      this.#dropChildRefs();
       this.replaceChildren();
       const host = this.#host;
-      if (!host?.template) return;
+      if (!host) return;
 
       const name = this.getAttribute('name') || 'default';
       const tpl = document.createElement('template');
-      tpl.innerHTML = host.template;
+      tpl.innerHTML = host.template || '';
 
       const fragment = document.createDocumentFragment();
+      let hasProjectedContent = false;
       for (const child of [...tpl.content.childNodes]) {
         if (child.nodeType === Node.TEXT_NODE) {
           if (name !== 'default' || !child.nodeValue.trim()) continue;
           fragment.appendChild(child.cloneNode(true));
+          hasProjectedContent = true;
           continue;
         }
         if (child.nodeType !== Node.ELEMENT_NODE) continue;
@@ -68,10 +73,16 @@ export default function SlotComponent(Class = HTMLElement) {
         if (slotName !== name) continue;
         child.removeAttribute('slot');
         fragment.appendChild(child.cloneNode(true));
+        hasProjectedContent = true;
       }
 
-      // Slot content is authored by the host's parent, not by the host or the slot.
-      const evalContext = host._vedaEvalContext || host;
+      if (!hasProjectedContent && this.template) {
+        tpl.innerHTML = this.template;
+        fragment.appendChild(tpl.content.cloneNode(true));
+      }
+
+      // Projected content belongs to the host's parent; fallback belongs to the host.
+      const evalContext = hasProjectedContent ? host._vedaEvalContext || host : host;
       this._vedaRefsTarget = this.#refsOwner(evalContext, host);
       this._process(fragment, evalContext);
       this._vedaRefsTarget = null;
@@ -88,6 +99,17 @@ export default function SlotComponent(Class = HTMLElement) {
         obj = Object.getPrototypeOf(obj);
       }
       return null;
+    }
+
+    #dropChildRefs() {
+      const host = this.#host;
+      if (!host) return;
+      const evalContext = host._vedaEvalContext || host;
+      const owner = this._vedaRefsTarget || this.#refsOwner(evalContext, host);
+      if (!owner?.refs) return;
+      for (const [name, node] of Object.entries(owner.refs)) {
+        if (node && this.contains(node)) delete owner.refs[name];
+      }
     }
 
     #refsOwner(evalContext, fallback) {

@@ -62,16 +62,7 @@ export default function LoopComponent(Class = HTMLElement) {
       // because that triggers reactive updates in child components (like IfComponent)
       // whose effects haven't been cleaned up yet, causing spurious errors.
       for (const [, itemData] of this.#itemsMap) {
-        if (itemData.effects) {
-          itemData.effects.forEach(cleanup => cleanup());
-          itemData.effects = null;
-        }
-        if (itemData.element) {
-          itemData.element.remove();
-          itemData.element = null;
-        }
-        itemData.evalContext = null;
-        itemData.item = null;
+        this.#releaseItem(itemData);
       }
       this.#itemsMap.clear();
       this.#templateEl = null;
@@ -132,19 +123,7 @@ export default function LoopComponent(Class = HTMLElement) {
           // Remove element first — triggers disconnectedCallback for child custom
           // elements (e.g. IfComponent), which clean up their own effects before
           // we release the evalContext reference.
-          if (itemData.element) {
-            itemData.element.remove();
-          }
-          // Cleanup effects created by Loop's _process for this item
-          if (itemData.effects) {
-            itemData.effects.forEach(cleanup => cleanup());
-            itemData.effects = null;
-          }
-          // Clear references for GC. Don't set reactive properties to null
-          // (evalContext[itemName] = null) to avoid triggering stale effects.
-          itemData.evalContext = null;
-          itemData.element = null;
-          itemData.item = null;
+          this.#releaseItem(itemData);
           this.#itemsMap.delete(key);
         }
       }
@@ -172,8 +151,8 @@ export default function LoopComponent(Class = HTMLElement) {
 
         if (!itemData) {
           // Create new element with index
-          const { element, evalContext, effects } = this.#createItemElement(item, index);
-          itemData = { element, item, index, evalContext, effects };
+          const { element, evalContext, effects, listeners } = this.#createItemElement(item, index);
+          itemData = { element, item, index, evalContext, effects, listeners };
           this.#itemsMap.set(key, itemData);
         } else {
           // Update existing element if item or index changed
@@ -362,14 +341,33 @@ export default function LoopComponent(Class = HTMLElement) {
         }
       }
 
-      // Capture effects created during _process for this specific element
+      // Capture effects and listeners created during _process for this item
       const effectsStartIndex = this._getRenderEffectsCount();
+      const listenersStartIndex = this._getEventListenersCount();
       this._process(fragment, evalContext);
       const itemEffects = this._extractRenderEffects(effectsStartIndex);
+      const itemListeners = this._extractEventListeners(listenersStartIndex);
 
       element = fragment.firstElementChild;
 
-      return { element, evalContext, effects: itemEffects };
+      return { element, evalContext, effects: itemEffects, listeners: itemListeners };
+    }
+
+    #releaseItem(itemData) {
+      if (itemData.element) {
+        itemData.element.remove();
+        itemData.element = null;
+      }
+      if (itemData.effects) {
+        itemData.effects.forEach(cleanup => cleanup());
+        itemData.effects = null;
+      }
+      if (itemData.listeners) {
+        this._stopEventListeners(itemData.listeners);
+        itemData.listeners = null;
+      }
+      itemData.evalContext = null;
+      itemData.item = null;
     }
 
     render() {

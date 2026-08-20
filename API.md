@@ -311,18 +311,25 @@ Nearest `<veda-context>` that has the key wins; other keys fall through to outer
 
 ### Slots
 
-Project named children from the host's original template into placeholders in `render()`:
+Project named children from the host's original template into placeholders in `render()`. Content inside a Slot is its fallback:
 
 ```javascript
 import Component, { html, Slot } from 'veda-client';
 
 class Popup extends Component(HTMLElement) {
   static tag = 'veda-popup';
+  open() {
+    this.state.open = true;
+  }
   render() {
     return html`
       <span>
-        <${Slot} name="trigger"></${Slot}>
-        <div class="body"><${Slot} name="content"></${Slot}></div>
+        <${Slot} name="trigger">
+          <button onclick="{this.open}">Open</button>
+        </${Slot}>
+        <div class="body">
+          <${Slot} name="content"><p>No content</p></${Slot}>
+        </div>
       </span>
     `;
   }
@@ -335,7 +342,7 @@ class Popup extends Component(HTMLElement) {
 </${Popup}>
 ```
 
-Nodes without `slot` go to `<${Slot}>` (default), including non-empty text nodes. Slotted expressions, `onclick`, and `ref` belong to the parent that authored the content (`this.refs.open` on that parent, not on `<veda-slot>`). `name="{this.state.hole}"` is interpolated.
+Nodes without `slot` go to `<${Slot}>` (default), including non-empty text nodes. A Slot renders its fallback only when no matching node was passed. An assigned empty element still suppresses fallback. Slotted expressions, `onclick`, and `ref` belong to the parent that authored the content (`this.refs.open` on that parent, not on `<veda-slot>`). Fallback expressions, handlers, and refs belong to the layout component that wrote the Slot. `name="{this.state.hole}"` is interpolated.
 
 ### Refs
 
