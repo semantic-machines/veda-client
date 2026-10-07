@@ -1,4 +1,5 @@
 import Component from './Component.js';
+import {toRaw} from '../Reactive.js';
 
 const MAX_TREE_DEPTH = 20;
 
@@ -14,6 +15,9 @@ const MAX_TREE_DEPTH = 20;
  * Popup render():
  *   <veda-slot name="trigger"></veda-slot>
  *   <veda-slot name="content"></veda-slot>
+ *
+ * Forward an outer slot into an inner one by projecting the outlet itself:
+ *   <ui-card><veda-slot name="page-aside" slot="aside"></veda-slot></ui-card>
  */
 export default function SlotComponent(Class = HTMLElement) {
   return class SlotComponentClass extends Component(Class) {
@@ -85,11 +89,41 @@ export default function SlotComponent(Class = HTMLElement) {
       const evalContext = hasProjectedContent ? host._vedaEvalContext || host : host;
       this._vedaRefsTarget = this.#refsOwner(evalContext, host);
       this._process(fragment, evalContext);
+      if (hasProjectedContent) this.#pinProjectedSlots(fragment, evalContext);
       this._vedaRefsTarget = null;
       this.append(fragment);
     }
 
+    // A forwarded outlet is cloned into the inner component, so its DOM parent
+    // is the wrong host. Pin the component that authored the projected template.
+    #pinProjectedSlots(fragment, evalContext) {
+      const author = this.#authorFromContext(evalContext);
+      if (!author) return;
+      for (const slot of fragment.querySelectorAll('veda-slot')) {
+        slot._vedaSlotHost = author;
+      }
+    }
+
+    #authorFromContext(context) {
+      let obj = context;
+      for (let i = 0; obj && i < MAX_TREE_DEPTH; i++) {
+        const raw = toRaw(obj) || obj;
+        // State objects prototype-chain to their component, so instanceof matches
+        // the proxy too. Only the component owns `template`.
+        if (
+          raw instanceof Element
+          && Object.prototype.hasOwnProperty.call(raw, 'template')
+          && typeof raw.template === 'string'
+        ) return raw;
+        obj = Object.getPrototypeOf(raw);
+        if (obj === Object.prototype) break;
+      }
+      return null;
+    }
+
     #resolveHost() {
+      if (this._vedaSlotHost) return this._vedaSlotHost;
+
       const fromTree = this._findParentComponent();
       if (fromTree) return fromTree;
 

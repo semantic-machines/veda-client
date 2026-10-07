@@ -3,6 +3,12 @@ import Component, {html} from '../src/components/Component.js';
 import {Slot} from '../src/components/SlotComponent.js';
 import {createTestComponent} from './helpers.js';
 
+function defineSlotEl(Class) {
+  Class.tag = `test-slot-${Math.random().toString(36).slice(2, 8)}`;
+  customElements.define(Class.tag, Class);
+  return Class;
+}
+
 export default ({test, assert}) => {
 
   test('Slot - projects named and default content from the host template', async () => {
@@ -259,6 +265,96 @@ export default ({test, assert}) => {
     await host.rendered;
 
     assert(host.querySelector('.dyn button').textContent === 'Open', 'Interpolated slot name should match');
+    cleanup();
+  });
+
+  test('Slot - forwards a same-named slot through a wrapper into the inner layout', async () => {
+    const Card = defineSlotEl(class extends Component(HTMLElement) {
+      render() {
+        return html`
+          <div class="card">
+            <div class="card__body"><${Slot}></${Slot}></div>
+            <div class="card__aside"><${Slot} name="aside"></${Slot}></div>
+          </div>
+        `;
+      }
+    });
+
+    const Panel = defineSlotEl(class extends Component(HTMLElement) {
+      render() {
+        return html`
+          <div class="panel">
+            <${Card}><${Slot} name="aside" slot="aside"></${Slot}></${Card}>
+          </div>
+        `;
+      }
+    });
+
+    class Page extends Component(HTMLElement) {
+      render() {
+        return html`<${Panel}><span slot="aside" class="badge">5 новых</span></${Panel}>`;
+      }
+    }
+
+    const {component, cleanup} = await createTestComponent(Page);
+    const aside = component.querySelector('.card__aside');
+    const layout = aside.querySelector('veda-slot');
+    const forwarder = layout?.querySelector('veda-slot');
+
+    assert(aside.querySelectorAll('veda-slot').length === 2, 'Aside should keep the layout slot and one forwarder');
+    assert(forwarder?.parentElement === layout, 'Forwarder should be the layout slot content');
+    assert(forwarder?.querySelector('span.badge')?.textContent === '5 новых', 'Page content should render inside the forwarder');
+    assert(forwarder.querySelector('veda-slot') === null, 'Forwarder must not project another slot');
+    cleanup();
+  });
+
+  test('Slot - forwards a renamed slot and keeps handlers and refs on the page', async () => {
+    let clicked = false;
+
+    const Card = defineSlotEl(class extends Component(HTMLElement) {
+      render() {
+        return html`
+          <div class="card">
+            <div class="card__body"><${Slot}></${Slot}></div>
+            <div class="card__aside"><${Slot} name="aside"></${Slot}></div>
+          </div>
+        `;
+      }
+    });
+
+    const Panel = defineSlotEl(class extends Component(HTMLElement) {
+      render() {
+        return html`
+          <div class="panel">
+            <${Card}><${Slot} name="page-aside" slot="aside"></${Slot}></${Card}>
+          </div>
+        `;
+      }
+    });
+
+    class Page extends Component(HTMLElement) {
+      open() {
+        clicked = true;
+      }
+      render() {
+        return html`
+          <${Panel}>
+            <button slot="page-aside" class="badge" ref="badge" onclick="{this.open}">5 новых</button>
+          </${Panel}>
+        `;
+      }
+    }
+
+    const {component, cleanup} = await createTestComponent(Page);
+    const aside = component.querySelector('.card__aside');
+    const button = aside.querySelector('button.badge');
+
+    assert(aside.querySelectorAll('veda-slot').length === 2, 'Renamed forwarder should project once');
+    assert(button?.textContent === '5 новых', 'Page content should render through the renamed slot');
+    assert(button.parentElement?.getAttribute('name') === 'page-aside', 'Button should sit in the forwarding slot');
+    assert(component.refs.badge === button, 'Ref should belong to the page that authored the button');
+    button.click();
+    assert(clicked === true, 'Click should call the page method');
     cleanup();
   });
 };
