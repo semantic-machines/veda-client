@@ -250,6 +250,64 @@ export default function ({ test, assert }) {
     container.remove();
   });
 
+  test('LoopComponent - nested list survives parent reorder', async () => {
+    class NestedTreeComponent extends Component(HTMLElement) {
+      static tag = 'test-nested-tree-loop';
+
+      constructor() {
+        super();
+        this.state.systems = [
+          { key: 'a', title: 'a', nodes: [{ name: 'n1' }, { name: 'n2' }] },
+          { key: 'b', title: 'b', nodes: [{ name: 'n3' }, { name: 'n4' }] },
+        ];
+      }
+
+      render() {
+        return html`
+          <div items="{this.state.systems}" as="system" key="key">
+            <section class="system">
+              <h4 class="title">{system.title}</h4>
+              <div class="nodes" items="{system.nodes}" as="node" key="name">
+                <button type="button" class="node">{node.name}</button>
+              </div>
+            </section>
+          </div>
+        `;
+      }
+    }
+
+    if (!customElements.get('test-nested-tree-loop')) {
+      customElements.define('test-nested-tree-loop', NestedTreeComponent);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const component = document.createElement('test-nested-tree-loop');
+    container.appendChild(component);
+
+    await component.rendered;
+    await flushEffects();
+
+    const names = () => [...component.querySelectorAll('.node')].map((node) => node.textContent);
+    assert.deepEqual(names(), ['n1', 'n2', 'n3', 'n4']);
+
+    // Same shape as the ops tree: a node state change re-sorts parent rows.
+    component.state.systems = [
+      { key: 'b', title: 'b', nodes: [{ name: 'n3' }, { name: 'n4' }, { name: 'n5' }] },
+      { key: 'a', title: 'a', nodes: [{ name: 'n1' }, { name: 'n2' }] },
+    ];
+    await flushEffects();
+
+    assert.deepEqual(names(), ['n3', 'n4', 'n5', 'n1', 'n2']);
+    assert.deepEqual(
+      [...component.querySelectorAll('.title')].map((node) => node.textContent),
+      ['b', 'a'],
+    );
+
+    container.remove();
+  });
+
   test('LoopComponent - replace entire list updates items', async () => {
     class ReplaceListComponent extends Component(HTMLElement) {
       static tag = 'test-replace-list-loop';

@@ -298,4 +298,100 @@ export default ({test, assert}) => {
       'Reconnect should not stack another viewport');
     cleanup();
   });
+
+  test('Memory - nested reorder does not multiply effects, listeners, or DOM', async () => {
+    await exerciseNested(defineNestedApp(), assert);
+  });
 };
+
+function defineNestedApp () {
+  let titleReads = 0;
+  let clicks = 0;
+  const nodesA = [{ name: 'n1' }, { name: 'n2' }];
+  const nodesB = [{ name: 'n3' }];
+  const row = (key, nodes) => ({
+    key,
+    nodes,
+    get title () {
+      titleReads++;
+      return key;
+    },
+  });
+
+  class App extends Component(HTMLElement) {
+    constructor () {
+      super();
+      this.state.systems = [row('a', nodesA), row('b', nodesB)];
+    }
+
+    ping () { clicks++; }
+
+    render () {
+      return html`
+        <div items="{this.state.systems}" as="system" key="key">
+          <section class="system">
+            <h4 class="title">{system.title}</h4>
+            <div class="nodes" items="{system.nodes}" as="node" key="name">
+              <button type="button" class="node" onclick="{this.ping}">{node.name}</button>
+            </div>
+          </section>
+        </div>
+      `;
+    }
+  }
+
+  return {
+    App,
+    nodesA,
+    nodesB,
+    row,
+    reads: () => titleReads,
+    setReads: (value) => { titleReads = value; },
+    clicks: () => clicks,
+    resetClicks: () => { clicks = 0; },
+  };
+}
+
+async function exerciseNested (kit, assert) {
+  const { component, cleanup } = await createTestComponent(kit.App);
+  await flushEffects();
+
+  const loops = () => component.querySelectorAll('[is$="loop-component"]').length;
+  const buttons = () => component.querySelectorAll('.node');
+  assert.equal(loops(), 3, 'One list per level: groups plus two node lists');
+  assert.equal(buttons().length, 3, 'Three node buttons');
+  for (const loop of component.querySelectorAll('[is$="loop-component"]')) {
+    assert.equal(loop._getEventListenersCount(), 0, 'Item listeners stay on the item, not the list');
+  }
+
+  const readsPerReorder = [];
+  for (let i = 0; i < 20; i++) {
+    kit.setReads(0);
+    const swapped = i % 2 === 0;
+    component.state.systems = swapped
+      ? [kit.row('b', kit.nodesB), kit.row('a', kit.nodesA)]
+      : [kit.row('a', kit.nodesA), kit.row('b', kit.nodesB)];
+    await flushEffects();
+    readsPerReorder.push(kit.reads());
+  }
+
+  assert.deepEqual(readsPerReorder, Array(20).fill(2), 'Each reorder should run each parent row effect once');
+  assert.equal(loops(), 3, 'Reorder should not create extra lists');
+  assert.equal(buttons().length, 3, 'Reorder should not create extra buttons');
+  assert.equal(component.querySelectorAll('.system').length, 2, 'Reorder should not create extra rows');
+
+  kit.resetClicks();
+  buttons()[0].click();
+  assert.equal(kit.clicks(), 1, 'A moved button should keep a single click listener');
+
+  component.state.systems = [kit.row('a', kit.nodesA)];
+  await flushEffects();
+  assert.equal(component.querySelectorAll('.node').length, 2, 'Removed system should take its nodes with it');
+  assert.equal(component.querySelectorAll('.nodes').length, 1, 'Removed system should drop its nested list');
+  kit.setReads(0);
+  component.state.systems = [kit.row('a', kit.nodesA)];
+  await flushEffects();
+  assert.equal(kit.reads(), 1, 'A removed row effect should not keep running');
+  cleanup();
+}
+

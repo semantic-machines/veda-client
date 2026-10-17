@@ -23,10 +23,12 @@ export default function LoopComponent(Class = HTMLElement) {
     #loopEffect = null;
     #itemsMap = new Map(); // key → {element, item, index, evalContext}
     #templateEl = null;  // <template> parsed once; clone via .content; cleared on disconnect
-    #isDisconnected = false;  // Prevent double disconnectedCallback
+    #phase = 'new'; // new | mounting | live
 
     async connectedCallback() {
-      this.#isDisconnected = false;  // Reset on reconnect
+      // A move already put the element back. Rebuilding would drop nested lists.
+      if (this.#phase !== 'new') return;
+      this.#phase = 'mounting';
       this._vedaParentContext = this._findParentComponent();
 
       this.#parseTemplate();
@@ -34,9 +36,15 @@ export default function LoopComponent(Class = HTMLElement) {
       this._deferRendered();
       await super.connectedCallback();
 
+      if (this.#phase !== 'mounting' || !this.isConnected) {
+        this._resolveDeferred();
+        return;
+      }
+
       const itemsExpr = this.getAttribute('items');
       if (!itemsExpr) {
         console.warn('Loop component requires "items" attribute');
+        this.#phase = 'live';
         this._resolveDeferred();
         return;
       }
@@ -45,13 +53,21 @@ export default function LoopComponent(Class = HTMLElement) {
         const items = this.#evaluateItems(itemsExpr);
         this.#reconcile(items);
       }, { component: this });
+      this.#phase = 'live';
       this._resolveDeferred();
     }
 
     disconnectedCallback() {
-      // Prevent double disconnectedCallback calls
-      if (this.#isDisconnected) return;
-      this.#isDisconnected = true;
+      // A move delivers this after the node is already in its new parent, so
+      // isConnected stays true. Tearing down here drops nested lists and the
+      // outer item they read.
+      if (this.isConnected) return;
+      this.#teardown();
+    }
+
+    #teardown() {
+      if (this.#phase === 'new') return;
+      this.#phase = 'new';
 
       if (this.#loopEffect) {
         this.#loopEffect();
@@ -92,7 +108,7 @@ export default function LoopComponent(Class = HTMLElement) {
     }
 
     #reconcile(newItems) {
-      if (this.#isDisconnected) return;
+      if (this.#phase === 'new') return;
 
       // Support both 'key' (new) and 'item-key' (backward compatibility)
       const keyAttr = this.getAttribute('key') || this.getAttribute('item-key') || 'id';
