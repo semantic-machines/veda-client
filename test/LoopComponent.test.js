@@ -235,6 +235,18 @@ export default function ({ test, assert }) {
     assert(items[1].textContent === 'Second', 'Second should remain Second');
     assert(items[2].textContent === 'First', 'Third should now be First');
 
+    // A second reorder must follow the previous items order, which the loop remembers itself.
+    component.state.items = [
+      { id: 2, name: 'Second' },
+      { id: 1, name: 'First' },
+      { id: 3, name: 'Third' }
+    ];
+    await flushEffects();
+    const again = loop.querySelectorAll('.item');
+    assert(again[0].textContent === 'Second', 'Second reorder should start with Second');
+    assert(again[1].textContent === 'First', 'Second reorder should keep First in the middle');
+    assert(again[2].textContent === 'Third', 'Second reorder should end with Third');
+
     container.remove();
   });
 

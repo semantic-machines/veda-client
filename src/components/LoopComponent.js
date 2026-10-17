@@ -128,10 +128,11 @@ export default function LoopComponent(Class = HTMLElement) {
         }
       }
 
-      // Collect existing keys in their current DOM order
+      // Previous item order. #rememberOrder rewrites the map to match it after each reconcile,
+      // because Map keeps insertion order and set() on an existing key does not move it.
       const oldKeys = [];
       const oldKeySet = new Set();
-      for (const [key] of this.#itemsMap) {
+      for (const key of this.#itemsMap.keys()) {
         oldKeys.push(key);
         oldKeySet.add(key);
       }
@@ -167,6 +168,18 @@ export default function LoopComponent(Class = HTMLElement) {
 
       // Use LIS-based reordering for optimal DOM moves
       this.#reorderWithLIS(newKeysArray, oldKeys, oldKeySet);
+      this.#rememberOrder(newKeysArray);
+    }
+
+    // Map iteration order is insertion order. Rebuild so the next reconcile sees the order
+    // of the items array that was just applied.
+    #rememberOrder(keys) {
+      const ordered = new Map();
+      for (const key of keys) {
+        const itemData = this.#itemsMap.get(key);
+        if (itemData) ordered.set(key, itemData);
+      }
+      this.#itemsMap = ordered;
     }
 
     /**
