@@ -8,6 +8,7 @@ export { default as ModelItem } from './ModelItem.js';
 export { default as EffectListItem } from './EffectListItem.js';
 export { default as TimelineItem } from './TimelineItem.js';
 export { default as PropertyValue } from './PropertyValue.js';
+export { default as ModelPredicate } from './ModelPredicate.js';
 
 // Detail components
 export { default as ComponentDetails } from './ComponentDetails.js';
@@ -25,6 +26,7 @@ import ModelItem from './ModelItem.js';
 import EffectListItem from './EffectListItem.js';
 import TimelineItem from './TimelineItem.js';
 import PropertyValue from './PropertyValue.js';
+import ModelPredicate from './ModelPredicate.js';
 import ComponentDetails from './ComponentDetails.js';
 import ComponentsTab from './ComponentsTab.js';
 import ModelsTab from './ModelsTab.js';
@@ -39,6 +41,7 @@ export function registerComponents() {
   customElements.define(EffectListItem.tag, EffectListItem);
   customElements.define(TimelineItem.tag, TimelineItem);
   customElements.define(PropertyValue.tag, PropertyValue);
+  customElements.define(ModelPredicate.tag, ModelPredicate);
 
   // Detail components
   customElements.define(ComponentDetails.tag, ComponentDetails);

@@ -76,6 +76,40 @@ router.register('stop-profiling', (message, { tabId }) => {
   }
 });
 
+function editResult(port, message, ok, error) {
+  if (!port) return;
+  port.postMessage({
+    event: 'edit-model-result',
+    requestId: message.requestId,
+    predicate: message.predicate,
+    ok,
+    error: ok ? '' : (error || 'Save failed')
+  });
+}
+
+router.register('edit-model', (message, { tabId, port }) => {
+  if (!tabId) {
+    editResult(port, message, false, 'No inspected tab');
+    return;
+  }
+  const payload = {
+    type: 'edit-model',
+    requestId: message.requestId,
+    id: message.id,
+    op: message.op,
+    predicate: message.predicate
+  };
+  if (message.index != null) payload.index = message.index;
+  if (message.value != null) payload.value = message.value;
+  chrome.tabs.sendMessage(tabId, payload, function(response) {
+    if (chrome.runtime.lastError) {
+      editResult(port, message, false, chrome.runtime.lastError.message);
+      return;
+    }
+    editResult(port, message, !!response?.ok, response?.error || 'No response from the page');
+  });
+});
+
 router.register('set-component-state', (message, { tabId }) => {
   if (tabId) {
     chrome.tabs.sendMessage(tabId, {

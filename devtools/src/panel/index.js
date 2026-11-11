@@ -51,7 +51,9 @@ class DevToolsPanel extends Component(HTMLElement) {
     this.state.wsConnected = false;
     this.state.attached = false;
     this.state.navigateToModelId = null;
+    this.state.modelEdit = null;
     this._wsRevision = 0;
+    this._editSeq = 0;
 
     this.port = null;
     this._snapshotDebounceTimer = null;
@@ -250,7 +252,7 @@ class DevToolsPanel extends Component(HTMLElement) {
   // ===========================================================================
 
   handleMessage(message) {
-    if (message.event && message.event !== 'snapshot' && message.event !== 'ws:state-changed') {
+    if (message.event && message.event !== 'snapshot' && message.event !== 'ws:state-changed' && message.event !== 'edit-model-result') {
       this.addTimelineEvent(message.event, message.data);
     }
 
@@ -260,6 +262,10 @@ class DevToolsPanel extends Component(HTMLElement) {
         break;
       case 'ws:state-changed':
         this.applyWsState(message.data);
+        break;
+      case 'edit-model-result':
+        this.handleEditResult(message);
+        if (message.ok) this.requestSnapshot();
         break;
       case 'component:created':
       case 'component:removed':
@@ -320,8 +326,47 @@ class DevToolsPanel extends Component(HTMLElement) {
   // User Actions
   // ===========================================================================
 
+  handleEditResult(message) {
+    const current = this.state.modelEdit;
+    if (!current || current.requestId !== message.requestId) return;
+    this.state.modelEdit = {
+      requestId: message.requestId,
+      status: message.ok ? 'saved' : 'error',
+      op: current.op,
+      predicate: message.predicate || current.predicate,
+      error: message.ok ? '' : (message.error || 'Save failed')
+    };
+  }
+
+  editModel = (command) => {
+    const requestId = ++this._editSeq;
+    const predicate = command && command.predicate;
+    if (!this.port) {
+      this.state.modelEdit = {
+        requestId,
+        status: 'error',
+        predicate,
+        error: 'DevTools is not connected'
+      };
+      return;
+    }
+    this.state.modelEdit = { requestId, status: 'pending', op: command.op, predicate, error: '' };
+    const payload = {
+      type: 'edit-model',
+      tabId: chrome.devtools.inspectedWindow.tabId,
+      requestId,
+      id: command.id,
+      op: command.op
+    };
+    if (predicate) payload.predicate = predicate;
+    if (command.index != null) payload.index = command.index;
+    if (command.value != null) payload.value = command.value;
+    this.port.postMessage(payload);
+  }
+
   handleKeydown(e) {
-    if (e.target.tagName === 'INPUT') return;
+    const tag = e.target && e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     if (e.ctrlKey || e.metaKey) return;
 
     if (e.key === 'r') {
@@ -545,7 +590,9 @@ class DevToolsPanel extends Component(HTMLElement) {
             <models-tab
               :models="{this.state.models}"
               :navigate-to-id="{this.state.navigateToModelId}"
-              :on-navigate-to-model="{this.navigateToModel}">
+              :on-navigate-to-model="{this.navigateToModel}"
+              :model-edit="{this.state.modelEdit}"
+              :on-edit-model="{this.editModel}">
             </models-tab>
           </${If}>
           <${If} condition="{this.isEffectsTabActive}">

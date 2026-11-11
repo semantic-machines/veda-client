@@ -1,7 +1,13 @@
 /**
  * Serializer
- * Serializes values for DevTools display
+ * Serializes values for DevTools display.
+ * Typed fields stay in this file so the hook bundle does not import Value.
  */
+
+const LANG_STRING = /^(.*)\^\^([a-z]{2})$/ims;
+const DECIMAL_STRING = /^-?\d+([.,])0$/;
+const DATETIME_STRING = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
+const URI_STRING = /^[a-z][a-z-0-9]*:([a-zA-Z0-9-_])*$/;
 
 export class Serializer {
   serializeValue(value, depth = 0) {
@@ -150,4 +156,73 @@ export class Serializer {
 
     return props;
   }
+
+  // Full predicate values for the editor. Display properties stay truncated.
+  describeModelFields(model) {
+    const fields = [];
+    if (!model) return fields;
+
+    let keys = [];
+    try {
+      keys = Object.keys(model);
+    } catch (e) {
+      return fields;
+    }
+
+    for (const key of keys) {
+      if (key === 'id' || key.startsWith('_') || key.startsWith('#')) continue;
+      let raw;
+      try {
+        raw = model[key];
+      } catch (e) {
+        continue;
+      }
+      if (typeof raw === 'function') continue;
+      const list = Array.isArray(raw) ? raw : [raw];
+      const values = [];
+      let editable = true;
+      for (const item of list) {
+        const described = describeLiteral(item);
+        if (!described) {
+          editable = false;
+          break;
+        }
+        values.push(described);
+      }
+      fields.push({
+        predicate: key,
+        values: editable ? values : [],
+        editable
+      });
+    }
+
+    return fields;
+  }
+}
+
+function describeLiteral(value) {
+  if (value == null) return null;
+  if (typeof value === 'boolean') return { type: 'Boolean', data: value };
+  if (typeof value === 'number') {
+    if (Number.isNaN(value)) return null;
+    if (Number.isInteger(value)) return { type: 'Integer', data: value };
+    return { type: 'Decimal', data: String(value) };
+  }
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return { type: 'Datetime', data: value.toISOString().split('.')[0] + 'Z' };
+  }
+  if (typeof value === 'object') {
+    const id = value.id || value['@'];
+    if (typeof id !== 'string' || !id) return null;
+    return { type: 'Uri', data: id };
+  }
+  if (typeof value !== 'string') return null;
+
+  const lang = LANG_STRING.exec(value);
+  if (lang) return { type: 'String', data: lang[1], lang: lang[2].toUpperCase() };
+  if (DECIMAL_STRING.test(value)) return { type: 'Decimal', data: value };
+  if (DATETIME_STRING.test(value)) return { type: 'Datetime', data: value.split('.')[0] + 'Z' };
+  if (URI_STRING.test(value)) return { type: 'Uri', data: value };
+  return { type: 'String', data: value };
 }

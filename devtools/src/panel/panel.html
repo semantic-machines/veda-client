@@ -845,6 +845,10 @@
       margin-bottom: 0;
     }
 
+    .details-header > veda-if {
+      margin-left: auto;
+    }
+
     .details-tag {
       color: var(--accent-cyan);
       font-family: var(--font-mono);
@@ -911,6 +915,93 @@
       color: var(--text-primary);
       word-break: break-word;
       white-space: pre-wrap;
+    }
+
+    .predicate-row {
+      display: flex;
+      gap: var(--space-md);
+      align-items: flex-start;
+      font-family: var(--font-mono);
+      font-size: var(--font-size-sm);
+      line-height: 1.4;
+    }
+
+    .predicate-body {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .predicate-summary,
+    .edit-line,
+    .predicate-actions,
+    .predicate-add {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .predicate-note {
+      color: var(--text-secondary);
+      font-family: var(--font-family);
+      font-size: var(--font-size-xs);
+    }
+
+    .predicate-error {
+      color: var(--accent-red);
+      font-family: var(--font-family);
+      font-size: var(--font-size-xs);
+    }
+
+    .predicate-saved {
+      color: var(--accent-green);
+      font-family: var(--font-family);
+      font-size: var(--font-size-xs);
+    }
+
+    .btn-tiny {
+      padding: 1px 6px;
+      font-size: var(--font-size-xs);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--accent-red);
+      border: 1px solid var(--accent-red);
+    }
+
+    .btn-danger:hover {
+      background: var(--accent-red);
+      color: white;
+    }
+
+    .predicate-body .btn:disabled,
+    .predicate-add .btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    .edit-input,
+    .edit-select {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: var(--font-size-xs);
+      padding: 2px 4px;
+    }
+
+    .edit-data {
+      min-width: 120px;
+      flex: 1;
+    }
+
+    .edit-lang {
+      width: 48px;
     }
 
     /* Effect source code */

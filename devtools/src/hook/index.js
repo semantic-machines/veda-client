@@ -12,6 +12,7 @@ import { ModelTracker } from './modules/ModelTracker.js';
 import { EffectTracker } from './modules/EffectTracker.js';
 import { SubscriptionTracker } from './modules/SubscriptionTracker.js';
 import { Inspector } from './modules/Inspector.js';
+import { editModelPredicate } from './modules/ModelEditor.js';
 import { DEVTOOLS_CONFIG } from '../config.js';
 
 (function() {
@@ -102,6 +103,21 @@ import { DEVTOOLS_CONFIG } from '../config.js';
     scrollToElement: (id) => inspector.scrollToElement(id),
     setComponentState: (id, key, value) => inspector.setComponentState(id, key, value),
 
+    // id is the tracker id. The model object is the page's; the write stays in this hook.
+    editModel(id, command) {
+      const trackerId = typeof id === 'string' && /^\d+$/.test(id) ? Number(id) : id;
+      const data = modelTracker.models.get(trackerId);
+      const model = data && data.modelRef.deref();
+      if (!model) return Promise.resolve({ ok: false, error: 'Model is no longer available' });
+      return Promise.resolve()
+        .then(() => editModelPredicate(model, command))
+        .then(result => {
+          if (!result || typeof result.ok !== 'boolean') return { ok: false, error: 'Empty result' };
+          return { ok: result.ok, error: result.error || '' };
+        })
+        .catch(error => ({ ok: false, error: (error && error.message) || String(error) }));
+    },
+
     clearDiagnostics() {
       timeline.clear();
       subscriptionTracker.clearHistory();
@@ -151,6 +167,12 @@ import { DEVTOOLS_CONFIG } from '../config.js';
             const model = m.modelRef.deref();
             if (!model) return null;
             const isLoaded = typeof model.isLoaded === 'function' ? model.isLoaded() : m.isLoaded;
+            let isNew = false;
+            try {
+              isNew = typeof model.isNew === 'function' ? !!model.isNew() : false;
+            } catch (e) {
+              isNew = false;
+            }
             // Properties are read from the live model. Type used to stay at the
             // value captured when the model was first seen, often a bare URI.
             const type = serializer.getModelType(model);
@@ -161,7 +183,9 @@ import { DEVTOOLS_CONFIG } from '../config.js';
               modelId: m.modelId,
               type,
               isLoaded,
+              isNew,
               properties: serializer.serializeModelProperties(model),
+              fields: serializer.describeModelFields(model),
               updateCount: m.updateCount,
               createdAt: m.createdAt
             };
@@ -284,6 +308,24 @@ import { DEVTOOLS_CONFIG } from '../config.js';
 
     if (type === 'clear') {
       hook.clearDiagnostics();
+    }
+
+    if (type === 'edit-model') {
+      const requestId = event.data.requestId;
+      hook.editModel(event.data.id, {
+        op: event.data.op,
+        predicate: event.data.predicate,
+        index: event.data.index,
+        value: event.data.value
+      }).then(result => {
+        window.postMessage({
+          source: 'veda-devtools-hook',
+          type: 'edit-model-result',
+          requestId,
+          ok: result.ok,
+          error: result.error || ''
+        }, '*');
+      });
     }
   });
 

@@ -59,6 +59,41 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     return true; // Keep channel open for async response
   }
 
+  if (message.type === 'edit-model') {
+    const requestId = message.requestId;
+    let settled = false;
+    let timer = 0;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      window.removeEventListener('message', listener);
+      sendResponse(result);
+    };
+    const listener = function(event) {
+      const data = event.data;
+      if (data?.source !== 'veda-devtools-hook' || data.type !== 'edit-model-result') return;
+      if (data.requestId !== requestId) return;
+      finish({ ok: !!data.ok, error: data.error || '' });
+    };
+    timer = setTimeout(() => {
+      finish({ ok: false, error: 'The page did not answer in time' });
+    }, 20000);
+    window.addEventListener('message', listener);
+    const request = {
+      source: 'veda-devtools-request',
+      type: 'edit-model',
+      requestId,
+      id: message.id,
+      op: message.op,
+      predicate: message.predicate
+    };
+    if (message.index != null) request.index = message.index;
+    if (message.value != null) request.value = message.value;
+    window.postMessage(request, '*');
+    return true;
+  }
+
   if (message.type === 'clear') {
     window.postMessage({
       source: 'veda-devtools-request',
