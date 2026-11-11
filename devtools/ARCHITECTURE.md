@@ -31,7 +31,7 @@ Veda DevTools is a Chrome extension for debugging Veda Client Framework applicat
 
 ### Components
 
-#### 1. Hook (`src/hook.js`)
+#### 1. Hook (`src/hook/index.js`)
 - **Injected into page**: Runs in the same context as the app
 - **Tracks**: Components, models, effects, subscriptions
 - **Memory management**: Uses `WeakRef` and `FinalizationRegistry` for automatic cleanup
@@ -60,7 +60,7 @@ Veda DevTools is a Chrome extension for debugging Veda Client Framework applicat
 - `start-profiling`, `stop-profiling`: Performance profiling
 - `set-component-state`: Edit component state
 
-#### 4. DevTools Panel (`panel/panel-source.js`)
+#### 4. DevTools Panel (`src/panel/index.js`)
 - **Built with Veda**: Dogfooding the framework
 - **Reactive UI**: Uses Veda's reactive system
 - **Tabs**: Components, Models, Effects, Timeline, Subscriptions
@@ -198,7 +198,7 @@ node build.js
 1. Open `chrome://extensions`
 2. Enable "Developer mode"
 3. Click "Load unpacked"
-4. Select `devtools` folder
+4. Select the `devtools/dist` folder
 
 ### Hot Reload
 Changes to panel code require:

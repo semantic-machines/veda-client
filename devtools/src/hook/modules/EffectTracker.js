@@ -65,6 +65,8 @@ export class EffectTracker {
   }
 
   track(effect) {
+    if (effect?.options?.internal) return;
+
     const existingId = this.effectToId.get(effect);
     if (existingId) return existingId;
 
@@ -134,19 +136,24 @@ export class EffectTracker {
           keyStr === '__isReactive' ||
           keyStr === 'then' ||
           keyStr === 'toJSON' ||
+          keyStr === 'state' ||
+          keyStr === 'model' ||
           /^\d+$/.test(keyStr) ||
           typeof key === 'symbol') {
         return;
       }
 
+      // Own data only. A proxy get (context, reactive model) would warn or
+      // subscribe this read as a dependency of the effect being inspected.
       let targetId = '';
       try {
-        if (target && typeof target.id === 'string') {
-          targetId = target.id;
-        }
+        const desc = target && Object.getOwnPropertyDescriptor(target, 'id');
+        if (desc && typeof desc.value === 'string') targetId = desc.value;
       } catch (e) {
         // Ignore
       }
+
+      if (!targetId && data.componentTag) targetId = data.componentTag;
 
       const depKey = `${targetId}:${keyStr}`;
       if (!data.dependencies.some(d => d.key === depKey)) {

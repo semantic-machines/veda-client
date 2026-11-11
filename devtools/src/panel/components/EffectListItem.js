@@ -136,6 +136,10 @@ export default class EffectListItem extends Component(HTMLElement) {
 
   get displayName() {
     if (this.effectName) return this.effectName;
+    const props = (this.state.data?.dependencies || [])
+      .map(dep => dep.property)
+      .filter(Boolean);
+    if (props.length) return props.join(', ');
     return `Effect #${this.effectId}`;
   }
 

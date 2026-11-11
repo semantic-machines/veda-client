@@ -67,12 +67,17 @@ export class SubscriptionTracker {
     }
   }
 
-  getStats(wsConnected) {
+  clearHistory() {
+    this.subscriptionHistory = [];
+  }
+
+  getStats(wsConnected, wsRevision) {
     return {
       active: Array.from(this.subscriptions.values()),
       history: this.subscriptionHistory.slice(-100),
       totalSubscriptions: this.subscriptions.size,
-      wsConnected: wsConnected || false
+      wsConnected: wsConnected || false,
+      wsRevision: wsRevision || 0
     };
   }
 }

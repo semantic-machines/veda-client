@@ -42,7 +42,7 @@ export default function IfComponent(Class = HTMLElement) {
       this.#ifEffect = effect(() => {
         const condition = this.#evaluateCondition(this.getAttribute('condition'));
         this.#updateVisibility(condition);
-      }, { component: this });
+      }, { component: this, internal: true });
       this._resolveDeferred();
     }
 

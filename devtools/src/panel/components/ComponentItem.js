@@ -124,7 +124,7 @@ export default class ComponentItem extends Component(HTMLElement) {
               <span class="tree-model-id">{this.componentModelId}</span>
             </${If}>
           </span>
-          <span class="tree-renders">{this.renderCount}x</span>
+          <span class="tree-renders" title="Full component update() calls">{this.renderCount}×</span>
           <span class="tree-time">{this.avgTime}</span>
         </div>
 

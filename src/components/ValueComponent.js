@@ -26,7 +26,7 @@ export default function ValueComponent (Class = HTMLElement) {
         if (this.isConnected) {
           this.render();
         }
-      }, { component: this._vedaParentContext });
+      }, { component: this._vedaParentContext, internal: true });
     }
   }
 

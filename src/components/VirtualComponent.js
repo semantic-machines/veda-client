@@ -201,7 +201,7 @@ export default function VirtualComponent(Class = HTMLElement) {
           // Recalculate bounds — items count may have changed,
           // clamping virtualStart to the new range.
           this.#syncVirtualBounds();
-        }, { component: this._vedaParentContext });
+        }, { component: this._vedaParentContext, internal: true });
       }
 
       // Effect for content transform and sticky headers — runs only when
@@ -214,7 +214,7 @@ export default function VirtualComponent(Class = HTMLElement) {
           this.#updateContentTransform();
           this.#updateStickyHeaders();
         }
-      }, { component: this });
+      }, { component: this, internal: true });
 
       // Set up ResizeObserver for auto height
       this.#setupResizeObserver();

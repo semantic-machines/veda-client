@@ -426,7 +426,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
             node.nodeValue = sanitizeExpressionResult(
               ExpressionParser.evaluateAuto(part.code, evalContext)
             );
-          }, { component: this });
+          }, { component: this, internal: true });
           this.#renderEffects.push(cleanup);
           return node;
         });
@@ -640,7 +640,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           } else {
             target[propName] = expr.replace(EXPR_REGEX, (_, code) => evalExpr(code, evalContext));
           }
-        }, { component: this });
+        }, { component: this, internal: true });
         this.#renderEffects.push(cleanup);
       } else {
         if (pureExpr) {
@@ -685,7 +685,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       if (this.#isReactive) {
         const cleanup = effect(() => {
           applyValue(ExpressionParser.evaluate(expr, evalContext));
-        }, { component: this });
+        }, { component: this, internal: true });
         this.#renderEffects.push(cleanup);
       } else {
         applyValue(ExpressionParser.evaluate(expr, evalContext));
@@ -787,7 +787,7 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
               sanitizeExpressionResult(evalExpr(code, ctx)));
             if (node.getAttribute(attrName) !== value) node.setAttribute(attrName, value);
           }
-        }, { component: this });
+        }, { component: this, internal: true });
         this.#renderEffects.push(cleanup);
       } else if (isNative) {
         const { value, hasNull } = this.#evaluateTemplate(template, this);

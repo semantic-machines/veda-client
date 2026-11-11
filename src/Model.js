@@ -5,6 +5,7 @@ import Subscription from './Subscription.js';
 import Value from './Value.js';
 import {genUri, decorator} from './Util.js';
 import {reactive} from './Reactive.js';
+import {effect, untrack} from './Effect.js';
 
 const IS_NEW = Symbol('isNew');
 const IS_SYNC = Symbol('isSync');
@@ -22,6 +23,88 @@ const DANGEROUS_PROPS = new Set([
   'constructor',
   'prototype'
 ]);
+
+function devtoolsHook() {
+  const hook = typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__;
+  if (hook && hook.untrack !== untrack) hook.untrack = untrack;
+  return hook || null;
+}
+
+const modelSentinels = new WeakMap();
+const watchedModels = new WeakSet();
+const modelWatchRegistry = new FinalizationRegistry((stop) => stop());
+
+// Read every predicate and array element so this effect subscribes the same
+// way a control does. The effect holds only a WeakRef, so the watch itself
+// does not keep the model alive.
+function readModelProperties(model) {
+  let keys = [];
+  try {
+    keys = Object.keys(model);
+  } catch (e) {
+    return;
+  }
+  for (const key of keys) {
+    let value;
+    try {
+      value = model[key];
+    } catch (e) {
+      continue;
+    }
+    if (typeof value === 'function' || !Array.isArray(value)) continue;
+    void value.length;
+    for (let i = 0; i < value.length; i++) void value[i];
+  }
+}
+
+function watchModelDevTools(model) {
+  const hook = devtoolsHook();
+  if (!hook || watchedModels.has(model)) return;
+  watchedModels.add(model);
+
+  const ref = new WeakRef(model);
+  const sentinel = reactive({ rev: 0 });
+  modelSentinels.set(model, sentinel);
+  let primed = false;
+
+  let stop = () => {};
+  stop = effect(() => {
+    const current = ref.deref();
+    if (!current) {
+      stop();
+      return;
+    }
+    void sentinel.rev;
+    readModelProperties(current);
+    // The first run only establishes subscriptions. trackModel already
+    // published the initial snapshot.
+    if (!primed) {
+      primed = true;
+      return;
+    }
+    untrack(() => {
+      const active = devtoolsHook();
+      if (active) active.trackModelUpdate(current);
+    });
+  }, { internal: true });
+
+  modelWatchRegistry.register(model, stop);
+}
+
+function trackModelDevTools(model) {
+  const hook = devtoolsHook();
+  // Serialization reads every property. Without untrack that subscribes the
+  // effect which happened to be creating the model, and the effect re-runs.
+  if (!hook) return;
+  untrack(() => hook.trackModel(model));
+  watchModelDevTools(model);
+}
+
+function notifyModelDevTools(model) {
+  // A predicate the watch has never read does not wake it. The sentinel does.
+  const sentinel = modelSentinels.get(model);
+  if (sentinel) sentinel.rev++;
+}
 
 /**
  * Semantic Data Model.
@@ -54,6 +137,7 @@ export default class Model extends Emitter(Object) {
       const cached = Model.cache.get(this.id);
       if (cached) {
         // Factory pattern: return existing instance from cache
+        trackModelDevTools(cached);
         // eslint-disable-next-line no-constructor-return
         return cached; // Already reactive and has listener
       }
@@ -73,6 +157,7 @@ export default class Model extends Emitter(Object) {
         cached.isSync(true);
         cached.isLoaded(true);
         // Factory pattern: return existing instance from cache
+        trackModelDevTools(cached);
         // eslint-disable-next-line no-constructor-return
         return cached; // Already reactive and has listener
       }
@@ -90,22 +175,21 @@ export default class Model extends Emitter(Object) {
           this.emit(key, value);
           this.emit('modified', key, value);
         }
+        notifyModelDevTools(this);
       },
       onDelete: function(key) {
         if (typeof this.emit === 'function') {
           this.emit(key);
           this.emit('modified', key);
         }
+        notifyModelDevTools(this);
       }
     });
 
     // Cache the reactive proxy
     Model.cache.set(this.id, reactiveModel);
 
-    // DevTools integration
-    if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
-      window.__VEDA_DEVTOOLS_HOOK__.trackModel(reactiveModel);
-    }
+    trackModelDevTools(reactiveModel);
 
     // Factory pattern: return reactive proxy instead of this
     // eslint-disable-next-line no-constructor-return
@@ -329,11 +413,6 @@ export default class Model extends Emitter(Object) {
         this.isNew(false);
         this.isSync(true);
         this.isLoaded(true);
-
-        // DevTools: update model info after load (now has rdf:type etc)
-        if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
-          window.__VEDA_DEVTOOLS_HOOK__.trackModelUpdate(this);
-        }
 
         return this;
       } finally {

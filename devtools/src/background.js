@@ -87,6 +87,12 @@ router.register('set-component-state', (message, { tabId }) => {
   }
 });
 
+router.register('clear', (message, { tabId }) => {
+  if (tabId) {
+    chrome.tabs.sendMessage(tabId, { type: 'clear' });
+  }
+});
+
 // ============================================================================
 // Connection Handling
 // ============================================================================
@@ -130,7 +136,7 @@ chrome.runtime.onConnect.addListener(function(port) {
 // ============================================================================
 
 chrome.runtime.onMessage.addListener(function(message, sender) {
-  console.log('[Veda DevTools] Message from content script:', JSON.stringify(message));
+  console.log('[Veda DevTools] Message from content script:', message.event || message.type);
 
   if (message.source !== 'veda-devtools-content') return;
 

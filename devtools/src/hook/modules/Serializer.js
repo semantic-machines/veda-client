@@ -113,39 +113,39 @@ export class Serializer {
 
     if (!model) return props;
 
+    let keys = [];
     try {
-      for (const key in model) {
-        if (key.startsWith('v-') || key.startsWith('rdf:') ||
-            key.startsWith('rdfs:') || key.startsWith('@') ||
-            key === 'id') {
-
-          try {
-            const value = model[key];
-            if (Array.isArray(value)) {
-              props[key] = value.slice(0, 10).map(v => {
-                if (typeof v === 'object' && v !== null) {
-                  if (v.id || v['@']) {
-                    return { _type: 'Model', id: v.id || v['@'] };
-                  }
-                  if (v.data !== undefined) {
-                    return v.data;
-                  }
-                }
-                return this.serializeValue(v);
-              });
-              if (value.length > 10) {
-                props[key].push(`... +${value.length - 10} more`);
-              }
-            } else {
-              props[key] = this.serializeValue(value);
-            }
-          } catch (e) {
-            props[key] = '[Error]';
-          }
-        }
-      }
+      keys = Object.keys(model);
     } catch (e) {
-      // Model may not be enumerable
+      return props;
+    }
+
+    for (const key of keys) {
+      if (key.startsWith('_') || key.startsWith('#')) continue;
+      try {
+        const value = model[key];
+        if (typeof value === 'function') continue;
+        if (Array.isArray(value)) {
+          props[key] = value.slice(0, 10).map(v => {
+            if (typeof v === 'object' && v !== null) {
+              if (v.id || v['@']) {
+                return { _type: 'Model', id: v.id || v['@'] };
+              }
+              if (v.data !== undefined) {
+                return v.data;
+              }
+            }
+            return this.serializeValue(v);
+          });
+          if (value.length > 10) {
+            props[key].push(`... +${value.length - 10} more`);
+          }
+        } else {
+          props[key] = this.serializeValue(value);
+        }
+      } catch (e) {
+        props[key] = '[Error]';
+      }
     }
 
     return props;

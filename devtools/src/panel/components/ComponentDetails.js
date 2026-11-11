@@ -132,7 +132,7 @@ export default class ComponentDetails extends Component(HTMLElement) {
               <span class="details-prop-value">{this.createdAt}</span>
             </div>
             <div class="details-property">
-              <span class="details-prop-key">Renders</span>
+              <span class="details-prop-key" title="Full component update() calls">update()</span>
               <span class="details-prop-value">{this.renderCount}</span>
             </div>
             <${If} condition="{this.hasEffects}">

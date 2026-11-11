@@ -1,16 +1,9 @@
 /**
- * Content script that injects the devtools hook into the page
+ * Content script bridge between the page hook and the extension.
+ * The hook itself runs as a MAIN-world content script (see manifest.json).
  */
 
 import { DEVTOOLS_CONFIG } from './config.js';
-
-// Inject hook script into page context
-const script = document.createElement('script');
-script.src = chrome.runtime.getURL('hook.js');
-script.onload = function() {
-  this.remove();
-};
-(document.head || document.documentElement).appendChild(script);
 
 // Listen for messages from page
 window.addEventListener('message', function(event) {
@@ -18,10 +11,10 @@ window.addEventListener('message', function(event) {
   if (event.source !== window) return;
 
   // Only accept messages from our hook
-  if (event.data.source !== 'veda-devtools-hook') return;
+  if (!event.data || event.data.source !== 'veda-devtools-hook') return;
 
-  // Skip snapshot messages - they are handled separately via chrome.runtime.onMessage
-  if (event.data.type === 'snapshot') return;
+  // Snapshots and command results use `type`. Live updates use `event`.
+  if (!event.data.event) return;
 
   // Forward real-time events to background script
   chrome.runtime.sendMessage({
@@ -40,26 +33,39 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
       type: 'get-snapshot'
     }, '*');
 
+    let settled = false;
+    const finish = (data) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('message', listener);
+      sendResponse({
+        source: 'veda-devtools-content',
+        event: 'snapshot',
+        data
+      });
+    };
+
     // Listen for response
     const listener = function(event) {
-      if (event.data.source === 'veda-devtools-hook' && event.data.type === 'snapshot') {
-        window.removeEventListener('message', listener);
-        // Send back with proper structure including event field
-        sendResponse({
-          source: 'veda-devtools-content',
-          event: 'snapshot',
-          data: event.data.data
-        });
+      if (event.data?.source === 'veda-devtools-hook' && event.data.type === 'snapshot') {
+        finish(event.data.data);
       }
     };
     window.addEventListener('message', listener);
 
-    // Timeout after 1 second
-    setTimeout(() => {
-      window.removeEventListener('message', listener);
-    }, 1000);
+    // Timeout after 1 second. Always answer, or the panel port stays open.
+    setTimeout(() => finish(null), 1000);
 
     return true; // Keep channel open for async response
+  }
+
+  if (message.type === 'clear') {
+    window.postMessage({
+      source: 'veda-devtools-request',
+      type: 'clear'
+    }, '*');
+    sendResponse({ success: true });
+    return false;
   }
 
   // Handle highlight element request

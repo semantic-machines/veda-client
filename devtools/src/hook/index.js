@@ -67,7 +67,7 @@ import { DEVTOOLS_CONFIG } from '../config.js';
     // Model tracking
     trackModel: (model) => modelTracker.track(model),
     trackModelUpdate: (model) =>
-      modelTracker.trackUpdate(model, recordProfile),
+      modelTracker.scheduleUpdate(model, recordProfile),
 
     // Effect tracking
     trackEffect: (effect) => effectTracker.track(effect),
@@ -102,12 +102,19 @@ import { DEVTOOLS_CONFIG } from '../config.js';
     scrollToElement: (id) => inspector.scrollToElement(id),
     setComponentState: (id, key, value) => inspector.setComponentState(id, key, value),
 
+    clearDiagnostics() {
+      timeline.clear();
+      subscriptionTracker.clearHistory();
+    },
+
     // WebSocket state
     wsConnected: false,
     wsAddress: null,
+    wsRevision: 0,
 
     // Snapshot
     getSnapshot() {
+      const build = () => {
       const validComponents = [];
       const validIds = new Set();
 
@@ -143,11 +150,17 @@ import { DEVTOOLS_CONFIG } from '../config.js';
           .map(m => {
             const model = m.modelRef.deref();
             if (!model) return null;
+            const isLoaded = typeof model.isLoaded === 'function' ? model.isLoaded() : m.isLoaded;
+            // Properties are read from the live model. Type used to stay at the
+            // value captured when the model was first seen, often a bare URI.
+            const type = serializer.getModelType(model);
+            m.type = type;
+            m.isLoaded = isLoaded;
             return {
               id: m.id,
               modelId: m.modelId,
-              type: m.type,
-              isLoaded: typeof model.isLoaded === 'function' ? model.isLoaded() : m.isLoaded,
+              type,
+              isLoaded,
               properties: serializer.serializeModelProperties(model),
               updateCount: m.updateCount,
               createdAt: m.createdAt
@@ -179,8 +192,10 @@ import { DEVTOOLS_CONFIG } from '../config.js';
           stats: componentTracker.getPerformanceStats(),
           profiling: profiler.profiling
         },
-        subscriptions: subscriptionTracker.getStats(hook.wsConnected)
+        subscriptions: subscriptionTracker.getStats(hook.wsConnected, hook.wsRevision)
       };
+      };
+      return typeof hook.untrack === 'function' ? hook.untrack(build) : build();
     }
   };
 
@@ -266,6 +281,10 @@ import { DEVTOOLS_CONFIG } from '../config.js';
         data: hook.getPerformanceStats()
       }, '*');
     }
+
+    if (type === 'clear') {
+      hook.clearDiagnostics();
+    }
   });
 
   // Notify that hook is ready
@@ -282,18 +301,45 @@ import { DEVTOOLS_CONFIG } from '../config.js';
 
   function interceptSubscriptionMethods(Subscription) {
     const originalSubscribe = Subscription.subscribe.bind(Subscription);
-    const originalUnsubscribe = Subscription.unsubscribe.bind(Subscription);
 
     Subscription.subscribe = function(ref, subscription) {
       const [id, updateCounter] = subscription;
       hook.trackSubscription(id, updateCounter);
       return originalSubscribe(ref, subscription);
     };
+  }
 
-    Subscription.unsubscribe = function(id) {
-      hook.trackUnsubscription(id);
-      return originalUnsubscribe(id);
+  function interceptDrop(Subscription) {
+    const originalDrop = Subscription._drop?.bind(Subscription);
+    if (!originalDrop) return;
+
+    // release(), unsubscribe() and FinalizationRegistry all end here.
+    Subscription._drop = function(id) {
+      const had = Subscription._subscriptions.has(id);
+      const result = originalDrop(id);
+      if (had) hook.trackUnsubscription(id);
+      return result;
     };
+  }
+
+  function reportWsState(Subscription) {
+    const socket = Subscription._socket;
+    hook.wsConnected = !!socket && socket.readyState === 1;
+    hook.wsAddress = Subscription._address || null;
+    hook.wsRevision = (hook.wsRevision || 0) + 1;
+    hook.emit('ws:state-changed', {
+      connected: hook.wsConnected,
+      address: hook.wsAddress,
+      revision: hook.wsRevision
+    });
+  }
+
+  function watchSocket(Subscription) {
+    const socket = Subscription._socket;
+    if (!socket || socket.__vedaDevtoolsBound) return;
+    socket.__vedaDevtoolsBound = true;
+    socket.addEventListener('open', () => reportWsState(Subscription));
+    socket.addEventListener('close', () => reportWsState(Subscription));
   }
 
   function syncExistingSubscriptions(Subscription) {
@@ -336,14 +382,8 @@ import { DEVTOOLS_CONFIG } from '../config.js';
 
     Subscription._connect = async function(event) {
       const result = await originalConnect(event);
-      setTimeout(() => {
-        hook.wsConnected = Subscription._socket?.readyState === 1;
-        hook.wsAddress = Subscription._address;
-        hook.emit('ws:state-changed', {
-          connected: hook.wsConnected,
-          address: hook.wsAddress
-        });
-      }, DEVTOOLS_CONFIG.WS_STATE_CHECK_DELAY_MS);
+      watchSocket(Subscription);
+      reportWsState(Subscription);
       return result;
     };
   }
@@ -354,12 +394,10 @@ import { DEVTOOLS_CONFIG } from '../config.js';
 
     // Intercept subscription methods
     interceptSubscriptionMethods(Subscription);
+    interceptDrop(Subscription);
 
-    // Update WS state
-    if (Subscription._socket) {
-      hook.wsConnected = Subscription._socket.readyState === 1;
-      hook.wsAddress = Subscription._address;
-    }
+    watchSocket(Subscription);
+    reportWsState(Subscription);
 
     // Sync existing subscriptions
     syncExistingSubscriptions(Subscription);
@@ -374,17 +412,17 @@ import { DEVTOOLS_CONFIG } from '../config.js';
   }
 
   function interceptSubscription() {
-    const checkInterval = setInterval(() => {
+    let delay = DEVTOOLS_CONFIG.SUBSCRIPTION_CHECK_INTERVAL_MS;
+    const check = () => {
       const Subscription = findSubscriptionObject();
-
       if (Subscription && Subscription.subscribe) {
         setupSubscriptionInterception(Subscription);
-        clearInterval(checkInterval);
+        return;
       }
-    }, DEVTOOLS_CONFIG.SUBSCRIPTION_CHECK_INTERVAL_MS);
-
-    // Stop checking after timeout
-    setTimeout(() => clearInterval(checkInterval), DEVTOOLS_CONFIG.SUBSCRIPTION_CHECK_TIMEOUT_MS);
+      delay = Math.min(delay * 2, 5000);
+      setTimeout(check, delay);
+    };
+    setTimeout(check, delay);
   }
 
   interceptSubscription();

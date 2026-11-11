@@ -12,14 +12,14 @@ First, build the DevTools by bundling Veda Client with your panel code:
 npm run build:devtools
 ```
 
-This will use esbuild to create a bundled `panel/panel.js` file with all Veda Client dependencies included.
+This bundles the panel and writes the extension into `devtools/dist`.
 
 ### Load Extension
 
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable "Developer mode"
 3. Click "Load unpacked"
-4. Select the `devtools` folder from your Veda Client project
+4. Select the `devtools/dist` folder from your Veda Client project
 
 ## Features
 
@@ -71,16 +71,13 @@ The DevTools panel is built using Veda Client itself! This means:
 
 ```
 devtools/
-├── build.js              # Build script (bundles with esbuild)
-├── panel/
-│   ├── panel.html        # DevTools panel HTML
-│   ├── panel-source.js   # Source code (Veda components)
-│   └── panel.js          # Bundled output (generated)
-└── src/
-    ├── background.js     # Service worker
-    ├── content-script.js # Content script
-    ├── devtools.js       # DevTools entry point
-    └── hook.js           # Injected into page
+├── build.js                 # Build script (bundles with esbuild)
+├── src/                     # Extension source
+│   ├── background.js
+│   ├── content-script.js
+│   ├── hook/                # Page hook
+│   └── panel/               # Panel UI
+└── dist/                    # Load this folder in Chrome
 ```
 
 ### Rebuilding

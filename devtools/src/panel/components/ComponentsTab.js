@@ -117,7 +117,7 @@ export default class ComponentsTab extends Component(HTMLElement) {
               </${If}>
             </div>
             <div class="header-stats">
-              <span class="header-stat">{this.totalRenders} renders</span>
+              <span class="header-stat" title="Full component update() calls">{this.totalRenders} update()</span>
               <span class="header-stat">{this.formattedTotalTime}</span>
             </div>
           </div>

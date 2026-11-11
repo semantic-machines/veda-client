@@ -49,7 +49,9 @@ class DevToolsPanel extends Component(HTMLElement) {
     this.state.activeSubscriptions = [];
     this.state.subscriptionHistory = [];
     this.state.wsConnected = false;
+    this.state.attached = false;
     this.state.navigateToModelId = null;
+    this._wsRevision = 0;
 
     this.port = null;
     this._snapshotDebounceTimer = null;
@@ -78,8 +80,6 @@ class DevToolsPanel extends Component(HTMLElement) {
 
     this.connectToBackground();
 
-    // Try to get initial snapshot
-    this.requestSnapshot();
     this._retryTimeout = setTimeout(() => {
       if (this.state.components.length === 0) {
         this.retrySnapshot();
@@ -250,13 +250,16 @@ class DevToolsPanel extends Component(HTMLElement) {
   // ===========================================================================
 
   handleMessage(message) {
-    if (message.event && message.event !== 'snapshot') {
+    if (message.event && message.event !== 'snapshot' && message.event !== 'ws:state-changed') {
       this.addTimelineEvent(message.event, message.data);
     }
 
     switch (message.event) {
       case 'snapshot':
         this.handleSnapshot(message.data);
+        break;
+      case 'ws:state-changed':
+        this.applyWsState(message.data);
         break;
       case 'component:created':
       case 'component:removed':
@@ -274,9 +277,20 @@ class DevToolsPanel extends Component(HTMLElement) {
     }
   }
 
-  handleSnapshot(data) {
-    if (!data) return;
+  applyWsState(data) {
+    const revision = data?.revision || 0;
+    if (revision < this._wsRevision) return;
+    this._wsRevision = revision;
+    this.state.wsConnected = !!data?.connected;
+  }
 
+  handleSnapshot(data) {
+    if (!data) {
+      this.state.attached = false;
+      return;
+    }
+
+    this.state.attached = true;
     this.state.components = data.components || [];
     this.state.models = data.models || [];
     this.state.effects = data.effects || [];
@@ -285,7 +299,10 @@ class DevToolsPanel extends Component(HTMLElement) {
     if (data.subscriptions) {
       this.state.activeSubscriptions = data.subscriptions.active || [];
       this.state.subscriptionHistory = data.subscriptions.history || [];
-      this.state.wsConnected = data.subscriptions.wsConnected || false;
+      this.applyWsState({
+        connected: data.subscriptions.wsConnected,
+        revision: data.subscriptions.wsRevision
+      });
     }
   }
 
@@ -340,12 +357,12 @@ class DevToolsPanel extends Component(HTMLElement) {
 
   handleClear = () => {
     this.flashButton('clear');
-    this.state.components = [];
-    this.state.models = [];
-    this.state.effects = [];
-    this.state.timeline = [];
-    this.state.activeSubscriptions = [];
-    this.state.subscriptionHistory = [];
+    if (!this.port) return;
+    this.port.postMessage({
+      type: 'clear',
+      tabId: chrome.devtools.inspectedWindow.tabId
+    });
+    this.requestSnapshot();
   }
 
   handleForceGC = () => {
@@ -431,8 +448,14 @@ class DevToolsPanel extends Component(HTMLElement) {
   get timelineTabClass() { return this.isTimelineTabActive ? 'tab active' : 'tab'; }
   get subscriptionsTabClass() { return this.isSubscriptionsTabActive ? 'tab active' : 'tab'; }
 
-  get statusClass() { return this.state.connected ? 'status connected' : 'status disconnected'; }
-  get statusText() { return this.state.connected ? 'Connected' : 'Disconnected'; }
+  get statusClass() {
+    return this.state.connected && this.state.attached ? 'status connected' : 'status disconnected';
+  }
+  get statusText() {
+    if (!this.state.connected) return 'Disconnected';
+    if (!this.state.attached) return 'No hook';
+    return 'Connected';
+  }
 
   // ===========================================================================
   // Render
@@ -444,7 +467,7 @@ class DevToolsPanel extends Component(HTMLElement) {
         <div class="toolbar-brand">Veda DevTools</div>
         <div class="toolbar-spacer"></div>
         <button class="btn btn-icon" data-action="refresh" onclick="{handleRefresh}" title="Refresh (R)">↻</button>
-        <button class="btn btn-icon" data-action="clear" onclick="{handleClear}" title="Clear (C)">✕</button>
+        <button class="btn btn-icon" data-action="clear" onclick="{handleClear}" title="Clear timeline (C)">✕</button>
         <button class="btn btn-icon" data-action="gc" onclick="{handleForceGC}" title="Force GC (F)">🗑</button>
         <div class="stats">
           <span class="stat">

@@ -20,12 +20,18 @@ export class ComponentTracker {
     });
   }
 
+  ancestorElement(el) {
+    return el.parentElement || el.getRootNode?.()?.host || null;
+  }
+
+  // Framework nodes (veda-if, veda-loop, slots, …) stay in the tree.
+  // Skipping them hid every component mounted inside a conditional or a loop.
   findParentComponentId(component) {
-    let el = component.parentElement;
+    let el = this.ancestorElement(component);
     while (el) {
       const parentId = this.componentToId.get(el);
       if (parentId) return parentId;
-      el = el.parentElement;
+      el = this.ancestorElement(el);
     }
     return null;
   }

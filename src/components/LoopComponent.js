@@ -52,7 +52,7 @@ export default function LoopComponent(Class = HTMLElement) {
       this.#loopEffect = effect(() => {
         const items = this.#evaluateItems(itemsExpr);
         this.#reconcile(items);
-      }, { component: this });
+      }, { component: this, internal: true });
       this.#phase = 'live';
       this._resolveDeferred();
     }
@@ -63,6 +63,9 @@ export default function LoopComponent(Class = HTMLElement) {
       // outer item they read.
       if (this.isConnected) return;
       this.#teardown();
+      // super must stay in this method. esbuild moves private methods out of
+      // the class for the panel bundle, and super is illegal there.
+      super.disconnectedCallback?.();
     }
 
     #teardown() {
@@ -85,7 +88,6 @@ export default function LoopComponent(Class = HTMLElement) {
       this.replaceChildren();
       this._vedaParentContext = null;
       this._vedaEvalContext = null;
-      super.disconnectedCallback?.();
     }
 
     #evaluateItems(expr) {
