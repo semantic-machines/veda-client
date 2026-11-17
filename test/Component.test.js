@@ -8,6 +8,7 @@ import { Place } from '../src/components/PlaceComponent.js';
 import { flushEffects } from '../src/Effect.js';
 import Model from '../src/Model.js';
 import { createTestComponent, createTestContainer, assertAttribute, createSpy, captureConsole } from './helpers.js';
+import { render } from '../src/template/Template.js';
 
 export default ({ test, assert }) => {
 
@@ -47,19 +48,28 @@ export default ({ test, assert }) => {
     });
   });
 
-  test('html() tagged template - escaping and safe values', () => {
-    // Combines: escapes values, preserves safe markup, handles arrays
-    const xss = '<script>alert("xss")</script>';
-    const result1 = html`<div>${xss}</div>`;
-    assert(result1.includes('&lt;script&gt;') && !result1.includes('<script>'), 'Should escape HTML');
+  test('html() tagged template - values are text, nested results are DOM', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    try {
+      const xss = '<script>alert("xss")</script>';
+      render(html`<div>${xss}</div>`, container);
+      const div = container.querySelector('div');
+      assert(div.textContent === xss, 'A value should be rendered as text');
+      assert(div.innerHTML.includes('&lt;script&gt;'), 'The markup should contain escaped text');
+      assert(container.querySelector('script') === null, 'A value must not create a script element');
 
-    const inner = html`<span>Safe</span>`;
-    const outer = html`<div>${inner}</div>`;
-    assert(outer.includes('<span>Safe</span>'), 'Should preserve safe markup');
+      const inner = html`<span>Safe</span>`;
+      render(html`<div>${inner}</div>`, container);
+      assert(container.querySelector('div span')?.textContent === 'Safe', 'A nested TemplateResult should render as DOM');
 
-    const items = ['<b>one</b>', '<b>two</b>'];
-    const result2 = html`<div>${items}</div>`;
-    assert(result2.includes('&lt;b&gt;'), 'Should escape array items');
+      const items = ['<b>one</b>', '<b>two</b>'];
+      render(html`<div>${items}</div>`, container);
+      assert(container.querySelector('div').textContent.includes('<b>one</b>'), 'Array items should stay text');
+      assert(container.querySelector('b') === null, 'Array items must not become markup');
+    } finally {
+      container.remove();
+    }
   });
 
   test('raw() - does not escape values', () => {
@@ -2089,8 +2099,7 @@ export default ({ test, assert }) => {
   });
 
   test('Component - deeply nested framework components without nextSibling', async () => {
-    // This tests the complex DOM traversal in _process() lines 412-418
-    // when framework components are deeply nested and have no nextSibling
+    // Deeply nested components must render even when a child has no next sibling.
 
     class Level3Component extends Component(HTMLElement) {
       static tag = 'test-level3';
@@ -2576,9 +2585,7 @@ export default ({ test, assert }) => {
     cleanup();
   });
 
-  test('Component - auto-detect reactive state in _process', async () => {
-    // Tests lines 291-292: auto-detect reactive state in _process
-    // Import reactive from Component.js (already exported there)
+  test('Component - reactive state assigned before mount still renders', async () => {
     const { reactive } = await import('../src/components/Component.js');
 
     class ProcessReactiveComponent extends Component(HTMLElement) {
@@ -2667,18 +2674,15 @@ export default ({ test, assert }) => {
     container.remove();
   });
 
-  test('Component - auto-detect reactive state (lines 291-292)', async () => {
-    // Test auto-detection of reactive state in _process when not detected in populate
+  test('Component - reactive state assigned after populate still renders', async () => {
     const {reactive: makeReactive} = await import('../src/Reactive.js');
 
     class LateReactiveComponent extends Component(HTMLElement) {
 
       async populate() {
         // Call super.populate() BEFORE assigning state
-        // This way, line 179 won't catch it
         await super.populate();
-        // Now assign reactive state AFTER populate
-        // This will be caught by line 291-292 in _process
+        // Assign reactive state after populate; rendering must still track it.
         this.state = makeReactive({ value: 'late-reactive' });
       }
 
@@ -2691,7 +2695,7 @@ export default ({ test, assert }) => {
     const { component, container, cleanup } = await createTestComponent(LateReactiveComponent);
     await flushEffects();
 
-    assert(component.querySelector('div').textContent === 'late-reactive', 'Should auto-detect reactive state in _process');
+    assert(component.querySelector('div').textContent === 'late-reactive', 'Should render with reactive state assigned after populate');
     cleanup();
   });
 
@@ -2868,9 +2872,7 @@ export default ({ test, assert }) => {
     component.remove();
   });
 
-  test('Component - evalContext branch in reactive attr (lines 499)', async () => {
-    // Test line 499: const evalContext = this._currentEvalContext || this;
-    // When inside veda-if, _currentEvalContext is set and we should use it
+  test('Component - attribute expression inside veda-if', async () => {
     class TestComponent extends Component(HTMLElement) {
       static tag = 'test-eval-context-499';
       constructor() {
@@ -2896,9 +2898,8 @@ export default ({ test, assert }) => {
     await flushEffects();
 
     const div = component.querySelector('div');
-    // Should use evalContext (line 499) and handle undefined with ?? ''
     assert(div !== null, 'Should render div inside veda-if');
-    assert(div.getAttribute('data-test') === '', 'Should use empty string when evalContext expression is undefined (line 499)');
+    assert(div.getAttribute('data-test') === '', 'Should use empty string when the expression is undefined');
 
     component.remove();
   });
@@ -2937,9 +2938,7 @@ export default ({ test, assert }) => {
     component.remove();
   });
 
-  test('Component - contextForReactivity branch (line 577)', async () => {
-    // Test line 577: const contextForReactivity = this._currentEvalContext || this;
-    // This is used to check reactivity in veda-if/veda-loop contexts
+  test('Component - boolean attribute inside veda-if stays reactive', async () => {
     class TestComponent extends Component(HTMLElement) {
       static tag = 'test-context-reactivity-577';
       constructor() {
@@ -2966,12 +2965,11 @@ export default ({ test, assert }) => {
 
     const button = component.querySelector('button');
     assert(button !== null, 'Should render button inside veda-if');
-    // Should use contextForReactivity (line 577) to check if parent is reactive
 
     // Change state to test reactivity
     component.state.isDisabled = true;
     await flushEffects();
-    assert(button.disabled === true, 'Should be disabled after state change (using contextForReactivity line 577)');
+    assert(button.disabled === true, 'Should be disabled after a state change inside veda-if');
 
     component.remove();
   });

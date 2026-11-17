@@ -5,6 +5,7 @@
 
 import './setup-dom.js';
 import Component, { html, reactive } from '../src/components/Component.js';
+import { unsafeStatic } from '../src/template/TemplateResult.js';
 import { flushEffects } from '../src/Effect.js';
 import { createTestComponent } from './helpers.js';
 
@@ -33,7 +34,7 @@ export default ({ test, assert }) => {
           this.state = reactive({ attr: initial });
         }
         render() {
-          return html`<div ${name}="{this.state.attr}">Content</div>`;
+          return html`<div ${unsafeStatic(name)}="{this.state.attr}">Content</div>`;
         }
       }
 
@@ -86,7 +87,7 @@ export default ({ test, assert }) => {
         }
 
         render() {
-          return html`<${element} ${event}="{this.handleEvent}">Test</${element}>`;
+          return html`<${unsafeStatic(element)} ${unsafeStatic(event)}="{this.handleEvent}">Test</${unsafeStatic(element)}>`;
         }
       }
 
@@ -180,8 +181,8 @@ export default ({ test, assert }) => {
             this.state = reactive({ bool: value });
           }
           render() {
-            const typeAttr = element === 'input' ? ' type="text"' : '';
-            return html`<${element}${typeAttr} ${attr}="{this.state.bool}">Test</${element}>`;
+            const typeAttrs = element === 'input' ? {type: 'text'} : {};
+            return html`<${unsafeStatic(element)} ${unsafeStatic(attr)}="{this.state.bool}" ${typeAttrs}>Test</${unsafeStatic(element)}>`;
           }
         }
 
@@ -211,8 +212,8 @@ export default ({ test, assert }) => {
             this.state = reactive({ bool: value });
           }
           render() {
-            const typeAttr = element === 'input' ? ' type="text"' : '';
-            return html`<${element}${typeAttr} ${attr}="{this.state.bool}">Test</${element}>`;
+            const typeAttrs = element === 'input' ? {type: 'text'} : {};
+            return html`<${unsafeStatic(element)} ${unsafeStatic(attr)}="{this.state.bool}" ${typeAttrs}>Test</${unsafeStatic(element)}>`;
           }
         }
 

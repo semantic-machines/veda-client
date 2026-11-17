@@ -1,10 +1,12 @@
 import ValueComponent from './ValueComponent.js';
 import {reactive} from '../Reactive.js';
+import {factories} from '../template/factories.js';
+import {compileTemplate} from '../template/Template.js';
 
 export default function RelationComponent (Class = HTMLElement) {
   return class RelationComponentClass extends ValueComponent(Class) {
-    async renderValue (value, container, index) {
-      const hasCustomContent = this.template?.trim();
+    renderValue (value, container, index) {
+      const hasCustomContent = this._compiledTemplate || this.template?.trim();
       if (!hasCustomContent) {
         return super.renderValue(value, container, index);
       }
@@ -14,19 +16,19 @@ export default function RelationComponent (Class = HTMLElement) {
       try {
         this.state.model = value;
 
-        const template = document.createElement('template');
-        template.innerHTML = this.template;
-        const fragment = template.content.cloneNode(true);
-
-        // Create pseudo-component context with state.model for consistency
-        // This allows using {this.state.model.id} syntax everywhere
+        // Create pseudo-component context with state.model for consistency.
+        // This allows using {this.state.model.id} syntax everywhere.
         const pseudoState = reactive({ model: value });
+        Object.setPrototypeOf(pseudoState, this);
         const evalContext = { state: pseudoState };
 
-        // Set up prototype chain: pseudoState -> this (for method access)
-        Object.setPrototypeOf(pseudoState, this);
-
-        this._process(fragment, evalContext);
+        const compiled = this._compiledTemplate || compileTemplate(this.template);
+        const instance = compiled.instantiate(
+          evalContext,
+          this,
+          {values: this._templateValues || []},
+        );
+        const fragment = instance.fragment;
 
         const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT);
         let node = walker.nextNode();
@@ -40,9 +42,12 @@ export default function RelationComponent (Class = HTMLElement) {
         }
 
         container.append(fragment);
+        return {cleanup: () => instance.destroy(), instance};
       } finally {
         this.state.model = originalModel;
       }
     }
   };
 }
+
+factories.Relation = RelationComponent;

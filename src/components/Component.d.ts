@@ -1,7 +1,9 @@
 import Model from '../Model.js';
+import type {TemplateResult} from '../template/TemplateResult.js';
+import type {CompiledTemplate} from '../template/Template.js';
 
-export function html(strings: TemplateStringsArray, ...values: any[]): string;
-export function raw(strings: TemplateStringsArray, ...values: any[]): string;
+export function html(strings: TemplateStringsArray | string, ...values: any[]): TemplateResult;
+export function raw(strings: TemplateStringsArray | string, ...values: any[]): string;
 export function safe(value: any): string | string[];
 
 export interface ComponentState<M extends Model = Model> {
@@ -12,7 +14,7 @@ export interface ComponentState<M extends Model = Model> {
 export interface ComponentInstance<M extends Model = Model> {
   state: ComponentState<M>; // Reactive state object with typed model
   model?: M; // Direct model access (alternative to state.model)
-  template?: string;
+  template?: string | TemplateResult | CompiledTemplate;
   rendered: Promise<void>;
   refs: Record<string, Element | undefined>;
   context: Record<string, any>;
@@ -23,8 +25,9 @@ export interface ComponentInstance<M extends Model = Model> {
 
   added(): void | Promise<void>;
   pre(): void | Promise<void>;
-  render(): string | Promise<string> | undefined;
-  post(fragment?: DocumentFragment): void | Promise<void>;
+  render(): string | TemplateResult | CompiledTemplate |
+    Promise<string | TemplateResult | CompiledTemplate> | undefined;
+  post(): void | Promise<void>;
   removed(): void | Promise<void>;
 
   update(): Promise<void>;
@@ -36,12 +39,7 @@ export interface ComponentInstance<M extends Model = Model> {
 
   // Internal helper method
   _findParentComponent(): HTMLElement | null;
-  _cleanupAllEventListeners(): void;
-  _getRenderEffectsCount(): number;
-  _extractRenderEffects(startIndex: number): Array<() => void>;
   _getEventListenersCount(): number;
-  _extractEventListeners(startIndex: number): Array<{node: EventTarget; eventName: string; handler: EventListener}>;
-  _stopEventListeners(listeners?: Array<{node: EventTarget; eventName: string; handler: EventListener}>): void;
 }
 
 export interface ComponentConstructor {

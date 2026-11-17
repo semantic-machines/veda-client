@@ -507,12 +507,12 @@ get currentPage() {
 **Use getters** to cache computed values:
 
 ```javascript
-// ❌ Bad - recalculates on every access
+// ❌ Bad - recomputes and re-sorts the whole list on every render
 render() {
-  const sorted = this.items.sort((a, b) => a.priority - b.priority);
-  const filtered = sorted.filter(x => x.active);
   return html`
-    <${Loop} items="${filtered}" key="id">...</${Loop}>
+    <${Loop}
+      items="{this.items.sort((a, b) => a.priority - b.priority).filter(x => x.active)}"
+      key="id">...</${Loop}>
   `;
 }
 

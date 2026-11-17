@@ -8,9 +8,9 @@ A lightweight reactive framework for building semantic web applications with fin
 - 🧩 **Web Components** - Built on native Custom Elements API
 - 🔗 **Semantic data** - First-class RDF/linked data model support
 - 📝 **Declarative templates** - JSX-like syntax with reactive expressions
-- 🔄 **Built-in components** - Loop, If, Property, Relation components
+- 🔄 **Built-in components** - Loop, If, Slot, Place, Virtual, Context, Property, Relation components
 - ♻️ **Circular references** - Automatic handling for RDF graph structures
-- 📦 **Minimal footprint** - ~50 KB browser bundle, ~85 KB with Node.js (includes ws)
+- 📦 **Minimal footprint** - ~41 KB gzipped (~133 KB minified, Node build includes ws)
 - 🎨 **TypeScript** - Full type definitions included
 
 ## Quick Start
@@ -101,6 +101,7 @@ class TodoList extends Component(HTMLElement) {
 
 - **[API Reference](./API.md)** - Complete API documentation
 - **[Architecture Guide](./ARCHITECTURE.md)** - Framework internals and design decisions
+- **[Template Engine](./TEMPLATE_ENGINE.md)** - TemplateResult, compiled templates and Parts
 - **[Reactivity Guide](./REACTIVITY.md)** - Comprehensive reactivity tutorial
 - **[FAQ](./FAQ.md)** - Frequently asked questions and solutions
 - **[Performance Benchmarks](./BENCHMARKS.md)** - Measured performance metrics
@@ -128,14 +129,22 @@ The framework exports the following modules from `./src/index.js`:
 | Module | Export | Description | Source |
 |--------|--------|-------------|--------|
 | **Core** | `Component` | Base class for creating reactive web components | Component.js |
-|  | `html` | Template tag for safe HTML rendering | Component.js |
-|  | `safe` | Function to escape HTML and remove expressions | Component.js |
-|  | `raw` | Template tag for raw HTML (use with caution) | Component.js |
+|  | `html` | Template tag returning a `TemplateResult` | TemplateResult.js |
+|  | `render` | Mount/patch a `TemplateResult` into a container | Template.js |
+|  | `safe` | Escape HTML and remove `{expr}` from a string value | TemplateResult.js |
+|  | `raw` | String template tag for trusted markup returned from `render()` | TemplateResult.js |
 |  | `reactive` | Create reactive objects for state management | Component.js |
 |  | `effect` | Create auto-tracking effect | Component.js |
 |  | `computed` | Create computed value | Reactive.js |
+| **Template** | `TemplateResult` | Lit-style value returned by `html` (not a String) | TemplateResult.js |
+|  | `nothing`, `noChange`, `unsafeHTML`, `unsafeStatic` | Lit-style sentinels, trusted markup and trusted static source | TemplateResult.js |
+|  | `getTemplateCacheStats`, `resetTemplateStats`, `clearTemplateCache` | Template cache diagnostics (counter fields deprecated) | Template.js |
 | **Components** | `Loop` | List rendering with reconciliation | LoopComponent.js |
 |  | `If` | Conditional rendering | IfComponent.js |
+|  | `Context` | Provide reactive values to descendants | ContextComponent.js |
+|  | `Slot` | Project author content into named layout holes | SlotComponent.js |
+|  | `Place` | Move rendered nodes to another container | PlaceComponent.js |
+|  | `Virtual` | Windowed list rendering through the compiled template engine | VirtualComponent.js |
 | **Data** | `Model` | RDF/semantic data model | Model.js |
 |  | `Backend` | Backend API communication | Backend.js |
 |  | `Subscription` | WebSocket subscriptions | Subscription.js |
@@ -221,9 +230,9 @@ Requires:
 
 ## Bundle Size
 
-- **Browser**: ~50 KB (minified, without ws)
-- **Node.js**: ~85 KB (minified, includes ws for WebSocket support)
-- Both versions are bundled and tree-shakeable
+- **Current build** (`npm run build`): ~133 KB minified, ~41 KB gzipped
+- The bundle includes `ws` for WebSocket support; a browser-only build can drop it
+- Bundled by esbuild; ES modules remain tree-shakeable
 
 ## Testing
 

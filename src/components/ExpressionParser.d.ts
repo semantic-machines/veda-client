@@ -20,6 +20,15 @@ export default class ExpressionParser {
   static evaluateAuto(expr: string, context: any, preserveContext: true): FunctionWithContext | any;
 
   /**
+   * Compile an expression once and return a reusable evaluator with the same
+   * signature as evaluateAuto(). The cache is bounded (LRU-like by insertion
+   * order), so templates can call this for every expression safely.
+   */
+  static compile(
+    expr: string,
+  ): (context: any, preserveContext?: boolean) => any;
+
+  /**
    * Check if expression is a simple property path (safe for property traversal).
    * Returns false for expressions with operators, method calls, brackets, etc.
    */

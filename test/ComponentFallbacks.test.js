@@ -1,6 +1,5 @@
 /**
  * Component Fallback Code Tests
- * Tests for Component.js lines 314-320, 417-420
  */
 
 import './setup-dom.js';
@@ -63,13 +62,11 @@ export default ({ test, assert }) => {
     cleanup();
   });
 
-  test('ComponentFallback - _currentEvalContext undefined fallback', async () => {
-    // Tests line 417-420: const context = this._currentEvalContext || this;
+  test('ComponentFallback - renders without an inherited eval context', async () => {
     class ContextFallbackComponent extends Component(HTMLElement) {
       constructor() {
         super();
         this.state.value = 'fallback-test';
-        // Don't set _currentEvalContext, let it be undefined
       }
 
       render() {
@@ -79,9 +76,8 @@ export default ({ test, assert }) => {
 
     const { component, cleanup } = await createTestComponent(ContextFallbackComponent);
 
-    // Should use 'this' as fallback when _currentEvalContext is undefined
     assert(component.textContent.includes('fallback-test'),
-      'Fallback context works when _currentEvalContext is undefined');
+      'Component renders with its own state context');
 
     // Update state to verify reactivity works
     component.state.value = 'updated';

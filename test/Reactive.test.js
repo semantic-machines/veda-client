@@ -767,5 +767,14 @@ export default ({test, assert}) => {
     assert.equal(lastLength, 1, 'Length should be 1 again');
     assert.deepEqual(obj.items, ['b'], 'Items should be correct');
   });
+  test('Reactive - keeps DOM nodes out of proxies', () => {
+    const node = document.createElement('div');
+    const state = reactive({ node, refs: { node } });
+
+    assert(state.node === node, 'DOM node should not be wrapped in a Proxy');
+    assert(state.refs.node === node, 'DOM nodes nested in refs should stay raw');
+    assert(state.refs.node.contains(node) === true, 'Native Node methods must accept the stored node');
+  });
+
 };
 

@@ -6,37 +6,88 @@ Security guidelines for Veda Client Framework applications.
 
 ### Always Use `html` Template Tag
 
-The `html` template tag automatically escapes user input:
+`html` values are written through the DOM API; they are never parsed as
+markup. A `<script>` in a value becomes a text node:
 
 ```javascript
-import { html } from './src/components/Component.js';
+import { html } from 'veda-client';
 
-// ✅ SAFE - automatic escaping
+// ✅ SAFE - the value is a DOM value, not markup
 const userInput = '<script>alert("XSS")</script>';
 const template = html`<div>${userInput}</div>`;
-// Result: <div>&lt;script&gt;alert("XSS")&lt;/script&gt;</div>
+// <div> contains the literal text <script>alert("XSS")</script>
 ```
+
+### Values Never Become Markup
+
+This is the rule the template engine is built around (the same one lit-html
+uses): a `${}` value can only be text, an attribute value, a spread entry or a
+`ChildPart` value. It can never be a tag name, an attribute name, an
+`{expression}` or an attribute snippet. The only way to put a value into the
+template *source* is `unsafeStatic()`, which brands the value with a symbol so
+ordinary data (including `JSON.parse` output) cannot produce it.
+
+```javascript
+// ❌ no way to express this from data: tag names are authored
+html`<${this.state.tag}></${this.state.tag}>`;        // throws
+html`<div ${this.state.attr}="x"></div>`;             // throws (name position)
+html`<div ${this.state.snippet}></div>`;              // expects an object, not markup
+
+// ✅ trusted static source, authored in code
+const tag = unsafeStatic('my-row');
+html`<${tag}></${tag}>`;
+```
+
+Note: HTML entities in the *authored* template source are decoded by the parser
+before expression parsing, so `&#123;x&#125;` in a template behaves like
+`{x}`. That is authored code, not data; never build expression braces from
+entities or from strings.
+
+### Spread (`${attrs}`) Is a Capability Boundary
+
+`${attrs}` accepts an object (or `Map`) and applies it through `setAttribute`,
+`toggleAttribute`, property assignment or `addEventListener` — it is never
+parsed. Data may set ordinary attributes (`class`, `aria-*`, `data-*`, ...),
+but not:
+
+- `on*` content attributes (use `@event` with a function),
+- `srcdoc`, `innerHTML`, `outerHTML`,
+- framework attributes (`items`, `condition`, `key`, `as`, `item-key`,
+  `height`, `item-height`, `overscan`, `bind`, `ref`, `about`, `property`,
+  `rel`, `is`, `slot`),
+- the reserved `data-veda-*` namespace (compiler markers).
+
+`javascript:` and `vbscript:` URL values are refused in `href`, `src`,
+`action`, `formaction`, `poster` and similar attributes, including values
+written with `{expression}`. Other URLs (`https://`, relative, `mailto:`) are
+the application's responsibility, as in any framework.
+
+The guard lives in the Part writer, so it covers every value the marker engine
+renders — including `${}` projected through `Slot` when the host content comes
+from a compiled parent template.
 
 ### Never Use `raw` with User Input
 
-The `raw` function bypasses escaping and is **dangerous** with untrusted content:
+`raw` still returns a plain string that is compiled as template source, so a
+value containing `{...}` becomes an expression:
 
 ```javascript
-import { raw } from './src/components/Component.js';
+import { raw } from 'veda-client';
 
-// ❌ DANGEROUS - no escaping
+// ❌ DANGEROUS
 const userInput = '<script>alert("XSS")</script>';
 const template = raw`<div>${userInput}</div>`;
-// Result: <div><script>alert("XSS")</script></div> // Executed!
 ```
 
-**Rule:** Use `raw` only for content you control (templates, static HTML, sanitized HTML).
+**Rule:** Use `raw` only for content you control (templates, static HTML,
+sanitized HTML). Use `${}` inside `html` for values.
 
 ### Expression Injection Protection
 
-#### Safe Mode: `{expression}` - Property Access Only
+#### Simple Paths (no eval)
 
-Reactive expressions `{expression}` are **safe** - they only evaluate property access:
+An expression that is a plain property path is evaluated by traversal, without
+`eval`/`new Function`, so it stays CSP-compatible:
 
 ```javascript
 // ✅ SAFE - property access only
@@ -47,24 +98,21 @@ this.model.title = '<script>alert("XSS")</script>';
 // Rendered as text, not executed
 ```
 
-The `ExpressionParser` allows **only** dot notation, no operators or function calls:
-
 ```javascript
-// ✅ Supported (safe)
+// ✅ Simple paths (no eval)
 {this.user.name}
 {this.items.0.title}
-
-// ❌ Not supported (parser rejects)
-{alert('XSS')}
-{eval('malicious')}
-{this.doSomething()}
 ```
 
-This makes XSS via expression injection **impossible**.
+The data is inserted as text or as an attribute value, so malicious model
+content cannot become markup.
 
 #### Complex Expressions (auto-detected)
 
-When an expression contains operators, method calls, or other complex syntax (e.g., `{this.state.count > 0}`), the system **auto-detects** it and evaluates via `new Function()`. There is no separate syntax — the same `{expression}` braces are used for both simple property paths and complex expressions.
+Everything that is not a simple path — operators, ternaries, method calls —
+is auto-detected and compiled once with `new Function()`. The same
+`{expression}` braces are used for both forms. Function calls therefore **do**
+work, which means the expression source itself is code:
 
 **⚠️ IMPORTANT:** Complex expressions use `new Function()` internally (requires `unsafe-eval` in CSP).
 
@@ -181,16 +229,21 @@ npm install dompurify
 
 ### Event Handlers
 
-Event handlers use expression syntax and are **safe**:
+Handlers use `{expression}` and are resolved from the component/context when
+the event fires. A method reference or a path to a function is expected:
 
 ```javascript
-// ✅ SAFE - method reference only
+// ✅ SAFE - method or function path
 <button onclick="{handleClick}">Click</button>
-
-// ❌ Not supported (parser rejects)
-<button onclick="{alert('XSS')}">
-<button onclick="{this.doSomething(); alert('XSS')}">
+<button onclick="{this.handleClick}">Click</button>
+<button onclick="{this.state.handler}">Click</button>
 ```
+
+Call expressions are not evaluated as handlers: `{alert('XSS')}` does not run,
+the framework warns instead. Static inline handlers (`onclick="alert(1)"`), the
+`:onclick` property binding, `srcdoc` and `:srcdoc` are compile errors in 4.0;
+use `{expression}`, `@event` for spread listeners and `unsafeHTML()` for
+trusted markup.
 
 ### Data Attributes
 

@@ -19,6 +19,13 @@ export default class ExpressionParser {
   // optional "this." prefix, then dot-separated property names (with optional chaining).
   // Property names may contain word chars, colons (RDF), and hyphens.
   static #SAFE_EXPR_PATTERN = /^(this\.)?([\w:-]+)(\??\.[\w:-]+)*$/;
+
+  // Compiled-expression cache. Expressions live in templates, so the same
+  // source string is evaluated thousands of times; parsing it on every effect
+  // run is pure overhead.
+  static #compileCache = new Map();
+  static #safeCache = new Map();
+  static #MAX_COMPILE_CACHE = 2000;
   /**
    * Evaluate expression in given context (safe mode - property access only)
    * @param {string} expr - Expression to evaluate (e.g., "model.rdfs:label.0")
@@ -37,14 +44,7 @@ export default class ExpressionParser {
       return context;
     }
 
-    const parts = normalized.split(/(\?\.|\.)/).filter(part => part && part !== '.');
-    const result = this.#evaluateParts(parts, context);
-
-    if (preserveContext && typeof result.value === 'function' && result.parent) {
-      return { value: result.value, context: result.parent };
-    }
-
-    return result.value;
+    return this.#getSafeEvaluator(normalized)(context, preserveContext);
   }
 
   /**
@@ -59,6 +59,37 @@ export default class ExpressionParser {
   }
 
   /**
+   * Compile expression into a reusable evaluator.
+   * The returned function has the same signature as evaluateAuto().
+   * @param {string} expr
+   * @returns {(context: object, preserveContext?: boolean) => *}
+   */
+  static compile(expr) {
+    if (!expr || typeof expr !== 'string') {
+      return () => undefined;
+    }
+
+    const cached = this.#compileCache.get(expr);
+    if (cached) return cached;
+
+    const trimmed = expr.trim();
+    let evaluator;
+
+    if (this.isSafe(trimmed)) {
+      const normalized = this.#normalizeExpression(trimmed);
+      evaluator = normalized === ''
+        ? (context) => context
+        : this.#getSafeEvaluator(normalized);
+    } else {
+      evaluator = this.#compileComplex(trimmed);
+    }
+
+    this.#compileCache.set(expr, evaluator);
+    this.#trimCache(this.#compileCache);
+    return evaluator;
+  }
+
+  /**
    * Primary expression evaluator with auto-detection.
    * Simple property paths use safe traversal (no eval, CSP-compatible).
    * Complex expressions (operators, method calls, etc.) use new Function().
@@ -69,33 +100,67 @@ export default class ExpressionParser {
    */
   static evaluateAuto(expr, context, preserveContext = false) {
     if (!expr || typeof expr !== 'string') return undefined;
-    const trimmed = expr.trim();
-    if (this.isSafe(trimmed)) {
-      return this.evaluate(trimmed, context, preserveContext);
-    }
-    return this.#evaluateComplex(trimmed, context);
+    return this.compile(expr)(context, preserveContext);
+  }
+
+  static #getSafeEvaluator(normalized) {
+    const cached = this.#safeCache.get(normalized);
+    if (cached) return cached;
+
+    const parts = normalized.split(/(\?\.|\.)/).filter(part => part && part !== '.');
+    const evaluator = (context, preserveContext = false) => {
+      const result = this.#evaluateParts(parts, context);
+      if (preserveContext && typeof result.value === 'function' && result.parent) {
+        return { value: result.value, context: result.parent };
+      }
+      return result.value;
+    };
+
+    this.#safeCache.set(normalized, evaluator);
+    this.#trimCache(this.#safeCache);
+    return evaluator;
   }
 
   /**
-   * Evaluate complex JavaScript expression via new Function().
-   * Internal method — used by evaluateAuto() for expressions with operators, calls, etc.
-   * @param {string} expr - JavaScript expression
-   * @param {object} context - Context object
-   * @returns {*} Evaluated result
+   * Compile a complex JavaScript expression once via new Function().
+   * Runtime errors are reported per call, matching the old evaluateComplex().
+   * @param {string} expr
+   * @returns {(context: object) => *}
    */
-  static #evaluateComplex(expr, context) {
-    if (!expr || typeof expr !== 'string') {
-      return undefined;
-    }
+  static #compileComplex(expr) {
+    let compiled = null;
+    let compileError = null;
 
     try {
       // Create function with context as 'this' and properties available via 'with'
       // This allows both 'this.state.x' and direct 'model.x' access
-      const fn = new Function(`with(this) { return ${expr}; }`);
-      return fn.call(context);
+      compiled = new Function(`with(this) { return ${expr}; }`);
     } catch (error) {
-      console.warn(`Expression error '${expr}':`, error.message);
-      return undefined;
+      compileError = error;
+    }
+
+    return (context) => {
+      if (!compiled) {
+        console.warn(`Expression error '${expr}':`, compileError.message);
+        return undefined;
+      }
+      try {
+        return compiled.call(context);
+      } catch (error) {
+        console.warn(`Expression error '${expr}':`, error.message);
+        return undefined;
+      }
+    };
+  }
+
+  static #trimCache(cache) {
+    if (cache.size <= this.#MAX_COMPILE_CACHE) return;
+    // Map preserves insertion order: drop the oldest entries.
+    const excess = cache.size - this.#MAX_COMPILE_CACHE;
+    let i = 0;
+    for (const key of cache.keys()) {
+      if (i++ >= excess) break;
+      cache.delete(key);
     }
   }
 

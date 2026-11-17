@@ -608,10 +608,10 @@ export default ({test, assert}) => {
 
     await component.update();
     const second = component.refs.query;
-    assert(second !== first, 'update() should assign a new node');
-    assert(second === component.querySelector('input'), 'New ref should be the current input');
-    assert(first.isConnected === false, 'Previous ref node should be gone');
-    assert(component.refs.query === second, 'refs.query should not keep the old node');
+    assert(second === first, 'update() should reuse the node when the template is unchanged');
+    assert(second === component.querySelector('input'), 'Ref should stay the current input');
+    assert(first.isConnected === true, 'Previous ref node should stay attached');
+    assert(component.refs.query === second, 'refs.query should keep the current node');
     cleanup();
   });
 

@@ -45,7 +45,6 @@ export default function ({ test, assert }) {
     const instance = Object.create(RelClass.prototype);
     instance.template = '<span class="rel-item">Item</span>';
     instance.state = { model: mockModel };
-    instance._process = () => {}; // Mock _process method
 
     await instance.renderValue(mockModel, container, 0);
 
@@ -62,7 +61,6 @@ export default function ({ test, assert }) {
     const instance = Object.create(RelClass.prototype);
     instance.template = '<div class="rel-direct">Direct HTML</div>';
     instance.state = { model: mockModel };
-    instance._process = () => {}; // Mock _process method
 
     await instance.renderValue(mockModel, container, 0);
 
@@ -71,6 +69,9 @@ export default function ({ test, assert }) {
   });
 
   test('RelationComponent - renderValue sets model on custom elements', async () => {
+    if (!customElements.get('custom-element')) {
+      customElements.define('custom-element', class extends HTMLElement {});
+    }
     const RelClass = RelationComponent(HTMLElement);
     const container = document.createElement('div');
 
@@ -79,7 +80,6 @@ export default function ({ test, assert }) {
     const instance = {
       template: '<custom-element></custom-element>',
       state: { model: mockModel },
-      _process() {},
       renderValue: RelClass.prototype.renderValue
     };
 
@@ -102,7 +102,6 @@ export default function ({ test, assert }) {
     const instance = {
       template: '<div>Content</div>',
       state: { model: originalModel },
-      _process() {},
       renderValue: RelClass.prototype.renderValue
     };
 
@@ -112,30 +111,22 @@ export default function ({ test, assert }) {
     assert(instance.state.model === originalModel, 'Should restore original model after rendering');
   });
 
-  test('RelationComponent - renderValue creates context element', async () => {
+  test('RelationComponent - renderValue creates a model-aware context', async () => {
     const RelClass = RelationComponent(HTMLElement);
     const container = document.createElement('div');
 
     const mockModel = { id: 4, name: 'Test4' };
-
-    let processCalledWithContext = null;
     const instance = {
-      template: '<span>Test</span>',
+      template: '<span class="ctx">{this.state.model.id}</span>',
       state: { model: mockModel },
-      _process(fragment, context) {
-        processCalledWithContext = context;
-      },
       renderValue: RelClass.prototype.renderValue
     };
 
-    // Test lines 34-37: create contextElement with model
     await instance.renderValue(mockModel, container, 0);
 
-    assert(processCalledWithContext !== null, 'Should call _process with context');
-    assert(processCalledWithContext.state !== undefined, 'Context should have state');
-    // State is reactive (Proxy), so we check the property value
-    const contextModel = processCalledWithContext.state.model;
-    assert(contextModel.id === mockModel.id, `Context should have state.model with correct id`);
+    const span = container.querySelector('.ctx');
+    assert(span !== null, 'Template should render');
+    assert(span.textContent === '4', 'Context should expose state.model to template expressions');
   });
 
   test('RelationComponent - renders without template using super (lines 7-8)', async () => {

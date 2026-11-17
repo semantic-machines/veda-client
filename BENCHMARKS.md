@@ -1,10 +1,13 @@
 # Performance Benchmark Results
 
-Last updated: 2025-11-19
+Last updated: 2026-11-16 (4.0.0 marker engine)
 
 ## Summary
 
 All benchmarks run on Node.js with `--expose-gc` flag using JSDOM environment.
+The tables below are a single run on one machine; use them to compare revisions
+on the same environment, not as absolute numbers. Re-run with
+`npm run test:benchmark`.
 
 ## Loop Component Performance
 
@@ -12,38 +15,34 @@ All benchmarks run on Node.js with `--expose-gc` flag using JSDOM environment.
 
 | Items | Time (ms) | ms/item | Performance |
 |-------|-----------|---------|-------------|
-| 100   | 31.34     | 0.31    | ✓ Excellent |
-| 500   | 50.43     | 0.10    | ✓ Good      |
-| 1000  | 78.92     | 0.08    | ✓ Acceptable|
+| 100   | 48.67     | 0.49    | ✓ Good      |
+| 500   | 84.00     | 0.17    | ✓ Good      |
+| 1000  | 99.24     | 0.10    | ✓ Acceptable|
 
-**Scaling:** Linear (O(n)) - initial render time grows proportionally with item count.
+**Scaling:** close to linear - initial render time grows with item count.
 
 ### Operations (Add/Remove)
 
 | Operation      | Items    | Time (ms) | Performance |
 |----------------|----------|-----------|-------------|
-| Add items      | 100→200  | 8.72      | ✓ Excellent |
-| Remove items   | 500→250  | 8.03      | ✓ Excellent |
-| Update values  | 500      | 7.11      | ✓ Excellent |
-| Mixed ops      | 500      | 9.14      | ✓ Excellent |
+| Add items      | 100→200  | 11.15     | ✓ Excellent |
+| Remove items   | 500→250  | 8.25      | ✓ Excellent |
+| Update values  | 500      | 10.99     | ✓ Excellent |
+| Mixed ops      | 500      | 13.04     | ✓ Excellent |
 
-**Key Finding:** Add/remove/update operations are fast and independent of list size.
+**Key Finding:** Add/remove/update operations stay in the ~8-13ms range.
 
-### Reordering (Critical Metric)
+### Reordering
 
 | Items | Time (ms) | ms/item² | Performance  |
 |-------|-----------|----------|--------------|
-| 100   | 2.31      | 0.00023  | ✓ Excellent  |
-| 500   | 17.24     | 0.00007  | ✓ Good       |
-| 1000  | 53.62     | 0.00005  | ⚠ Noticeable |
+| 100   | 3.59      | 0.000359 | ✓ Excellent  |
+| 500   | 20.98     | 0.000084 | ✓ Good       |
+| 1000  | 48.40     | 0.000048 | ⚠ Noticeable |
 
-**Scaling:** Quadratic (O(n²)) - reorder time grows with square of item count.
-
-**Formula:** `time ≈ 0.00005 × items²`
-
-**Projected times:**
-- 1500 items: ~112ms
-- 2000 items: ~200ms (poor UX)
+**Scaling:** superlinear but below quadratic on this run. Reordering is the
+slowest Loop operation; keep `key` set and prefer pagination for very large
+lists with frequent reorders.
 
 ## Reactivity System Performance
 
@@ -51,42 +50,42 @@ All benchmarks run on Node.js with `--expose-gc` flag using JSDOM environment.
 
 | Metric | Value | Performance |
 |--------|-------|-------------|
-| 1000 reactive objects | 0.67ms | 1,495,273 ops/sec |
+| 1000 reactive objects | 0.84ms | 1,186,808 ops/sec |
 | Per object | 0.001ms | ✓ Excellent |
 
 ### Effect Execution
 
 | Metric | Value | Performance |
 |--------|-------|-------------|
-| 1000 updates | 1.10ms | 912,073 updates/sec |
+| 1000 updates | 0.88ms | 1,136,471 updates/sec |
 | Effect executions | 2 times | ✓ Batching works |
 
 ### Nested Reactivity
 
 | Metric | Value | Performance |
 |--------|-------|-------------|
-| 1000 deep updates | 0.98ms | 1,024,774 updates/sec |
+| 1000 deep updates | 0.99ms | 1,011,451 updates/sec |
 
 ### Array Operations
 
 | Operation | Time (ms) | Notes |
 |-----------|-----------|-------|
 | 100 pushes + filter + map | 0.58 | Effect ran 4 times |
-| 1000 items creation | 0.17 | 0.000ms per item |
+| 1000 items creation | 0.26 | 0.000ms per item |
 
 ## Model Performance
 
 | Operation | Count | Time (ms) | Rate (ops/sec) |
 |-----------|-------|-----------|----------------|
-| Model creation | 1000 | 2.14 | 467,074 |
-| Property access | 30,000 | 4.93 | 6,088,234 |
+| Model creation | 1000 | 3.71 | 269,765 |
+| Property access | 30,000 | 5.11 | 5,869,044 |
 
 ## Component Performance
 
 | Operation | Count | Time (ms) | Per Item |
 |-----------|-------|-----------|----------|
-| Component creation | 100 | 26.62 | 0.27ms |
-| Component updates | 100 | 0.12 | 0.001ms |
+| Component creation | 100 | 12.22 | 0.12ms |
+| Component updates | 100 | 0.19 | 0.002ms |
 
 ## Memory Usage
 
@@ -94,56 +93,32 @@ All benchmarks run on Node.js with `--expose-gc` flag using JSDOM environment.
 
 | Count | Total Memory | Per Object |
 |-------|--------------|------------|
-| 1000 | 0.76 MB | 0.78 KB |
+| 1000 | 0.77 MB | 0.78 KB |
 
 ### Components
 
 | Count | Total Memory | Per Component |
 |-------|--------------|---------------|
-| 100 | 7.13 MB | 73.00 KB |
+| 100 | 5.55 MB | 56.86 KB |
 
 ## Performance Recommendations
 
-### Loop Component
-
-**✓ Excellent performance:**
-- < 100 items
-- Static lists up to 1000 items
-- Lists with frequent add/remove (any size)
-
-**✓ Good performance:**
-- 100-500 items with occasional reordering
-- Up to 500 items with frequent updates
-
-**⚠ Use with caution:**
-- 500-1000 items with frequent reordering (17-54ms delay)
-
-**❌ Avoid or paginate:**
-- 1000+ items with reordering (>50ms delay)
-- 2000+ items (>200ms for reorder)
-
-### General Guidelines
-
-1. **Always use `key` attribute** for Loop components
-2. **Paginate lists** > 500 items if reordering is needed
-3. **Use computed properties** - they're extremely fast (<0.001ms)
-4. **Trust the batching** - multiple updates = single render
-5. **Components are lightweight** - 0.27ms to create, 0.001ms to update
+See [LIMITATIONS.md](./LIMITATIONS.md) and [FAQ.md](./FAQ.md) for guidance; the
+numbers above are the raw inputs for those recommendations.
 
 ## Comparison with Framework Claims
 
 | Claim | Measured | Status |
 |-------|----------|--------|
-| O(n²) reordering | Confirmed | ✓ |
-| Fast add/remove | ~8ms for any size | ✓ |
-| Fine-grained reactivity | 912K updates/sec | ✓ |
-| Lightweight components | 73KB per component | ✓ |
+| Keyed LIS reordering | 1000 items in 48ms | ✓ |
+| Fast add/remove | 8-13ms | ✓ |
+| Fine-grained reactivity | 1.1M updates/sec | ✓ |
+| Lightweight components | 57KB per component | ✓ |
 
 ## Running Benchmarks
 
 ```bash
-# Run all benchmarks
-pnpm test:benchmark
+npm run test:benchmark
 ```
 
 ## Benchmark Source
@@ -155,4 +130,3 @@ All benchmarks are in `test/benchmarks/`:
 ---
 
 **Note:** Benchmarks run in Node.js/JSDOM. Real browser performance may vary (typically 10-30% faster).
-

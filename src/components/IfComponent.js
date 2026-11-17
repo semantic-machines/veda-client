@@ -1,6 +1,8 @@
 import Component from './Component.js';
 import ExpressionParser from './ExpressionParser.js';
 import {effect} from '../Effect.js';
+import {factories} from '../template/factories.js';
+import {compileTemplate} from '../template/Template.js';
 
 /**
  * If component for conditional rendering
@@ -15,10 +17,9 @@ export default function IfComponent(Class = HTMLElement) {
     static tag = 'veda-if';
 
     #ifEffect = null;
-    #templateEl = null;  // <template> parsed once; clone via .content; cleared on disconnect
+    #template = null;
+    #contentInstance = null;
     #currentContent = null;
-    #contentEffects = null;
-    #contentListeners = null;
     #placeholder = null;
     #isDisconnected = false;
 
@@ -27,7 +28,9 @@ export default function IfComponent(Class = HTMLElement) {
       this.#placeholder = document.createComment('veda-if');
       this._vedaParentContext = this._findParentComponent();
 
-      this.#parseTemplate();
+      this.#template = this._compiledTemplate ||
+        (this.template ? compileTemplate(this.template) : null);
+
       this.replaceChildren();
       this._deferRendered();
       await super.connectedCallback();
@@ -57,7 +60,7 @@ export default function IfComponent(Class = HTMLElement) {
       this.#teardownContent();
       this.replaceChildren();
       this.#placeholder = null;
-      this.#templateEl = null;
+      this.#template = null;
       this._vedaParentContext = null;
       this._vedaEvalContext = null;
       super.disconnectedCallback?.();
@@ -79,75 +82,39 @@ export default function IfComponent(Class = HTMLElement) {
     }
 
     #teardownContent() {
-      if (this.#contentEffects) {
-        this.#contentEffects.forEach(cleanup => cleanup());
-        this.#contentEffects = null;
-      }
-      if (this.#contentListeners) {
-        this._stopEventListeners(this.#contentListeners);
-        this.#contentListeners = null;
-      }
-      this.#dropContentRefs();
-      if (this.#currentContent) {
-        for (const node of this.#currentContent) {
-          node.remove?.();
-        }
-        this.#currentContent = null;
-      }
-    }
-
-    #dropContentRefs() {
+      const instance = this.#contentInstance;
       const nodes = this.#currentContent;
-      if (!nodes?.length) return;
-      for (const owner of [this, this._vedaParentContext]) {
-        if (!owner?.refs) continue;
-        for (const [name, node] of Object.entries(owner.refs)) {
-          if (nodes.some(root => root === node || root.contains?.(node))) {
-            delete owner.refs[name];
-          }
-        }
+      this.#contentInstance = null;
+      this.#currentContent = null;
+
+      instance?.destroy();
+      if (nodes) {
+        for (const node of nodes) node.remove?.();
       }
     }
 
     #updateVisibility(show) {
       if (this.#isDisconnected) return;
 
-      const hasContent = this.#currentContent?.length > 0;
+      const hasContent = !!this.#contentInstance;
 
       if (show && !hasContent) {
-        if (!this.#templateEl) return;
-
-        const tempContainer = document.createElement('div');
-        tempContainer.appendChild(this.#templateEl.content.cloneNode(true));
+        if (!this.#template) return;
 
         this.#placeholder?.remove();
 
         const evalContext = this.#createEvalContext();
-        const effectsStartIndex = this._getRenderEffectsCount();
-        const listenersStartIndex = this._getEventListenersCount();
-        this._process(tempContainer, evalContext);
-        this.#contentEffects = this._extractRenderEffects(effectsStartIndex);
-        this.#contentListeners = this._extractEventListeners(listenersStartIndex);
+        const instance = this.#template.instantiate(evalContext, this, {values: this._templateValues || []});
+        const contentNodes = Array.from(instance.fragment.childNodes);
 
-        const contentNodes = [];
-        let node;
-        while ((node = tempContainer.firstChild)) {
-          this.appendChild(node);
-          contentNodes.push(node);
-        }
+        this.appendChild(instance.fragment);
+        this.#contentInstance = instance;
         this.#currentContent = contentNodes;
-
+        this._addChildrenRendered(instance.childrenRendered);
       } else if (!show && hasContent) {
         this.#teardownContent();
-        this.appendChild(this.#placeholder);
+        if (this.#placeholder) this.appendChild(this.#placeholder);
       }
-    }
-
-    #parseTemplate() {
-      this.#templateEl = null;
-      if (!this.template) return;
-      this.#templateEl = document.createElement('template');
-      this.#templateEl.innerHTML = this.template;
     }
 
     #createEvalContext() {
@@ -159,6 +126,14 @@ export default function IfComponent(Class = HTMLElement) {
       const evalContext = parent.state;
       Object.setPrototypeOf(evalContext, parent);
       return evalContext;
+    }
+
+    _onTemplateValuesChanged(values) {
+      this.#contentInstance?.setValues(values);
+    }
+
+    _getEventListenersCount() {
+      return super._getEventListenersCount() + (this.#contentInstance?.getEventListenersCount?.() || 0);
     }
 
     render() {
@@ -175,5 +150,7 @@ const If = (() => {
   }
   return IfComponent;
 })();
+
+factories.If = IfComponent;
 
 export { If };

@@ -23,7 +23,7 @@ export default function ContextComponent(Class = HTMLElement) {
     }
 
     render() {
-      return this.template ?? '';
+      return this._compiledTemplate ?? this.template ?? '';
     }
   };
 }

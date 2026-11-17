@@ -1,4 +1,5 @@
 import { ComponentInstance } from './Component.js';
+import type { RenderValueResult } from './ValueComponent.js';
 
 type PropertyComponentClass<T extends HTMLElement = HTMLElement> = new (...args: any[]) => T;
 
@@ -9,6 +10,6 @@ export default function PropertyComponent<E extends PropertyComponentClass = typ
 } & E;
 
 export interface PropertyComponentInstance {
-  renderValue(value: any, container: HTMLElement | ShadowRoot, index: number): void;
+  renderValue(value: any, container: HTMLElement | ShadowRoot, index: number): RenderValueResult;
 }
 

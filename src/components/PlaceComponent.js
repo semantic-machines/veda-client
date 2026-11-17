@@ -1,4 +1,5 @@
 import Component from './Component.js';
+import {toRaw} from '../Reactive.js';
 
 const MAX_TREE_DEPTH = 20;
 
@@ -8,6 +9,10 @@ const MAX_TREE_DEPTH = 20;
  * <veda-place to="body">
  *   <div class="menu">...</div>
  * </veda-place>
+ *
+ * Rendered nodes are moved out of the component once. On subsequent updates
+ * the same TemplateInstance is patched in place, so focus/state/animations of
+ * the placed subtree survive.
  */
 export default function PlaceComponent(Class = HTMLElement) {
   return class PlaceComponentClass extends Component(Class) {
@@ -15,6 +20,7 @@ export default function PlaceComponent(Class = HTMLElement) {
 
     #placeholder = null;
     #moved = [];
+    #target = null;
     #isDisconnected = false;
 
     async connectedCallback() {
@@ -30,8 +36,8 @@ export default function PlaceComponent(Class = HTMLElement) {
     disconnectedCallback() {
       if (this.#isDisconnected) return;
       this.#isDisconnected = true;
-      this.#dropMovedRefs();
       this.#clearMoved();
+      this.#target = null;
       this.#placeholder?.remove();
       this.#placeholder = null;
       this._vedaParentContext = null;
@@ -39,7 +45,7 @@ export default function PlaceComponent(Class = HTMLElement) {
     }
 
     render() {
-      return this.template ?? '';
+      return this._compiledTemplate ?? this.template ?? '';
     }
 
     _processEvalContext() {
@@ -47,9 +53,6 @@ export default function PlaceComponent(Class = HTMLElement) {
     }
 
     pre() {
-      this._cleanupAllEventListeners();
-      this.#dropMovedRefs();
-      this.#clearMoved();
       const evalContext = this._vedaEvalContext || this._vedaParentContext;
       this._vedaRefsTarget = this.#refsOwner(evalContext, this._vedaParentContext);
     }
@@ -59,6 +62,10 @@ export default function PlaceComponent(Class = HTMLElement) {
         if (this.#isDisconnected) return;
         const target = this.#resolveTarget();
         if (!target) return;
+        if (this.#target && this.#target !== target) {
+          for (const node of this.#moved) target.appendChild(node);
+        }
+        this.#target = target;
         while (this.firstChild) {
           const node = this.firstChild;
           target.appendChild(node);
@@ -69,31 +76,35 @@ export default function PlaceComponent(Class = HTMLElement) {
       }
     }
 
+    // The old instance was rendered into moved nodes; drop them before a new
+    // instance is mounted into this component.
+    _onTemplateInstanceReplaced() {
+      this.#clearMoved();
+      this.#target = null;
+    }
+
+    // A parent update() rebuilds the author's refs. Place forwards refs to the
+    // authoring component, so re-register them after the parent reset them.
+    _onTemplateValuesChanged() {
+      if (!this.isConnected) return;
+      const evalContext = this._vedaEvalContext || this._vedaParentContext;
+      this._vedaRefsTarget = this.#refsOwner(evalContext, this._vedaParentContext);
+      try {
+        this._refreshRefs();
+      } finally {
+        this._vedaRefsTarget = null;
+      }
+    }
+
     #refsOwner(evalContext, fallback) {
       let obj = evalContext;
       for (let i = 0; obj && i < MAX_TREE_DEPTH; i++) {
-        if (obj.refs && typeof obj.refs === 'object' && !Array.isArray(obj.refs)) return obj;
+        if (obj.refs && typeof obj.refs === 'object' && !Array.isArray(obj.refs)) {
+          return toRaw(obj) || obj;
+        }
         obj = Object.getPrototypeOf(obj);
       }
       return fallback;
-    }
-
-    #dropMovedRefs() {
-      if (!this.#moved.length) return;
-      const evalContext = this._vedaEvalContext || this._vedaParentContext;
-      const owners = [
-        this._vedaRefsTarget,
-        this._vedaParentContext,
-        this.#refsOwner(evalContext, this._vedaParentContext),
-      ];
-      for (const owner of owners) {
-        if (!owner?.refs) continue;
-        for (const [name, node] of Object.entries(owner.refs)) {
-          if (this.#moved.some(root => root === node || root.contains?.(node))) {
-            delete owner.refs[name];
-          }
-        }
-      }
     }
 
     #clearMoved() {

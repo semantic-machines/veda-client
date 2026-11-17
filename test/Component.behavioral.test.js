@@ -45,7 +45,7 @@ export default ({ test, assert }) => {
     cleanup();
   });
 
-  test('Component - auto-detects reactive state from _process phase', async () => {
+  test('Component - renders with reactive state assigned before the first render', async () => {
     const { reactive: makeReactive } = await import('../src/Reactive.js');
 
     class ProcessReactiveComponent extends Component(HTMLElement) {

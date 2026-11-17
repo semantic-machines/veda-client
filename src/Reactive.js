@@ -19,6 +19,10 @@ export function reactive(target, options = {}) {
     return target;
   }
 
+  if (typeof Node !== 'undefined' && target instanceof Node) {
+    return target;
+  }
+
   if (target.__isReactive) {
     return target;
   }
@@ -78,6 +82,11 @@ export function reactive(target, options = {}) {
 
       if (typeof value === 'object' && value !== null) {
         if (value instanceof Promise || value instanceof Date || value instanceof RegExp) {
+          return value;
+        }
+        // DOM nodes must never be wrapped in a Proxy: native methods such as
+        // Node.contains() perform brand checks and reject proxies.
+        if (typeof Node !== 'undefined' && value instanceof Node) {
           return value;
         }
         return reactive(value, options);

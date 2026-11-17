@@ -122,7 +122,7 @@ A shell that owns `currentNet` and `selectedElement` and passes them to **direct
 
 ## 2. Layout holes (slots)
 
-Popups and cards often take a trigger and a body. The old pattern: parse `[slot="trigger"]` from `this.template`, store `outerHTML`, then remount with `_process` so expressions still work.
+Popups and cards often take a trigger and a body. Before 4.0 this was often done by parsing `[slot="trigger"]` from `this.template`, storing `outerHTML` and remounting the markup so expressions still worked. In 4.0 use `<veda-slot>`: it projects the author content through the template engine.
 
 ### Do — project children into named holes
 
@@ -159,6 +159,8 @@ class Popup extends Component(HTMLElement) {
 
 Expressions, `onclick`, and `ref` on slotted nodes belong to the **parent that wrote them**, not to the layout. `this.refs.open` is on that parent, not on `<veda-slot>`.
 
+`{expr}` evaluates in the authoring parent's context. `${}` in slotted content is projected as a value, patches in place on parent `update()` and passes the usual URL policy. A host assembled by hand with direct DOM (`innerHTML`) has no compiled template and is not projected (see `SECURITY.md`).
+
 Content inside `<${Slot}>` is fallback content. It renders only when the parent did not pass a matching node. Its expressions, handlers, and refs belong to the layout that wrote the Slot. An assigned empty element suppresses fallback:
 
 ```javascript
@@ -179,10 +181,12 @@ Nodes without `slot` go to `<${Slot}>` (default), including non-empty text.
   this.state.triggerTemplate = tpl.content.querySelector('[slot="trigger"]').outerHTML;
 }
 
-#mountTemplateToContainer(selector, html) {
+#mountTemplateToContainer(selector, markup) {
   const container = this.querySelector(selector);
-  container.innerHTML = html;
-  this._process(container, this._vedaEvalContext || this.state);
+  // 4.0: there is no _process() walker; expressions in raw innerHTML are inert.
+  // Raw innerHTML also bypasses the value boundary, so keep authored content in
+  // html templates instead of building markup strings.
+  container.innerHTML = markup;
 }
 ```
 

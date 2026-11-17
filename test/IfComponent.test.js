@@ -1,6 +1,7 @@
 import { reactive } from '../src/Reactive.js';
 import { effect, flushEffects } from '../src/Effect.js';
 import IfComponentFunc, { If } from '../src/components/IfComponent.js';
+import { unsafeStatic } from '../src/template/TemplateResult.js';
 import Component, { html } from '../src/components/Component.js';
 import '../test/setup-dom.js';
 
@@ -186,9 +187,9 @@ export default ({ test, assert }) => {
         // Invalid expression
         return html`
           <div>
-            <${tagName} condition="{this.nonExistent.deeply.nested}">
+            <${unsafeStatic(tagName)} condition="{this.nonExistent.deeply.nested}">
               <span>Content</span>
-            </${tagName}>
+            </${unsafeStatic(tagName)}>
           </div>
         `;
       }
@@ -233,9 +234,9 @@ export default ({ test, assert }) => {
       render() {
         return html`
           <div>
-            <${tagName}>
+            <${unsafeStatic(tagName)}>
               <span>Content without condition</span>
-            </${tagName}>
+            </${unsafeStatic(tagName)}>
           </div>
         `;
       }

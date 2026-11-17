@@ -37,8 +37,8 @@ export default ({test, assert}) => {
     }
 
     assert(component._getEventListenersCount() === firstCount, 'Listener count should stay stable across update()');
-    assert(component.querySelector('.mem-update-btn') !== firstBtn, 'update() should replace the previous button');
-    assert(weakBtn.deref() !== firstBtn || !firstBtn.isConnected, 'Previous button should be detached');
+    assert(component.querySelector('.mem-update-btn') === firstBtn, 'update() should reuse the button when the template is unchanged');
+    assert(weakBtn.deref() === firstBtn && firstBtn.isConnected, 'Previous button should stay attached');
     component.querySelector('.mem-update-btn').click();
     cleanup();
   });
@@ -66,7 +66,7 @@ export default ({test, assert}) => {
     await flushEffects();
 
     const shownListeners = ifEl._getEventListenersCount();
-    assert(shownListeners === 0, 'If should extract content listeners from the shared list');
+    assert(shownListeners === 2, 'If should report listeners from its content instance');
     assert(![...ifEl.childNodes].some(node => node.nodeType === Node.COMMENT_NODE),
       'Shown If should not keep a leftover placeholder comment');
 
@@ -109,13 +109,13 @@ export default ({test, assert}) => {
     const loop = component.querySelector('veda-loop');
     await flushEffects();
 
-    assert(loop._getEventListenersCount() === 0, 'Loop should extract per-item listeners');
+    assert(loop._getEventListenersCount() === 3, 'Loop should report per-item listeners');
     assert(loop.querySelectorAll('.mem-loop-btn').length === 3, 'All items should render');
 
     component.state.items = [{id: 2, label: 'B'}];
     await flushEffects();
 
-    assert(loop._getEventListenersCount() === 0, 'Removing items should not leave listeners on Loop');
+    assert(loop._getEventListenersCount() === 1, 'Removing items should drop their listeners');
     assert(loop.querySelectorAll('.mem-loop-btn').length === 1, 'Only the remaining item should stay');
     loop.querySelector('.mem-loop-btn').click();
     cleanup();
@@ -201,7 +201,7 @@ export default ({test, assert}) => {
     cleanup();
   });
 
-  test('Memory - Property custom template remount does not grow listeners or effects', async () => {
+  test('Memory - Property custom template remount does not grow listeners or DOM nodes', async () => {
     class App extends Component(HTMLElement) {
       constructor() {
         super();
@@ -226,7 +226,6 @@ export default ({test, assert}) => {
     assert(prop, 'Property component should mount');
 
     const listeners = prop._getEventListenersCount();
-    const effects = prop._getRenderEffectsCount();
     assert(listeners >= 1, 'Custom property template should register a listener');
 
     for (let i = 0; i < 6; i++) {
@@ -235,7 +234,7 @@ export default ({test, assert}) => {
     }
 
     assert(prop._getEventListenersCount() === listeners, 'Property re-render should not grow listeners');
-    assert(prop._getRenderEffectsCount() === effects, 'Property re-render should not grow render effects');
+    assert(prop.querySelectorAll('.mem-prop-btn').length === 1, 'Property re-render should not accumulate DOM nodes');
     cleanup();
     document.documentElement.lang = originalLang;
   });
@@ -358,11 +357,14 @@ async function exerciseNested (kit, assert) {
 
   const loops = () => component.querySelectorAll('[is$="loop-component"]').length;
   const buttons = () => component.querySelectorAll('.node');
+  const listenerCounts = () => [...component.querySelectorAll('[is$="loop-component"]')]
+    .map(loop => loop._getEventListenersCount())
+    .sort((a, b) => a - b);
   assert.equal(loops(), 3, 'One list per level: groups plus two node lists');
   assert.equal(buttons().length, 3, 'Three node buttons');
-  for (const loop of component.querySelectorAll('[is$="loop-component"]')) {
-    assert.equal(loop._getEventListenersCount(), 0, 'Item listeners stay on the item, not the list');
-  }
+  const initialListenerCounts = listenerCounts();
+  assert(initialListenerCounts.some(count => count > 0),
+    'Item listeners should be reported by the loop that owns the item instances');
 
   const readsPerReorder = [];
   for (let i = 0; i < 20; i++) {
@@ -379,6 +381,7 @@ async function exerciseNested (kit, assert) {
   assert.equal(loops(), 3, 'Reorder should not create extra lists');
   assert.equal(buttons().length, 3, 'Reorder should not create extra buttons');
   assert.equal(component.querySelectorAll('.system').length, 2, 'Reorder should not create extra rows');
+  assert.deepEqual(listenerCounts(), initialListenerCounts, 'Reorder should not change loop listener counts');
 
   kit.resetClicks();
   buttons()[0].click();

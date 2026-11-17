@@ -1,167 +1,27 @@
 import Model from '../Model.js';
 import Subscription from '../Subscription.js';
-import PropertyComponent from './PropertyComponent.js';
-import RelationComponent from './RelationComponent.js';
-import LoopComponent from './LoopComponent.js';
-import IfComponent from './IfComponent.js';
-import ExpressionParser from './ExpressionParser.js';
+// Built-in components register their custom elements and factory entries when
+// their modules load. Keep them imported so a direct Component.js import still
+// supports declarative Loop/If/Property/Relation templates.
+import './LoopComponent.js';
+import './IfComponent.js';
+import './PropertyComponent.js';
+import './RelationComponent.js';
 import {effect, untrack} from '../Effect.js';
 import {reactive, toRaw} from '../Reactive.js';
 import {createContextProxy} from './contextLookup.js';
+import {compileTemplate, CompiledTemplate} from '../template/Template.js';
+import {html, raw, safe} from '../template/TemplateResult.js';
+import {factories} from '../template/factories.js';
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
 const MAX_TREE_DEPTH = 20;
-const METHOD_NAME_RE = /^(?:this\.)?([A-Za-z_$][\w$]*)$/;
-const EXPR_REGEX = /\{([^}]+)\}/g;
-const HTML_ESCAPE_MAP = {
-  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
-  "'": '&#39;', '/': '&#x2F;', '\\': '&#x5C;', '`': '&#x60;',
-};
-const HTML_ESCAPE_REGEX = /[&<>"'/\\`]/g;
-const SAFE_EXPR_REGEX = /\{[^}]*\}/g;
 const LAYOUT_TRANSPARENT_TAGS = new Set([
   'veda-if', 'veda-loop', 'veda-context', 'veda-slot', 'veda-place',
 ]);
-const componentInstances = new WeakSet();
-
-function isComponentInstance(obj) {
-  if (obj == null) return false;
-  return componentInstances.has(toRaw(obj)) || componentInstances.has(obj);
-}
-
-function rawFunction(obj, name) {
-  if (obj == null || typeof name !== 'string') return undefined;
-  const raw = toRaw(obj);
-  if (raw && typeof raw[name] === 'function') return raw[name];
-  if (typeof obj[name] === 'function') return obj[name];
-  return undefined;
-}
-
-function* protoChain(start) {
-  const seen = new Set();
-  let obj = start;
-  for (let i = 0; obj && i < MAX_TREE_DEPTH; i++) {
-    if (seen.has(obj)) break;
-    seen.add(obj);
-    yield obj;
-    const raw = toRaw(obj);
-    if (raw && raw !== obj && !seen.has(raw)) {
-      seen.add(raw);
-      yield raw;
-    }
-    const nextRaw = raw ? Object.getPrototypeOf(raw) : null;
-    const nextObj = Object.getPrototypeOf(obj);
-    obj = (nextRaw && nextRaw !== Object.prototype) ? nextRaw : nextObj;
-    if (obj === Object.prototype) break;
-  }
-}
-
-function findOwnedFunction(start, name) {
-  let fallback = null;
-  for (const obj of protoChain(start)) {
-    const fn = rawFunction(obj, name);
-    if (typeof fn !== 'function') continue;
-    const raw = toRaw(obj);
-    if (isComponentInstance(raw)) return {fn: rawFunction(raw, name) || fn, owner: raw};
-    if (isComponentInstance(obj)) return {fn, owner: obj};
-    if (!fallback && raw && Object.prototype.hasOwnProperty.call(raw, name)) {
-      fallback = {fn, owner: raw};
-    }
-  }
-  return fallback;
-}
-
-function resolveOwnedFromExpr(expr, evalContext) {
-  const methodMatch = expr.match(METHOD_NAME_RE);
-  if (methodMatch) return findOwnedFunction(evalContext, methodMatch[1]);
-  const result = ExpressionParser.evaluate(expr, evalContext, true);
-  if (!result || typeof result.value !== 'function') return null;
-  const key = expr.split(/[?.]/).filter(Boolean).pop();
-  const ctx = result.context;
-  const rawOwner = toRaw(ctx);
-  if (isComponentInstance(rawOwner)) {
-    return {fn: rawFunction(rawOwner, key) || result.value, owner: rawOwner};
-  }
-  if (isComponentInstance(ctx)) {
-    return {fn: rawFunction(ctx, key) || result.value, owner: ctx};
-  }
-  return {fn: rawFunction(ctx, key) || result.value, owner: ctx};
-}
-
-function bindOwned(fn, owner) {
-  if (typeof fn !== 'function' || !owner) return fn;
-  return fn.bind(owner);
-}
-
-function assignExprPath(context, expr, value) {
-  let path = expr.trim();
-  if (path === 'this') return;
-  if (path.startsWith('this.')) path = path.slice(5);
-  path = path.replace(/\?\./g, '.');
-  const parts = path.split('.').filter(Boolean);
-  let obj = context;
-  for (let i = 0; i < parts.length - 1; i++) {
-    obj = obj?.[parts[i]];
-    if (obj == null) return;
-  }
-  const last = parts[parts.length - 1];
-  if (obj && last) obj[last] = value;
-}
-
-// ============================================================================
-// TEMPLATE ENGINE (html, raw, safe)
-// ============================================================================
-
-const marker = Date.now();
-const re = new RegExp(`^${marker}`);
-
-export function raw (strings, ...values) {
-  let result = '';
-  for (let i = 0; i < strings.length; i++) {
-    let value = values[i] ?? '';
-    if (Array.isArray(value)) value = value.join(' ');
-    result += strings[i] + value;
-  }
-  return marker + result.trimEnd();
-}
-
-export function html (strings, ...values) {
-  let result = '';
-  for (let i = 0; i < strings.length; i++) {
-    let value = values[i] ?? '';
-    if (Array.isArray(value)) {
-      value = value.map(v => re.test(v) ? v : safe(v)).join(' ');
-    } else {
-      value = re.test(value) ? value : safe(value);
-    }
-    result += strings[i] + value;
-  }
-  return marker + result.trimEnd();
-}
-
-export function safe (value) {
-  if (Array.isArray(value)) return value.map(safe);
-  if (typeof value !== 'string' && !(value instanceof String)) return value;
-  return value
-    .replace(HTML_ESCAPE_REGEX, char => HTML_ESCAPE_MAP[char])
-    .replace(SAFE_EXPR_REGEX, '');
-}
-
-// ============================================================================
-// EXPRESSION HELPERS
-// ============================================================================
-
-function evalExpr(code, context) {
-  return ExpressionParser.evaluateAuto(code.trim(), context);
-}
-
-function sanitizeExpressionResult(value) {
-  if (value == null) return '';
-  return String(value);
-}
 
 // ============================================================================
 // COMPONENT CLASS
@@ -178,16 +38,14 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     #deferredRendered = null;
     #resolveDeferredFn = null;
     #effects = [];
-    #renderEffects = [];
-    #eventListeners = [];
-    #isReactive = false;
     #holdsSubscription = false;
+    #instance = null;
+    #usesParentTemplate = false;
     template;
 
     // ---------- Constructor & Lifecycle ----------
     constructor() {
       super();
-      componentInstances.add(this);
       const componentRef = new WeakRef(this);
       this.state = reactive({}, {
         onSet: () => {
@@ -199,7 +57,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           }
         }
       });
-      this.#isReactive = true;
       this.refs = {};
       this.context = createContextProxy(this);
       this.rendered = new Promise((resolve) => { this.#resolveRendered = resolve; });
@@ -244,7 +101,10 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
           window.__VEDA_DEVTOOLS_HOOK__.untrackComponent(this);
         }
         this.#cleanupEffects();
-        this.#cleanupEventListeners();
+        if (this.#instance) {
+          this.#instance.destroy();
+          this.#instance = null;
+        }
         if (this.#holdsSubscription) {
           Subscription.release(this);
           this.#holdsSubscription = false;
@@ -273,35 +133,18 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
     #cleanupEffects() {
       this.#effects.forEach(c => c());
       this.#effects = [];
-      this.#renderEffects.forEach(c => c());
-      this.#renderEffects = [];
-    }
-
-    #cleanupEventListeners() {
-      this.#eventListeners.forEach(({ node, eventName, handler }) => {
-        node.removeEventListener(eventName, handler);
-      });
-      this.#eventListeners = [];
     }
 
     // ---------- Lifecycle Hooks (override in subclass) ----------
     added () {}
     pre () {}
-    render () { return this.template ?? this.innerHTML; }
+    render () { return this._compiledTemplate ?? this.template ?? this.innerHTML; }
     post () {}
     removed () {}
 
     // ---------- Internal API (used by If/Loop/Virtual) ----------
-    _cleanupAllEventListeners() { this.#cleanupEventListeners(); }
-    _getRenderEffectsCount() { return this.#renderEffects.length; }
-    _extractRenderEffects(startIndex) { return this.#renderEffects.splice(startIndex); }
-    _getEventListenersCount() { return this.#eventListeners.length; }
-    _extractEventListeners(startIndex) { return this.#eventListeners.splice(startIndex); }
-    _stopEventListeners(listeners) {
-      if (!listeners) return;
-      for (const { node, eventName, handler } of listeners) {
-        node.removeEventListener(eventName, handler);
-      }
+    _getEventListenersCount() {
+      return this.#instance?.getEventListenersCount?.() || 0;
     }
 
     _deferRendered() {
@@ -315,9 +158,74 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       return null;
     }
 
+    // Allows a component to force a fresh template instance on every update().
+    // The default is to patch in place when the compiled template is unchanged.
+    // Place/Slot move rendered nodes elsewhere but keep their Parts, so they
+    // rely on in-place patching and do not override this.
+    _reuseTemplateInstance() {
+      return true;
+    }
+
+    // Called after an old template instance was destroyed and before a new
+    // one is mounted. Components that move rendered nodes elsewhere can clean
+    // them up here.
+    _onTemplateInstanceReplaced() {}
+
     _resolveDeferred() {
       this.#resolveDeferredFn?.();
       this.#resolveDeferredFn = null;
+    }
+
+    // Child components created after update() (If content, Loop items) still
+    // need to be awaited by rendered.
+    _addChildrenRendered(promises) {
+      if (!promises) return;
+      for (const promise of promises) {
+        if (promise && !this.#childrenRendered.includes(promise)) {
+          this.#childrenRendered.push(promise);
+        }
+      }
+    }
+
+    // Values authored by the parent template and used by ${} segments inside
+    // this component's captured child template.
+    _setTemplateValues(values) {
+      this._templateValues = values;
+      // Only a template instance that actually renders the parent-authored
+      // CompiledTemplate may receive the parent's ${} values. A child that
+      // renders its own html`...` must keep its own values.
+      if (this.#usesParentTemplate && this.#instance) {
+        this.#instance.setValues(values);
+      }
+      this._onTemplateValuesChanged(values);
+      this.#notifySlotListeners();
+    }
+
+    // Slots project this component's author content, so they need the new
+    // parent values even when this component renders its own template.
+    #notifySlotListeners() {
+      const listeners = this._vedaSlotListeners;
+      if (!listeners?.size) return;
+      for (const slot of [...listeners]) {
+        if (!slot.isConnected) {
+          listeners.delete(slot);
+          continue;
+        }
+        try {
+          slot._onHostValuesChanged?.();
+        } catch (error) {
+          console.warn('Slot: failed to update projected values:', error?.message ?? error);
+        }
+      }
+    }
+
+    _onTemplateValuesChanged() {}
+
+    // Re-register refs owned by this component's template instance. Nested
+    // components that forward refs to an ancestor (Place/Slot) call this after
+    // the ancestor rebuilt its refs on update().
+    _refreshRefs() {
+      this.#instance?.refreshRefs();
     }
 
     // ---------- Render Pipeline ----------
@@ -326,46 +234,68 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       try {
         this.#childrenRendered = [];
         this.refs = {};
-        this.#renderEffects.forEach(c => c());
-        this.#renderEffects = [];
-        this.#cleanupEventListeners();
-
         const pre = this.pre();
         if (pre instanceof Promise) await pre;
 
-        let html = this.render();
-        if (html instanceof Promise) html = await html;
-        if (typeof html === 'undefined') {
+        let result = this.render();
+        if (result instanceof Promise) result = await result;
+        if (typeof result === 'undefined') {
+          this.#usesParentTemplate = false;
+          if (this.#instance) {
+            this.#instance.destroy();
+            this.#instance = null;
+          }
           const post = this.post();
           if (post instanceof Promise) await post;
           return;
         }
 
-        html = typeof html === 'string' ? html.replaceAll(marker, '') : html;
-        let template = document.createElement('template');
-        template.innerHTML = html;
-        let fragment = template.content;
-
-        this._process(fragment, this._processEvalContext());
+        const fromCompiled = result instanceof CompiledTemplate;
+        this.#usesParentTemplate = fromCompiled && result === this._compiledTemplate;
+        const compiled = fromCompiled ? result : compileTemplate(result);
+        const values = fromCompiled ? (this._templateValues || []) : null;
 
         const container = this.hasAttribute('shadow')
           ? this.shadowRoot ?? (this.attachShadow({mode: 'open'}), this.shadowRoot)
           : this;
-        container.replaceChildren(fragment);
+
+        if (this._reuseTemplateInstance() && this.#instance && this.#instance.compiled === compiled) {
+          // Same call-site template: patch parts in place, keep the DOM tree
+          // (and child components) alive.
+          if (fromCompiled) this.#instance.setValues(values);
+          else this.#instance.setResult(result);
+          this.#instance.refreshRefs();
+        } else {
+          this.#instance?.destroy();
+          this._onTemplateInstanceReplaced();
+          const options = {result};
+          if (fromCompiled) options.values = values;
+          this.#instance = compiled.instantiate(this.#createEvalContext(), this, options);
+          this.#instance.mount(container);
+        }
+
+        this.#childrenRendered = this.#instance.childrenRendered;
 
         if (typeof window !== 'undefined' && window.__VEDA_DEVTOOLS_HOOK__) {
           window.__VEDA_DEVTOOLS_HOOK__.trackComponentRender(this, _renderStart);
         }
 
-        const post = this.post(fragment);
+        const post = this.post();
         if (post instanceof Promise) await post;
-
-        template.remove();
-        template = null;
-        fragment = null;
       } catch (error) {
         console.log(this, 'Component render error', error);
       }
+    }
+
+    #createEvalContext () {
+      const provided = this._processEvalContext();
+      if (provided) return provided;
+
+      const evalContext = this.state;
+      if (evalContext && typeof evalContext === 'object') {
+        Object.setPrototypeOf(evalContext, this);
+      }
+      return evalContext;
     }
 
     async populate () {
@@ -382,462 +312,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
         if (this.isConnected && this.state.model && !this.#holdsSubscription) {
           this.state.model.subscribe?.(this);
           this.#holdsSubscription = true;
-        }
-      }
-    }
-
-    // ========================================================================
-    // DOM BINDING - Expression processing in text nodes and attributes
-    // ========================================================================
-
-    #processTextNode(textNode) {
-      // Skip already processed nodes or nodes inside <style>/<script>
-      if (textNode.__vedaProcessed) return;
-      const parent = textNode.parentNode;
-      if (parent && (parent.tagName === 'STYLE' || parent.tagName === 'SCRIPT')) return;
-
-      const text = textNode.nodeValue;
-      EXPR_REGEX.lastIndex = 0;
-      if (!EXPR_REGEX.test(text)) return;
-      EXPR_REGEX.lastIndex = 0;
-
-      // Parse text into parts: static text and expressions
-      const parts = [];
-      let lastIndex = 0;
-      let match;
-
-      while ((match = EXPR_REGEX.exec(text)) !== null) {
-        if (match.index > lastIndex) {
-          parts.push({ type: 's', value: text.substring(lastIndex, match.index) });
-        }
-        parts.push({ type: 'e', code: match[1].trim() });
-        lastIndex = EXPR_REGEX.lastIndex;
-      }
-      if (lastIndex < text.length) {
-        parts.push({ type: 's', value: text.substring(lastIndex) });
-      }
-
-      if (this.#isReactive) {
-        const evalContext = this._currentEvalContext || this;
-        const nodes = parts.map(part => {
-          if (part.type === 's') return document.createTextNode(part.value);
-          const node = document.createTextNode('');
-          const cleanup = effect(() => {
-            node.nodeValue = sanitizeExpressionResult(
-              ExpressionParser.evaluateAuto(part.code, evalContext)
-            );
-          }, { component: this, internal: true });
-          this.#renderEffects.push(cleanup);
-          return node;
-        });
-
-        textNode.nodeValue = '';
-        let insertAfter = textNode;
-        for (const node of nodes) {
-          node.__vedaProcessed = true;
-          parent.insertBefore(node, insertAfter.nextSibling);
-          insertAfter = node;
-        }
-      } else {
-        textNode.nodeValue = text.replace(EXPR_REGEX, (_, code) =>
-          sanitizeExpressionResult(evalExpr(code, this)));
-        textNode.__vedaProcessed = true;
-      }
-    }
-
-    _process (fragment, evalContext = null) {
-      const previousContext = this._currentEvalContext;
-
-      if (!evalContext) {
-        evalContext = this.state;
-        if (evalContext && typeof evalContext === 'object') {
-          Object.setPrototypeOf(evalContext, this);
-        }
-      }
-      this._currentEvalContext = evalContext;
-
-      const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
-      let node = walker.nextNode();
-
-      while (node) {
-        if (node.nodeType === Node.TEXT_NODE) {
-          this.#processTextNode(node);
-          node = walker.nextNode();
-          continue;
-        }
-
-        const tag = node.tagName.toLowerCase();
-        const hasIs = node.hasAttribute('is');
-        const hasDash = tag.includes('-');
-        const hasProp = node.hasAttribute('property');
-        const hasRel = node.hasAttribute('rel');
-        const hasAbout = node.hasAttribute('about');
-        const hasItems = node.hasAttribute('items');
-        const hasCondition = !hasItems && node.hasAttribute('condition');
-
-        // Plain native element - just process attributes
-        if (!hasDash && !hasIs && !hasAbout && !hasProp && !hasRel && !hasItems && !hasCondition) {
-          this.#processAttributes(node);
-          node = walker.nextNode();
-          continue;
-        }
-
-        let component;
-        const copyAttrs = (skip) => {
-          for (const attr of node.attributes) {
-            if (attr.nodeName !== skip) component.setAttribute(attr.nodeName, attr.nodeValue);
-          }
-        };
-
-        if (hasDash) {
-          // Custom element (e.g., <my-component>)
-          if (!customElements.get(tag)) throw Error(`Custom elements registry has no entry for tag '${tag}'`);
-          component = document.createElement(tag);
-          copyAttrs();
-        } else if (hasIs) {
-          // Customized built-in (e.g., <div is="my-div">)
-          const is = node.getAttribute('is');
-          if (!customElements.get(is)) throw Error(`Custom elements registry has no entry for '${is}'`);
-          component = document.createElement(tag, {is});
-          component.setAttribute('is', is);
-          copyAttrs('is');
-        } else if (hasProp || hasRel) {
-          // Property/Relation component
-          const type = hasProp ? 'property' : 'rel';
-          const is = `${tag}-${type}-component`;
-          if (!customElements.get(is)) {
-            customElements.define(is, (type === 'property' ? PropertyComponent : RelationComponent)(node.constructor), {extends: tag});
-          }
-          component = document.createElement(tag, {is});
-          component.setAttribute('is', is);
-          copyAttrs();
-          if (!component.hasAttribute('about')) {
-            const model = this._currentEvalContext?.model || this.state.model;
-            if (model) component.state.model = model;
-          }
-        } else if (hasAbout) {
-          // Inline component with about attribute
-          const is = `${tag}-inline-component`;
-          if (!customElements.get(is)) {
-            customElements.define(is, Component(node.constructor), {extends: tag});
-          }
-          component = document.createElement(tag, {is});
-          component.setAttribute('is', is);
-          copyAttrs();
-        } else if (hasItems) {
-          // Semantic HTML Loop (e.g., <ul items="...">, <tbody items="...">)
-          const is = `${tag}-loop-component`;
-          if (!customElements.get(is)) {
-            customElements.define(is, LoopComponent(node.constructor), {extends: tag});
-          }
-          component = document.createElement(tag, {is});
-          component.setAttribute('is', is);
-          copyAttrs();
-        } else if (hasCondition) {
-          // Semantic HTML If (e.g., <div condition="...">, <tbody condition="...">)
-          const is = `${tag}-if-component`;
-          if (!customElements.get(is)) {
-            customElements.define(is, IfComponent(node.constructor), {extends: tag});
-          }
-          component = document.createElement(tag, {is});
-          component.setAttribute('is', is);
-          copyAttrs();
-        }
-
-        // Propagate current eval context so child components (e.g. veda-if inside veda-loop)
-        // can access loop variables through the prototype chain
-        component._vedaEvalContext = this._currentEvalContext;
-        component.template = node.innerHTML.trim();
-        this.#processAttributes(component);
-        node.parentNode.replaceChild(component, node);
-        this.#childrenRendered.push(component.rendered);
-
-        // Find next node
-        walker.currentNode = component;
-        let next = component.nextSibling;
-        if (!next) {
-          let p = component.parentNode;
-          while (p && p.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
-            if (p.nextSibling) { next = p.nextSibling; break; }
-            p = p.parentNode;
-          }
-        }
-        if (next) walker.currentNode = next;
-        node = next;
-      }
-
-      this._currentEvalContext = previousContext;
-    }
-
-    #isComponentElement(el) {
-      return !!(el?.tagName?.includes('-') || el?.hasAttribute?.('is'));
-    }
-
-    #isFrameworkElement(el) {
-      const tag = el.tagName?.toLowerCase();
-      const isAttr = el.getAttribute?.('is');
-      return tag === 'veda-if' || tag === 'veda-loop' || tag === 'veda-virtual'
-        || tag === 'veda-context' || tag === 'veda-slot' || tag === 'veda-place'
-        || !!isAttr?.endsWith('-loop-component')
-        || !!isAttr?.endsWith('-if-component');
-    }
-
-    #ancestorElement(el) {
-      return el.parentElement || el.getRootNode?.()?.host || null;
-    }
-
-    #processAttributes (node) {
-      if (node.tagName && (node.tagName.includes('-') || node.hasAttribute('is'))) {
-        this.#processCustomComponentAttributes(node);
-        return;
-      }
-
-      this.#processNativeElementAttributes(node);
-    }
-
-    #processCustomComponentAttributes(node) {
-      const skip = this.#isFrameworkElement(node)
-        ? ['condition', 'items', 'as', 'key', 'item-key', 'height', 'item-height', 'overscan']
-        : [];
-
-      for (const attr of [...node.attributes]) {
-        const hasExpr = attr.value?.includes('{');
-        if (attr.name === 'ref') {
-          this.#processRef(node, attr);
-        } else if (attr.nodeName.startsWith(':')) {
-          this.#processPropertyBinding(node, attr);
-        } else if (attr.name.startsWith('on') && attr.name.length > 2 && hasExpr) {
-          this.#processEventAttribute(node, attr);
-        } else if (!skip.includes(attr.name) && hasExpr) {
-          this.#processAttrExpr(node, attr, false);
-        }
-      }
-    }
-
-    #processPropertyBinding(node, attr) {
-      const propName = attr.nodeName.slice(1).replace(/-([a-z])/g, (_, l) => l.toUpperCase());
-      const expr = attr.nodeValue;
-      node.removeAttribute(attr.nodeName);
-
-      const evalContext = this._currentEvalContext || this;
-      const target = node.state || node;
-
-      // Check for pure expression (single {expr} with no surrounding text)
-      const pureExpr = expr.match(/^\{([^}]+)\}$/);
-
-      const assignValue = (code, context) => {
-        try {
-          const owned = resolveOwnedFromExpr(code, context);
-          if (owned) return bindOwned(owned.fn, owned.owner);
-        } catch { /* not a function path */ }
-        return ExpressionParser.evaluateAuto(code, context);
-      };
-
-      if (this.#isReactive && expr.includes('{')) {
-        const cleanup = effect(() => {
-          if (pureExpr) {
-            target[propName] = assignValue(pureExpr[1].trim(), evalContext);
-          } else {
-            target[propName] = expr.replace(EXPR_REGEX, (_, code) => evalExpr(code, evalContext));
-          }
-        }, { component: this, internal: true });
-        this.#renderEffects.push(cleanup);
-      } else {
-        if (pureExpr) {
-          target[propName] = assignValue(pureExpr[1].trim(), this);
-        } else {
-          target[propName] = expr.replace(EXPR_REGEX, (_, code) => evalExpr(code, this));
-        }
-      }
-    }
-
-    #processRef(node, attr) {
-      const name = attr.value.trim();
-      node.removeAttribute('ref');
-      if (!name) return;
-      const target = this._vedaRefsTarget || this;
-      if (!target.refs) target.refs = {};
-      target.refs[name] = node;
-    }
-
-    #processBind(node, attr) {
-      const expr = attr.value.match(/^\{([^}]+)\}$/)?.[1]?.trim();
-      node.removeAttribute(attr.nodeName);
-      if (!expr || !ExpressionParser.isSafe(expr)) {
-        console.warn(`bind expects a simple path, got '${attr.value}'`);
-        return;
-      }
-
-      const evalContext = this._currentEvalContext || this;
-      const isCheckbox = node.type === 'checkbox';
-      const isRadio = node.type === 'radio';
-
-      const applyValue = (value) => {
-        if (isRadio) {
-          node.checked = String(value ?? '') === String(node.value);
-        } else if (isCheckbox) {
-          node.checked = !!value;
-        } else if (node.value !== String(value ?? '')) {
-          node.value = value ?? '';
-        }
-      };
-
-      if (this.#isReactive) {
-        const cleanup = effect(() => {
-          applyValue(ExpressionParser.evaluate(expr, evalContext));
-        }, { component: this, internal: true });
-        this.#renderEffects.push(cleanup);
-      } else {
-        applyValue(ExpressionParser.evaluate(expr, evalContext));
-      }
-
-      const handler = (e) => {
-        if (isRadio) {
-          if (e.target.checked) assignExprPath(evalContext, expr, e.target.value);
-          return;
-        }
-        const value = isCheckbox ? e.target.checked : e.target.value;
-        assignExprPath(evalContext, expr, value);
-      };
-      const eventName = isCheckbox || isRadio || node.tagName === 'SELECT' ? 'change' : 'input';
-      node.addEventListener(eventName, handler);
-      this.#eventListeners.push({ node, eventName, handler });
-    }
-
-    #processNativeElementAttributes(node) {
-      for (const attr of [...node.attributes]) {
-        const name = attr.name;
-        const hasExpr = attr.value?.includes('{');
-        if (name === 'bind') {
-          this.#processBind(node, attr);
-        } else if (name === 'ref') {
-          this.#processRef(node, attr);
-        } else if (name.startsWith(':')) {
-          this.#processPropertyBinding(node, attr);
-        } else if (name.startsWith('on') && name.length > 2 && hasExpr) {
-          this.#processEventAttribute(node, attr);
-        } else if (hasExpr) {
-          this.#processAttrExpr(node, attr, true);
-        }
-      }
-    }
-
-    #processEventAttribute(node, attr) {
-      const eventName = attr.name.slice(2).toLowerCase();
-      const expr = attr.value.replace(/[{}]/g, '').trim();
-      node.removeAttribute(attr.name);
-
-      const methodMatch = expr.match(METHOD_NAME_RE);
-      const evalContext = this._currentEvalContext || this;
-
-      let handler;
-      if (methodMatch) {
-        const methodName = methodMatch[1];
-        handler = (e) => {
-          const found = findOwnedFunction(evalContext, methodName);
-          if (!found) {
-            console.warn(`Method '${methodName}' not found`);
-            return;
-          }
-          found.fn.call(found.owner, e, node);
-        };
-      } else {
-        try {
-          const owned = resolveOwnedFromExpr(expr, evalContext);
-          if (owned) {
-            handler = (e) => owned.fn.call(owned.owner, e, node);
-          } else {
-            console.warn(`Handler '${expr}' did not resolve to a function`);
-            return;
-          }
-        } catch (error) {
-          console.warn(`Invalid event handler '${expr}':`, error.message);
-          return;
-        }
-      }
-
-      if (handler) {
-        node.addEventListener(eventName, handler);
-        this.#eventListeners.push({ node, eventName, handler });
-      } else {
-        console.warn(`Handler '${expr}' did not resolve to a function`);
-      }
-    }
-
-    // Unified attribute expression handler
-    // isNative=true: use smart property handling (value, checked, etc.)
-    // isNative=false: simple setAttribute for custom components
-    #processAttrExpr(node, attr, isNative) {
-      const attrName = attr.nodeName;
-      const template = attr.nodeValue;
-      const ctx = this._currentEvalContext || this;
-      const isReactive = ctx.__isReactive || ctx.state?.__isReactive || false;
-
-      EXPR_REGEX.lastIndex = 0;
-      if (!EXPR_REGEX.test(template)) return;
-
-      if (isReactive) {
-        if (isNative) node.removeAttribute(attrName);
-        const cleanup = effect(() => {
-          if (isNative) {
-            const { value, hasNull } = this.#evaluateTemplate(template, ctx);
-            this.#setAttributeOrProperty(node, attrName, value, hasNull);
-          } else {
-            const value = template.replace(EXPR_REGEX, (_, code) =>
-              sanitizeExpressionResult(evalExpr(code, ctx)));
-            if (node.getAttribute(attrName) !== value) node.setAttribute(attrName, value);
-          }
-        }, { component: this, internal: true });
-        this.#renderEffects.push(cleanup);
-      } else if (isNative) {
-        const { value, hasNull } = this.#evaluateTemplate(template, this);
-        this.#setAttributeOrProperty(node, attrName, value, hasNull, attr);
-      } else {
-        attr.nodeValue = template.replace(EXPR_REGEX, (_, code) =>
-          sanitizeExpressionResult(evalExpr(code, this)));
-      }
-    }
-
-    #evaluateTemplate(template, context) {
-      let hasNull = false;
-      const value = template.replace(EXPR_REGEX, (_, code) => {
-        const raw = evalExpr(code, context);
-        if (raw == null) hasNull = true;
-        return sanitizeExpressionResult(raw);
-      });
-      return { value, hasNull };
-    }
-
-    #setAttributeOrProperty(node, attrName, value, hasNull, attr = null) {
-      // Check if this attribute should be set as DOM property
-      // Properties like value, checked, disabled exist on DOM elements
-      // Exclude style/class - they have object types and need attribute handling
-      const shouldUseProperty = attrName in node &&
-                                !attrName.startsWith('data-') &&
-                                attrName !== 'style' &&
-                                attrName !== 'class';
-
-      if (shouldUseProperty) {
-        // Boolean properties need special handling
-        if (typeof node[attrName] === 'boolean') {
-          const boolValue = !hasNull && value !== 'false' &&
-                           (value === 'true' || value === '' || value === attrName || value === true);
-          if (node[attrName] !== boolValue) {
-            node[attrName] = boolValue;
-            node.toggleAttribute(attrName, boolValue);
-          }
-        } else {
-          // String/other properties (like value)
-          if (node[attrName] !== value) {
-            node[attrName] = value;
-          }
-        }
-      } else {
-        // Regular attribute
-        if (attr) {
-          attr.nodeValue = value;
-        } else if (node.getAttribute(attrName) !== value) {
-          node.setAttribute(attrName, value);
         }
       }
     }
@@ -873,6 +347,14 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
       return cleanup;
     }
 
+    #isComponentElement(el) {
+      return !!(el?.tagName?.includes('-') || el?.hasAttribute?.('is'));
+    }
+
+    #ancestorElement(el) {
+      return el.parentElement || el.getRootNode?.()?.host || null;
+    }
+
     #isTransparentParent(el) {
       const tag = el.tagName?.toLowerCase();
       const isAttr = el.getAttribute?.('is');
@@ -894,4 +376,6 @@ export default function Component (ElementClass = HTMLElement, ModelClass = Mode
   }
 }
 
-export {reactive, effect};
+factories.Component = Component;
+
+export {html, raw, safe, reactive, effect};

@@ -10,12 +10,12 @@ Known limitations and when to use alternatives.
 - Lists < 500 items
 - RDF/semantic data applications
 - Minimal dependencies preferred
-- Bundle size critical (~50 KB)
+- Bundle size critical (~41 KB gzipped, 4.0.0 build)
 - Learning curve should be minimal
 
 ### ⚠️ Consider Alternatives When
 
-- Large lists (1000+ items) - need virtualization
+- Very large lists beyond what `<veda-virtual>` handles
 - Complex tables with sorting/filtering/pagination
 - Real-time dashboards with frequent updates
 - Rich text editors or complex widgets
@@ -30,46 +30,17 @@ Known limitations and when to use alternatives.
 | Lists < 100 items | Excellent | Key-based reconciliation works well |
 | Lists 100-500 | Good | Acceptable performance |
 | Lists 500-1000 | Moderate | May feel sluggish on reorder |
-| Lists 1000+ | Poor | Use virtualization library |
+| Lists 1000+ | Poor | Use `<veda-virtual>` for large lists |
 | Simple forms | Excellent | Fine-grained reactivity shines |
 | Conditional rendering | Good | Efficient DOM add/remove |
 | Nested components | Good | Automatic reactivity propagation |
 
-### Loop Component Benchmarks (Measured)
+### Loop Component Benchmarks
 
-**Initial Render:**
-| Items | Time (ms) | Notes |
-|-------|-----------|-------|
-| 100   | ~31       | Excellent performance |
-| 500   | ~50       | Good performance |
-| 1000  | ~79       | Acceptable for static lists |
-
-**Operations:**
-| Operation | Items | Time (ms) | Notes |
-|-----------|-------|-----------|-------|
-| Add       | 100→200 | ~9    | Fast incremental addition |
-| Remove    | 500→250 | ~8    | Fast removal |
-| Reorder   | 100     | ~2    | Very fast for small lists |
-| Reorder   | 500     | ~17   | Acceptable |
-| Reorder   | 1000    | 53.62 | Noticeable delay (O(n²)) |
-| Update    | 500     | ~7    | Fast value updates |
-| Mixed     | 500     | ~9    | Combined operations efficient |
-
-**Key Findings:**
-- Initial render scales linearly (~0.08ms per item)
-- Add/remove operations are fast (independent of list size)
-- **Reordering scales quadratically** (~0.05ms per item²)
-- Updates/removals have minimal overhead
-
-**Recommendation based on benchmarks:**
-- **< 100 items:** Excellent, no concerns
-- **100-500 items:** Good, reordering takes 2-17ms
-- **500-1000 items:** Use cautiously, reordering takes 17-54ms
-- **1000+ items:** Avoid or use pagination, reordering >50ms
-
-**Bundle sizes:**
-- Browser: ~50 KB (minified, platform: 'browser')
-- Node.js: ~85 KB (minified, platform: 'node', includes ws)
+See [BENCHMARKS.md](./BENCHMARKS.md) for the current run. Summary: initial
+render is close to linear; reordering is the costly operation (~4 / ~21 /
+~48 ms for 100 / 500 / 1000 items); the bundle is ~133 KB minified, ~41 KB
+gzipped.
 
 ---
 
@@ -81,16 +52,9 @@ Known limitations and when to use alternatives.
 
 Loop uses Longest Increasing Subsequence (LIS) algorithm for efficient reordering with O(n log n) complexity.
 
-**Benchmark Results:**
-```
-Reorder (100 items):   ~4ms   ✓ Excellent
-Reorder (500 items):  ~13ms   ✓ Good
-Reorder (1000 items): ~33ms   ✓ Good
-```
-
 **Best practices:**
 - Use `key` attribute for stable item identity
-- For 10,000+ items, use Virtual component
+- For 10,000+ items, use the `Virtual` component (compiled template, same `${}` rules)
 
 ### 2. Virtual Component - Browser Height Limit
 
@@ -285,27 +249,13 @@ this.state.todos = [...this.state.todos]; // Single trigger
 
 ## Security Limitations
 
-### safe() Escapes Template Markers
-
-The `safe()` function prevents template injection:
-
-1. **Removes `{...}`** — removes brace patterns to prevent expression injection
-
-```javascript
-safe('Style: { color: red }');    // Returns: 'Style: '  (removed)
-safe('JSON: {"key": "value"}');   // Returns: 'JSON: '  (removed)
-```
-
-**Workaround:** Use `raw()` for code/JSON display (with trusted content only):
-
-```javascript
-render() {
-  return html`
-    <pre>${raw`{ "json": "example" }`}</pre>
-    <code>${raw`const obj = { key: 'value' };`}</code>
-  `;
-}
-```
+In the marker engine `${}` is text/attribute data, never markup; this covers
+components, loops, conditionals, slots and virtualized lists. `safe()` remains
+available for application code that builds strings by hand, but the engine no
+longer serializes templates into strings and has no string fallback. A host
+component assembled outside a template (`innerHTML`) has no compiled source, so
+Slot cannot project its author content — author such hosts with `html`.
+Details and the full policy: [SECURITY.md](./SECURITY.md).
 
 ---
 
@@ -343,7 +293,7 @@ render() {
 ### Use React/Vue/Solid When
 
 You need:
-- Virtualization (1000+ items)
+- Very large lists with complex item recycling beyond `<veda-virtual>`
 - Complex drag-and-drop
 - Rich text editors
 - Large existing ecosystem
@@ -378,20 +328,19 @@ function TodoList() {
 ## Summary
 
 **Veda Client strengths:**
-- ✅ Small bundle (~50 KB)
+- ✅ Small bundle (~41 KB gzipped, 4.0.0 build)
 - ✅ Simple API
 - ✅ RDF/semantic data
-- ✅ Good for forms and small lists
+- ✅ Good for forms and lists up to ~1000 items (`<veda-virtual>` for larger)
 
 **Limitations:**
-- ❌ No virtualization (use `<veda-virtual>` for large lists)
-- ❌ Naive reconciliation
+- ❌ Loop reconciliation is keyed with LIS, but frequent reorders of 1000+ items are still costly
 - ❌ Complex expressions in `{expr}` require `unsafe-eval` CSP (use getters for CSP-strict environments)
 
 **Decision rule:**
 - < 500 items → Use Veda Client
 - 500-1000 items → Consider pagination
-- 1000+ items → Use React/Vue + virtualization
+- 1000+ items → Use `<veda-virtual>`; for the most demanding lists compare with React/Vue
 
 ---
 

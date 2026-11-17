@@ -262,5 +262,62 @@ export default function ({ test, assert }) {
       document.documentElement.lang = originalLang;
     }
   });
+  test('PropertyComponent - reuses unchanged value templates', async () => {
+    const originalLang = document.documentElement.lang;
+    document.documentElement.lang = 'en';
+
+    class PropertyReuseHost extends Component(HTMLElement) {
+      static tag = 'test-property-reuse-host';
+      constructor() {
+        super();
+        const model = new Model();
+        model['v-s:title'] = ['One^^EN', 'Two^^EN'];
+        this.model = model;
+      }
+      ping() {}
+      render() {
+        return html`
+          <div>
+            <span property="v-s:title">
+              <span class="wrap">
+                <button class="ping" onclick="{this.ping}"></button>
+                <slot></slot>
+              </span>
+            </span>
+          </div>
+        `;
+      }
+    }
+
+    ensureDefined(PropertyReuseHost.tag, PropertyReuseHost);
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    try {
+      const host = document.createElement(PropertyReuseHost.tag);
+      container.appendChild(host);
+      await host.rendered;
+      await flushEffects();
+
+      const propertyEl = host.querySelector('[is$="property-component"]');
+      const wraps = propertyEl.querySelectorAll('.wrap');
+      assert(wraps.length === 2, 'Two values should render two templates');
+      const firstWrap = wraps[0];
+      const firstButton = firstWrap.querySelector('.ping');
+
+      host.model['v-s:title'] = ['One^^EN', 'Three^^EN'];
+      await flushEffects();
+
+      const updatedWraps = propertyEl.querySelectorAll('.wrap');
+      assert(updatedWraps.length === 2, 'Value count should stay stable');
+      assert(updatedWraps[0] === firstWrap, 'Unchanged value template should be reused');
+      assert(updatedWraps[0].querySelector('.ping') === firstButton, 'Unchanged value listener should be reused');
+      assert(propertyEl.textContent.includes('Three'), 'Changed value should render');
+    } finally {
+      container.remove();
+      document.documentElement.lang = originalLang;
+    }
+  });
+
 };
 

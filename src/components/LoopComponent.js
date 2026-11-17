@@ -2,6 +2,8 @@ import Component from './Component.js';
 import ExpressionParser from './ExpressionParser.js';
 import {effect} from '../Effect.js';
 import {reactive} from '../Reactive.js';
+import {factories} from '../template/factories.js';
+import {compileTemplate} from '../template/Template.js';
 
 /**
  * Loop component for rendering reactive lists with reconciliation
@@ -21,8 +23,8 @@ export default function LoopComponent(Class = HTMLElement) {
     static tag = 'veda-loop';
 
     #loopEffect = null;
-    #itemsMap = new Map(); // key → {element, item, index, evalContext}
-    #templateEl = null;  // <template> parsed once; clone via .content; cleared on disconnect
+    #itemsMap = new Map(); // key → {element, item, index, evalContext, instance}
+    #template = null;     // CompiledTemplate reused for every item
     #phase = 'new'; // new | mounting | live
 
     async connectedCallback() {
@@ -31,7 +33,9 @@ export default function LoopComponent(Class = HTMLElement) {
       this.#phase = 'mounting';
       this._vedaParentContext = this._findParentComponent();
 
-      this.#parseTemplate();
+      this.#template = this._compiledTemplate ||
+        (this.template ? compileTemplate(this.template) : null);
+
       this.replaceChildren();
       this._deferRendered();
       await super.connectedCallback();
@@ -84,7 +88,7 @@ export default function LoopComponent(Class = HTMLElement) {
         this.#releaseItem(itemData);
       }
       this.#itemsMap.clear();
-      this.#templateEl = null;
+      this.#template = null;
       this.replaceChildren();
       this._vedaParentContext = null;
       this._vedaEvalContext = null;
@@ -170,8 +174,8 @@ export default function LoopComponent(Class = HTMLElement) {
 
         if (!itemData) {
           // Create new element with index
-          const { element, evalContext, effects, listeners } = this.#createItemElement(item, index);
-          itemData = { element, item, index, evalContext, effects, listeners };
+          const { element, evalContext, instance } = this.#createItemElement(item, index);
+          itemData = { element, item, index, evalContext, instance };
           this.#itemsMap.set(key, itemData);
         } else {
           // Update existing element if item or index changed
@@ -330,30 +334,7 @@ export default function LoopComponent(Class = HTMLElement) {
       return `__value_${fallbackIndex}_${item}`;
     }
 
-    #parseTemplate () {
-      this.#templateEl = null;
-      if (!this.template) return;
-      this.#templateEl = document.createElement('template');
-      this.#templateEl.innerHTML = this.template;
-    }
-
     #createItemElement(item, index) {
-      const fragment = this.#templateEl?.content.cloneNode(true) ?? document.createDocumentFragment();
-      let element = fragment.firstElementChild;
-
-      if (!element) {
-        console.warn('Loop template must contain an element');
-        element = document.createElement('div');
-        element.appendChild(fragment);
-        fragment.appendChild(element);
-      } else if (fragment.children.length > 1) {
-        console.warn(
-          'Loop component: Multiple root elements detected.',
-          'Please wrap them in a single root element (e.g. <div>, <li>, etc.).',
-          'Only the first element will be used, others will be ignored.'
-        );
-      }
-
       const itemName = this.getAttribute('as') || 'item';
       const evalContext = reactive({ [itemName]: item, index });
 
@@ -372,16 +353,27 @@ export default function LoopComponent(Class = HTMLElement) {
         }
       }
 
-      // Capture effects and listeners created during _process for this item
-      const effectsStartIndex = this._getRenderEffectsCount();
-      const listenersStartIndex = this._getEventListenersCount();
-      this._process(fragment, evalContext);
-      const itemEffects = this._extractRenderEffects(effectsStartIndex);
-      const itemListeners = this._extractEventListeners(listenersStartIndex);
+      const instance = this.#template
+        ? this.#template.instantiate(evalContext, this, {values: this._templateValues || []})
+        : null;
+      const fragment = instance?.fragment ?? document.createDocumentFragment();
+      let element = fragment.firstElementChild;
 
-      element = fragment.firstElementChild;
+      if (!element) {
+        console.warn('Loop template must contain an element');
+        element = document.createElement('div');
+        element.appendChild(fragment);
+      } else if (fragment.children.length > 1) {
+        console.warn(
+          'Loop component: Multiple root elements detected.',
+          'Please wrap them in a single root element (e.g. <div>, <li>, etc.).',
+          'Only the first element will be used, others will be ignored.'
+        );
+      }
 
-      return { element, evalContext, effects: itemEffects, listeners: itemListeners };
+      if (instance) this._addChildrenRendered(instance.childrenRendered);
+
+      return { element, evalContext, instance };
     }
 
     #releaseItem(itemData) {
@@ -389,16 +381,26 @@ export default function LoopComponent(Class = HTMLElement) {
         itemData.element.remove();
         itemData.element = null;
       }
-      if (itemData.effects) {
-        itemData.effects.forEach(cleanup => cleanup());
-        itemData.effects = null;
-      }
-      if (itemData.listeners) {
-        this._stopEventListeners(itemData.listeners);
-        itemData.listeners = null;
+      if (itemData.instance) {
+        itemData.instance.destroy();
+        itemData.instance = null;
       }
       itemData.evalContext = null;
       itemData.item = null;
+    }
+
+    _onTemplateValuesChanged(values) {
+      for (const [, itemData] of this.#itemsMap) {
+        itemData.instance?.setValues(values);
+      }
+    }
+
+    _getEventListenersCount() {
+      let count = super._getEventListenersCount();
+      for (const [, itemData] of this.#itemsMap) {
+        count += itemData.instance?.getEventListenersCount?.() || 0;
+      }
+      return count;
     }
 
     render() {
@@ -416,6 +418,8 @@ const Loop = (() => {
   }
   return LoopComponent;
 })();
+
+factories.Loop = LoopComponent;
 
 export { Loop };
 

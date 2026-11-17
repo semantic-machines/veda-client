@@ -1,4 +1,6 @@
 import ValueComponent from './ValueComponent.js';
+import {factories} from '../template/factories.js';
+import {compileTemplate} from '../template/Template.js';
 
 export default function PropertyComponent (Class = HTMLElement) {
   return class PropertyComponentClass extends ValueComponent(Class) {
@@ -6,6 +8,7 @@ export default function PropertyComponent (Class = HTMLElement) {
 
     attributeChangedCallback (name, oldValue, newValue) {
       if (oldValue && oldValue !== newValue) {
+        this._invalidateValueCache();
         super.render();
       }
     }
@@ -23,38 +26,36 @@ export default function PropertyComponent (Class = HTMLElement) {
         }
       }
 
-      const hasCustomContent = this.template?.trim();
+      const hasCustomContent = this._compiledTemplate || this.template?.trim();
       if (!hasCustomContent) {
         return super.renderValue(value, container, index);
       }
 
-      const template = document.createElement('template');
-      template.innerHTML = this.template;
-      const fragment = template.content.cloneNode(true);
+      const evalContext = this.state;
+      Object.setPrototypeOf(evalContext, this);
 
+      const compiled = this._compiledTemplate || compileTemplate(this.template);
+      const instance = compiled.instantiate(
+        evalContext,
+        this,
+        {values: this._templateValues || []},
+      );
+      const fragment = instance.fragment;
       const slot = fragment.querySelector('slot');
       // Sanitize to prevent XSS via {expr} patterns in data
       const valueText = value.toString().replace(/!\{/g, '!\u200B{');
 
       if (slot) {
-        const textNode = document.createTextNode(valueText);
-        textNode.__vedaProcessed = true; // Mark as processed to skip re-parsing
-        slot.replaceWith(textNode);
+        slot.replaceWith(document.createTextNode(valueText));
       } else {
         const node = fragment.firstElementChild;
-        if (node) {
-          node.textContent = valueText;
-          // Mark all text nodes as processed
-          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-          let textNode;
-          while ((textNode = walker.nextNode())) {
-            textNode.__vedaProcessed = true;
-          }
-        }
+        if (node) node.textContent = valueText;
       }
 
-      this._process(fragment);
       container.appendChild(fragment);
+      return {cleanup: () => instance.destroy(), instance};
     }
   };
 }
+
+factories.Property = PropertyComponent;

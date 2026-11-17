@@ -1,5 +1,6 @@
 import { ComponentInstance } from './Component.js';
 import Model from '../Model.js';
+import type { RenderValueResult } from './ValueComponent.js';
 
 type RelationComponentClass<T extends HTMLElement = HTMLElement> = new (...args: any[]) => T;
 
@@ -10,6 +11,6 @@ export default function RelationComponent<E extends RelationComponentClass = typ
 } & E;
 
 export interface RelationComponentInstance {
-  renderValue(value: Model, container: HTMLElement | ShadowRoot, index: number): Promise<void>;
+  renderValue(value: Model, container: HTMLElement | ShadowRoot, index: number): RenderValueResult;
 }
 

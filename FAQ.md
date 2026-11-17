@@ -176,13 +176,13 @@ get incrementedCount() {
 
 ### Q4: How to handle lists with 1000+ items?
 
-**Problem:** Loop component slows down with large lists (O(n²) reordering)
+**Problem:** Loop component slows down with large lists (reordering is the costly operation; the keyed reorder uses LIS, not a naive O(n²) pass)
 
-**Benchmarks:**
-- 100 items: ~2ms (excellent)
-- 500 items: ~17ms (good)
-- 1000 items: ~54ms (noticeable)
-- 2000+ items: >200ms (poor UX)
+**Benchmarks (2026-11-16, 4.0.0):**
+- 100 items: ~3.6ms (excellent)
+- 500 items: ~21ms (good)
+- 1000 items: ~48ms (noticeable)
+- 2000+ items: reordering is expensive; use `<veda-virtual>`
 
 **Solution 1 - Pagination (recommended for 500-1000+ items):**
 ```javascript

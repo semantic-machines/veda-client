@@ -12,6 +12,24 @@ export interface ValueComponentInstance {
   prop: string;
 
   render(): void;
-  renderValue(value: any, container: HTMLElement | ShadowRoot, index: number): void;
+  /**
+   * May return a cleanup function (or an object with `cleanup`/`instance`) so
+   * the value node can be released before it is replaced.
+   */
+  renderValue(
+    value: any,
+    container: HTMLElement | ShadowRoot,
+    index: number,
+  ): RenderValueResult;
 }
+
+/** Result accepted from `ValueComponent.renderValue()` overrides. */
+export type RenderValueResult =
+  | void
+  | null
+  | (() => void)
+  | {
+    cleanup?: (() => void) | null;
+    instance?: unknown;
+  };
 

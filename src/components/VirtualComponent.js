@@ -1,8 +1,7 @@
 import Component from './Component.js';
-import LoopComponent from './LoopComponent.js';
-import IfComponent from './IfComponent.js';
 import ExpressionParser from './ExpressionParser.js';
 import {effect} from '../Effect.js';
+import {compileTemplate} from '../template/Template.js';
 
 // Browser max element height is ~33,554,432px (2^25) in most browsers
 const MAX_BROWSER_HEIGHT = 33554432;
@@ -36,6 +35,7 @@ export default function VirtualComponent(Class = HTMLElement) {
     #spacerElement = null;
     #contentElement = null;
     #childrenFragment = null;
+    #contentInstance = null;
     #isDisconnected = false;
     #isTableMode = false;
     #tableElement = null;
@@ -131,17 +131,17 @@ export default function VirtualComponent(Class = HTMLElement) {
       this.#isDisconnected = false;
       this._vedaParentContext = this._findParentComponent();
 
-      // Get children from template (set by Component.js before connectedCallback)
-      this.#childrenFragment = document.createDocumentFragment();
-      if (this.template) {
-        // Use <template> element for parsing to correctly handle table fragments
-        // (<tr>, <td>, etc.) which would be foster-parented inside a <div>
-        const temp = document.createElement('template');
-        temp.innerHTML = this.template;
-        while (temp.content.firstChild) {
-          this.#childrenFragment.appendChild(temp.content.firstChild);
-        }
-      }
+      // Children are authored by the parent template, so the parent compiler
+      // already captured them as a CompiledTemplate (`_compiledTemplate`). The
+      // string fallback keeps <veda-virtual> usable when it is created by hand
+      // (document.createElement + innerHTML/template).
+      const compiled = this._compiledTemplate ||
+        (this.template ? compileTemplate(this.template) : null);
+      const evalContext = this.#createChildEvalContext();
+      this.#contentInstance = compiled
+        ? compiled.instantiate(evalContext, this, {values: this._templateValues || []})
+        : null;
+      this.#childrenFragment = this.#contentInstance?.fragment ?? document.createDocumentFragment();
 
       // Detect table mode: check if first element child is a <table>
       let firstEl = null;
@@ -163,12 +163,10 @@ export default function VirtualComponent(Class = HTMLElement) {
       // Build wrapper DOM structure
       this.#buildDOM();
 
-      // Set template on child custom elements before adding to DOM
-      // This mimics what Component._process does for custom elements
       if (this.#isTableMode) {
-        // In table mode: upgrade semantic elements, then put table into content div.
+        // Table mode: the compiled fragment already contains upgraded semantic
+        // components; only the <table> itself moves into the content div.
         // Sticky thead/tfoot are simulated via counter-transforms in #updateStickyHeaders.
-        this.#prepareChildTemplates(this.#tableElement);
         this.#contentElement.appendChild(this.#tableElement);
 
         // Cache thead/tfoot elements and apply styles for sticky simulation
@@ -183,10 +181,10 @@ export default function VirtualComponent(Class = HTMLElement) {
           this.#tfootHeight = this.#tfootEl.offsetHeight || this.itemHeight;
         }
       } else {
-        this.#prepareChildTemplates(this.#childrenFragment);
         // Add children to DOM - custom elements will initialize via connectedCallback
         this.#contentElement.appendChild(this.#childrenFragment);
       }
+      this.#childrenFragment = null;
 
       // Call parent connectedCallback (skip render since we built DOM manually)
       this.template = ''; // Prevent Component from re-rendering
@@ -210,7 +208,7 @@ export default function VirtualComponent(Class = HTMLElement) {
       this.#boundsEffect = effect(() => {
         const start = this.state._virtualStart;
         const end = this.state._virtualEnd;
-        if (start >= 0) {
+        if (start >= 0 && end >= 0) {
           this.#updateContentTransform();
           this.#updateStickyHeaders();
         }
@@ -243,12 +241,13 @@ export default function VirtualComponent(Class = HTMLElement) {
         this.#viewportElement.removeEventListener('scroll', this.#scrollHandler);
       }
       this.#scrollHandler = null;
+      this.#contentInstance?.destroy();
+      this.#contentInstance = null;
       this.replaceChildren();
       this.#viewportElement = null;
       this.#spacerElement = null;
       this.#contentElement = null;
       this.#childrenFragment = null;
-      this.#childEvalContext = null;
       this.#tableElement = null;
       this.#theadEl = null;
       this.#tfootEl = null;
@@ -448,8 +447,6 @@ export default function VirtualComponent(Class = HTMLElement) {
     // - prototype = parent component (e.g. TestApp) → provides state, methods, etc.
     // - own getters = VirtualComponent computed props → visibleItems, virtualTotal, etc.
     // This allows children to use both {this.visibleItems} and {this.state.userProp}.
-    #childEvalContext = null;
-
     #createChildEvalContext() {
       const parentContext = this._vedaParentContext;
       if (!parentContext) return null;
@@ -471,53 +468,6 @@ export default function VirtualComponent(Class = HTMLElement) {
       }
 
       return ctx;
-    }
-
-    #prepareChildTemplates(container) {
-      // Prepare child templates — mimics the relevant parts of Component._process:
-      // custom elements (dash in tag), semantic loops (items attr), semantic ifs (condition attr)
-      this.#childEvalContext = this.#createChildEvalContext();
-      const elements = [...container.querySelectorAll('*')];
-
-      for (const el of elements) {
-        const tag = el.tagName.toLowerCase();
-        const hasDash = tag.includes('-');
-
-        if (!hasDash && el.hasAttribute('items')) {
-          this.#upgradeToSemanticComponent(el, tag, 'loop', LoopComponent);
-        } else if (!hasDash && el.hasAttribute('condition')) {
-          this.#upgradeToSemanticComponent(el, tag, 'if', IfComponent);
-        } else if (hasDash) {
-          // Create a proper custom element instance via document.createElement
-          // (triggers constructor + field initializers). Setting template on an
-          // HTML-parsed element from <template> would be overwritten during
-          // custom element upgrade when connected to the document.
-          const component = document.createElement(tag);
-          for (const attr of el.attributes) {
-            component.setAttribute(attr.nodeName, attr.nodeValue);
-          }
-          component.template = el.innerHTML.trim();
-          component._vedaEvalContext = this.#childEvalContext;
-          if (el.parentNode) {
-            el.parentNode.replaceChild(component, el);
-          }
-        }
-      }
-    }
-
-    #upgradeToSemanticComponent(el, tag, type, ComponentFactory) {
-      const is = `${tag}-${type}-component`;
-      if (!customElements.get(is)) {
-        customElements.define(is, ComponentFactory(el.constructor), {extends: tag});
-      }
-      const component = document.createElement(tag, {is});
-      component.setAttribute('is', is);
-      for (const attr of el.attributes) {
-        component.setAttribute(attr.nodeName, attr.nodeValue);
-      }
-      component.template = el.innerHTML.trim();
-      component._vedaEvalContext = this.#childEvalContext;
-      el.parentNode.replaceChild(component, el);
     }
 
     #evaluateItems(expr) {
@@ -555,6 +505,12 @@ export default function VirtualComponent(Class = HTMLElement) {
       });
 
       this.#resizeObserver.observe(this.#viewportElement);
+    }
+
+    // Children are created while instantiating the compiled template; their
+    // rendered promises belong to this component's `rendered`.
+    post() {
+      this._addChildrenRendered(this.#contentInstance?.childrenRendered);
     }
 
     // === Render (return undefined to skip Component's replaceChildren) ===

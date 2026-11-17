@@ -5,6 +5,7 @@
 
 import './setup-dom.js';
 import Component, { html, reactive } from '../src/components/Component.js';
+import { unsafeStatic } from '../src/template/TemplateResult.js';
 import { flushEffects } from '../src/Effect.js';
 import { createTestComponent } from './helpers.js';
 
@@ -536,7 +537,7 @@ export default ({ test, assert }) => {
 
     class ParentComponent extends Component(HTMLElement) {
       render() {
-        return html`<div><${tagName}></${tagName}></div>`;
+        return html`<div><${unsafeStatic(tagName)}></${unsafeStatic(tagName)}></div>`;
       }
     }
 

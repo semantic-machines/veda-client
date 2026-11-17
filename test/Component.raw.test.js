@@ -5,6 +5,7 @@
 
 import './setup-dom.js';
 import { raw, html } from '../src/components/Component.js';
+import { render } from '../src/template/Template.js';
 
 export default ({ test, assert }) => {
 
@@ -74,15 +75,17 @@ export default ({ test, assert }) => {
     assert(result.includes('data-x data-y'), 'Should handle second array');
   });
 
-  test('html() - does not join arrays (comparison with raw)', () => {
-    // html() uses safe() which handles arrays differently
+  test('html() - array items are text, not markup', () => {
     const items = ['<b>one</b>', '<b>two</b>'];
-    const result = html`<div>${items}</div>`;
-
-    // html() escapes HTML
-    assert(result.includes('&lt;b&gt;'), 'html() should escape HTML');
-
-    // This is a comparison test showing that raw() and html() behave differently
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    try {
+      render(html`<div>${items}</div>`, container);
+      assert(container.querySelector('div').textContent.includes('<b>one</b>'), 'Array items should stay text');
+      assert(container.querySelector('b') === null, 'Array items must not become markup');
+    } finally {
+      container.remove();
+    }
   });
 };
 

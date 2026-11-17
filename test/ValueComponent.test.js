@@ -156,5 +156,39 @@ export default function ({ test, assert }) {
 
     container.remove();
   });
+  test('ValueComponent - reuses unchanged value nodes on update', async () => {
+    const ValueClass = ValueComponent(HTMLElement);
+    if (!customElements.get('test-value-reuse')) {
+      customElements.define('test-value-reuse', ValueClass);
+    }
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const element = document.createElement('test-value-reuse');
+    element.setAttribute('property', 'rdfs:label');
+
+    const model = new Model();
+    model['rdfs:label'] = ['Alpha', 'Beta'];
+    element.state.model = model;
+
+    container.appendChild(element);
+    await element.rendered;
+    await flushEffects();
+
+    const first = element.childNodes[0];
+    const second = element.childNodes[1];
+    assert(first.textContent === 'Alpha' && second.textContent === 'Beta', 'Initial values should render');
+
+    model['rdfs:label'] = ['Alpha', 'Gamma'];
+    await flushEffects();
+
+    assert(element.childNodes[0] === first, 'Unchanged value node should be reused');
+    assert(element.childNodes[1] !== second, 'Changed value node should be replaced');
+    assert(element.textContent === 'AlphaGamma', 'Updated values should render');
+
+    container.remove();
+  });
+
 };
 
