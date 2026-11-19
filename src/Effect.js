@@ -234,7 +234,8 @@ export function resumeTracking() {
  * @returns {*} - Return value of fn
  */
 export function untrack(fn) {
-  pauseTracking();
+  trackingDepth++;
+  shouldTrack = false;
   try {
     return fn();
   } finally {

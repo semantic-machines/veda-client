@@ -486,6 +486,32 @@ export default ({test, assert}) => {
     console.warn = originalWarn;
   });
 
+  test('Effect - nested untrack does not warn and keeps outer scope untracked', async () => {
+    const originalWarn = console.warn;
+    const warnings = [];
+    console.warn = (...args) => warnings.push(args.join(' '));
+
+    const obj = reactive({ a: 1, b: 1 });
+    let runs = 0;
+    effect(() => {
+      runs++;
+      untrack(() => {
+        untrack(() => obj.a);
+        return obj.b;
+      });
+    });
+    await flushEffects();
+    const initialRuns = runs;
+
+    obj.a = 2;
+    obj.b = 2;
+    await flushEffects();
+
+    console.warn = originalWarn;
+    assert(warnings.length === 0, 'Nested untrack should not warn');
+    assert(runs === initialRuns, 'Reads inside nested untrack should not subscribe the effect');
+  });
+
   // ==================== COMPUTED VALUES ====================
 
   test('Reactive - computed basic reactivity', async () => {
